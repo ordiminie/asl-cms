@@ -18,6 +18,7 @@ vi.mock('@/app/dal/campaign-dal', () => ({
   getCampaignDal: vi.fn(),
   getCampaignLetterContextDal: vi.fn(),
   getCampaignRecipientsDal: vi.fn(),
+  getCampaignStatisticsDal: vi.fn(),
 }))
 
 import {render, screen} from '@/__tests__/customRender'
@@ -27,6 +28,7 @@ import {
   getCampaignDal,
   getCampaignLetterContextDal,
   getCampaignRecipientsDal,
+  getCampaignStatisticsDal,
 } from '@/app/dal/campaign-dal'
 import {requireCurrentTenantDal} from '@/app/dal/tenant-dal'
 import {
@@ -198,5 +200,77 @@ describe('/bureau/campagnes/[id]', () => {
 
     expect(getCampaignDal).not.toHaveBeenCalled()
     expect(getCampaignRecipientsDal).not.toHaveBeenCalled()
+  })
+})
+
+type Rendered = ReactElement<{
+  children?: ReactElement
+  fallback?: ReactElement
+  statistics?: ReactElement<{
+    children: ReactElement
+    fallback: ReactElement
+  }>
+}>
+
+/** Le detail rendu par la section, puis la carte des statistiques resolue. */
+const statisticsOfPage = async () => {
+  const element = (await BureauCampaignPage({
+    params: Promise.resolve({locale: 'fr', id: CAMPAIGN_ID}),
+    searchParams: Promise.resolve({}),
+  })) as ReactElement<{children: ReactElement}>
+  const section = element.props.children
+  const type = section.type as (props: unknown) => Promise<Rendered>
+  const detail = await type(section.props)
+  const boundary = detail.props.statistics
+  if (!boundary) throw new Error('carte des statistiques attendue')
+  const reader = boundary.props.children
+  const read = reader.type as (props: unknown) => Promise<ReactElement>
+  return {boundary, card: await read(reader.props)}
+}
+
+describe('/bureau/campagnes/[id] — ouvertures et clics (s30)', () => {
+  it('la carte a son propre Suspense, avec « Lecture des statistiques… » en attendant', async () => {
+    vi.mocked(getCampaignStatisticsDal).mockResolvedValue({
+      status: 'found',
+      statistics: {state: 'pending_provider'},
+    })
+    const {boundary} = await statisticsOfPage()
+
+    render(boundary.props.fallback)
+
+    expect(
+      screen.getByRole('heading', {level: 2, name: 'Ouvertures et clics'})
+    ).toBeInTheDocument()
+    expect(document.body).toHaveTextContent('Lecture des statistiques…')
+  })
+
+  it('lit les statistiques pour le tenant du domaine et les montre', async () => {
+    vi.mocked(getCampaignStatisticsDal).mockResolvedValue({
+      status: 'found',
+      statistics: {state: 'pending_provider'},
+    })
+    const {card} = await statisticsOfPage()
+
+    render(card)
+
+    expect(getCampaignStatisticsDal).toHaveBeenCalledWith(
+      TENANT_ID,
+      CAMPAIGN_ID
+    )
+    expect(document.body).toHaveTextContent(
+      'Statistiques pas encore disponibles'
+    )
+  })
+
+  it('une lecture en échec rend la carte indisponible, jamais la fiche', async () => {
+    vi.mocked(getCampaignStatisticsDal).mockRejectedValue(new Error('panne'))
+    const {card} = await statisticsOfPage()
+
+    render(card)
+
+    expect(document.body).toHaveTextContent(
+      'Les statistiques de cette campagne ne sont pas disponibles.'
+    )
+    expect(document.body).toHaveTextContent('Brevo n’a pas répondu.')
   })
 })

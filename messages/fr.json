@@ -4350,6 +4350,34 @@
           "failed": "En échec"
         }
       },
+      "statistics": {
+        "title": "Ouvertures et clics",
+        "loading": "Lecture des statistiques…",
+        "counter": {
+          "sent": "Emails envoyés",
+          "opens": "Ouvertures",
+          "clicks": "Clics"
+        },
+        "countWithRate": "{count} · {rate} %",
+        "scope": "Sur l’ensemble de la campagne : {parts} envois, du {from} au {to}.",
+        "reading": "Une ouverture ou un clic compte une personne, même si elle ouvre l’email plusieurs fois. Certaines messageries ouvrent les emails d’elles-mêmes, d’autres bloquent le comptage : lisez ces chiffres comme une tendance.",
+        "source": "Chiffres fournis par Brevo, le service qui envoie vos emails, relevés le {date} à {time}.",
+        "pendingSending": {
+          "title": "Statistiques disponibles après le dernier envoi",
+          "description": "Les chiffres porteront sur l’ensemble de la campagne. Dernier envoi prévu le {date}."
+        },
+        "pendingProvider": {
+          "title": "Statistiques pas encore disponibles",
+          "description": "Brevo compte encore les emails de cette campagne. Les chiffres apparaissent en général dans les heures qui suivent l’envoi."
+        },
+        "unavailable": "Les statistiques de cette campagne ne sont pas disponibles.",
+        "reasons": {
+          "unreachable": "Brevo n’a pas répondu. Rechargez la page dans quelques minutes.",
+          "untracked": "Cette campagne a été envoyée sans suivi des ouvertures.",
+          "expired": "Brevo ne conserve ces chiffres que 90 jours."
+        },
+        "nothingSent": "Aucun email n’est parti : il n’y a rien à mesurer."
+      },
       "notFound": "Cette campagne n’existe pas ou n’appartient pas à votre association.",
       "banner": {
         "launched": "<strong>Campagne lancée.</strong> {count, plural, one {# membre la reçoit} other {# membres la reçoivent}} {today, select, true {aujourd’hui} other {le {date}}}{rest, plural, =0 {} one {, la suite part seule le {days}} other {, la suite part seule les {days}}}. Suivez-la ci-dessous.",

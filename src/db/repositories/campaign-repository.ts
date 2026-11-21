@@ -1235,3 +1235,22 @@ export const getCampaignLetterProfileIdsDao = async (
     )
   return rows.map((row) => row.memberProfileId)
 }
+
+/**
+ * Le releve conserve des statistiques d'une campagne (s30, ADR 068 §4),
+ * ecrit a la consolidation de l'agregat du fournisseur seulement. Sous la RLS
+ * de `campaign` : hors `withTenant`, rien ne s'ecrit.
+ */
+export const saveCampaignStatisticsTxnDao = async (
+  campaignId: string,
+  statistics: {uniqueOpens: number; uniqueClicks: number; readAt: Date}
+): Promise<void> => {
+  await getDb()
+    .update(campaign)
+    .set({
+      statsUniqueOpens: statistics.uniqueOpens,
+      statsUniqueClicks: statistics.uniqueClicks,
+      statsReadAt: statistics.readAt,
+    })
+    .where(eq(campaign.id, campaignId))
+}

@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>s30 — Ouvertures et clics d'une campagne (maquette de référence)</title>
+<style>
+  /* Maquette de reference, pas du code de production (docs/designs/s30-stats-campagnes.md).
+     Tokens copies de docs/design-system.md §1.1, §1.3, §1.4, §1.9 — jeu clair seul (ADR 033). */
+  @font-face { font-family: 'Public Sans'; src: url('../../src/app/%5Blocale%5D/fonts/public-sans-latin.woff2') format('woff2'); font-weight: 400 700; }
+  @font-face { font-family: 'Source Serif 4'; src: url('../../src/app/%5Blocale%5D/fonts/source-serif-4-latin.woff2') format('woff2'); font-weight: 400 700; }
+  @font-face { font-family: 'JetBrains Mono'; src: url('../../src/app/%5Blocale%5D/fonts/jetbrains-mono-latin.woff2') format('woff2'); font-weight: 400 500; }
+
+  :root {
+    --radius: 0.5rem;
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.22 0.015 250);
+    --card: oklch(1 0 0);
+    --muted: oklch(0.972 0.005 240);
+    --muted-foreground: oklch(0.45 0.02 245);
+    --border: oklch(0.9 0.008 245);
+    --input: oklch(0.66 0.014 245);
+    --ring: oklch(0.55 0.11 235);
+    --primary: oklch(0.35 0.06 240);
+    --primary-foreground: oklch(0.985 0.003 240);
+    --secondary: oklch(0.965 0.006 240);
+    --secondary-foreground: oklch(0.3 0.02 245);
+    --destructive: oklch(0.48 0.17 27);
+    --destructive-text: oklch(0.48 0.17 27);
+    --link: oklch(0.45 0.13 250);
+    --warning: oklch(0.94 0.06 75);
+    --warning-border: oklch(0.6 0.13 65);
+    --warning-foreground: oklch(0.3 0.08 60);
+    --sidebar: oklch(0.985 0.004 250);
+    --sidebar-border: oklch(0.91 0.008 245);
+    --sidebar-accent: oklch(0.93 0.012 245);
+    --font-sans: 'Public Sans', ui-sans-serif, system-ui, sans-serif;
+    --font-serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--background); color: var(--foreground); font-family: var(--font-sans); font-size: 17px; line-height: 1.6; }
+  .doc-note { background: var(--muted); border-bottom: 1px solid var(--border); padding: 16px 32px; font-size: 15px; color: var(--muted-foreground); }
+  .doc-note strong { color: var(--foreground); }
+  .section-label { font-family: var(--font-mono); font-size: 12px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted-foreground); margin: 0 0 12px; }
+
+  /* gabarit back-office : barre laterale 248 px, tiroir sous lg */
+  .shell { display: flex; min-height: 100vh; }
+  .sidebar { width: 248px; flex-shrink: 0; background: var(--sidebar); border-right: 1px solid var(--sidebar-border); padding: 24px 16px; font-size: 16px; }
+  .sidebar .group { font-family: var(--font-mono); font-size: 12px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted-foreground); margin: 24px 8px 8px; }
+  .sidebar a { display: block; padding: 8px 12px; border-radius: var(--radius); color: var(--foreground); text-decoration: none; }
+  .sidebar a.active { background: var(--sidebar-accent); font-weight: 600; }
+  .topbar { display: none; }
+  main { flex: 1; min-width: 0; }
+  .frame { max-width: 960px; margin: 0 auto; padding: 32px 32px 48px; display: flex; flex-direction: column; gap: 24px; }
+
+  .crumb { font-size: 15px; color: var(--muted-foreground); }
+  .crumb a { color: var(--link); text-decoration: underline; }
+  h1 { font-family: var(--font-serif); font-size: 34px; line-height: 1.15; font-weight: 600; margin: 0; text-wrap: pretty; }
+  .title-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; }
+  .badge { display: inline-flex; align-items: center; border-radius: 9999px; padding: 2px 12px; font-size: 15px; font-weight: 600; border: 1px solid var(--border); color: var(--muted-foreground); }
+
+  .card { border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+  .card.collapsed { color: var(--muted-foreground); padding: 16px 24px; }
+  h2 { font-family: var(--font-serif); font-size: 24px; line-height: 1.3; font-weight: 600; margin: 0; }
+  h3 { font-size: 20px; font-weight: 600; line-height: 1.3; margin: 0; }
+  p { margin: 0; }
+  .meta { font-size: 15px; color: var(--muted-foreground); line-height: 1.5; }
+  .data { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+  dl.counter { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin: 0; }
+  dl.counter div { display: flex; flex-direction: column; gap: 4px; }
+  dl.counter dt { font-size: 15px; color: var(--muted-foreground); }
+  dl.counter dd { margin: 0; font-family: var(--font-mono); font-size: 17px; font-variant-numeric: tabular-nums; }
+
+  .alert { border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; display: flex; gap: 12px; align-items: flex-start; }
+  .alert svg { flex-shrink: 0; width: 20px; height: 20px; margin-top: 4px; }
+  .alert .body { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .alert .title { font-weight: 700; }
+  .alert.muted { background: var(--muted); }
+  .alert.warning { background: var(--warning); border-color: var(--warning-border); color: var(--warning-foreground); }
+  .alert.destructive { border: 2px solid var(--destructive); }
+  .alert.destructive .title { color: var(--destructive-text); }
+  .alert.success svg { color: var(--primary); }
+
+
+  .card.collapsed { color: var(--muted-foreground); padding: 16px 24px; }
+  .state-tag { font-family: var(--font-mono); font-size: 12px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted-foreground); border-top: 1px solid var(--border); padding-top: 16px; margin-top: 8px; }
+  .stack { display: flex; flex-direction: column; gap: 8px; }
+
+  @media (max-width: 1023px) {
+    .sidebar { display: none; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+    .frame { padding: 24px 16px 48px; }
+  }
+  @media (max-width: 639px) {
+    .doc-note { padding: 12px 16px; }
+    dl.counter { grid-template-columns: 1fr; gap: 12px; }
+    dl.counter div { flex-direction: row; justify-content: space-between; }
+    .card { padding: 16px; }
+    .btn { width: 100%; height: 56px; font-size: 17px; }
+  }
+</style>
+</head>
+<body>
+
+<p class="doc-note"><strong>Maquette de référence, s30 — pas du code.</strong> Écran : détail d'une campagne (<span class="data">/bureau/campagnes/[id]</span>), nouvelle carte « Ouvertures et clics », placée après « Avancement ». Chaque état de la carte est montré l'un sous l'autre ; à l'écran, un seul est visible à la fois.</p>
+
+<div class="shell">
+  <nav class="sidebar" aria-label="Back-office">
+    <div class="group">Le site</div>
+    <a href="#">Pages</a>
+    <a href="#">Actualités</a>
+    <div class="group">L'association</div>
+    <a href="#">Propriétaires</a>
+    <a href="#">Groupes</a>
+    <a href="#" class="active">Campagnes</a>
+    <a href="#">Envois</a>
+  </nav>
+
+  <main id="contenu">
+    <div class="topbar">
+      <button class="btn outline" type="button" aria-label="Ouvrir le menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>Menu
+      </button>
+      <span class="meta">ASL La Fourche</span>
+    </div>
+
+    <div class="frame">
+      <p class="crumb"><a href="#">Campagnes</a> › Assemblée générale du 14 mars</p>
+
+      <div class="title-row">
+        <h1>Assemblée générale du 14 mars</h1>
+        <span class="badge">Envoyée</span>
+      </div>
+
+      <div class="card collapsed">Cartes existantes inchangées : bandeau d'état, « Avancement ».</div>
+
+      <p class="section-label">État 1 · Disponibles (campagne en trois envois)</p>
+      <section class="card" aria-labelledby="stats-1">
+        <h2 id="stats-1">Ouvertures et clics</h2>
+        <dl class="counter">
+          <div><dt>Emails envoyés</dt><dd>302</dd></div>
+          <div><dt>Ouvertures</dt><dd>154 · 51 %</dd></div>
+          <div><dt>Clics</dt><dd>42 · 14 %</dd></div>
+        </dl>
+        <div class="stack">
+          <p class="meta">Sur l'ensemble de la campagne : <span class="data">3</span> envois, du <span class="data">12/11/2026</span> au <span class="data">14/11/2026</span>.</p>
+          <p class="meta">Une ouverture ou un clic compte une personne, même si elle ouvre l'email plusieurs fois. Certaines messageries ouvrent les emails d'elles-mêmes, d'autres bloquent le comptage : lisez ces chiffres comme une tendance.</p>
+          <p class="meta">Chiffres fournis par Brevo, le service qui envoie vos emails, relevés le <span class="data">21/11/2026</span> à <span class="data">10:32</span>.</p>
+        </div>
+      </section>
+
+      <p class="section-label">État 2 · Disponibles, à zéro (vrai zéro mesuré)</p>
+      <section class="card" aria-labelledby="stats-2">
+        <h2 id="stats-2">Ouvertures et clics</h2>
+        <dl class="counter">
+          <div><dt>Emails envoyés</dt><dd>18</dd></div>
+          <div><dt>Ouvertures</dt><dd>0 · 0 %</dd></div>
+          <div><dt>Clics</dt><dd>0 · 0 %</dd></div>
+        </dl>
+        <div class="stack">
+          <p class="meta">Une ouverture ou un clic compte une personne, même si elle ouvre l'email plusieurs fois. Certaines messageries ouvrent les emails d'elles-mêmes, d'autres bloquent le comptage : lisez ces chiffres comme une tendance.</p>
+          <p class="meta">Chiffres fournis par Brevo, le service qui envoie vos emails.</p>
+        </div>
+      </section>
+
+      <p class="section-label">État 3a · Pas encore disponibles — envoi en cours</p>
+      <section class="card" aria-labelledby="stats-3a">
+        <h2 id="stats-3a">Ouvertures et clics</h2>
+        <div class="alert muted" role="status">
+          <div class="body">
+            <p class="title">Statistiques disponibles après le dernier envoi</p>
+            <p>Les chiffres porteront sur l'ensemble de la campagne. Dernier envoi prévu le <span class="data">14/11/2026</span>.</p>
+          </div>
+        </div>
+      </section>
+
+      <p class="section-label">État 3b · Pas encore disponibles — fournisseur pas à jour</p>
+      <section class="card" aria-labelledby="stats-3b">
+        <h2 id="stats-3b">Ouvertures et clics</h2>
+        <div class="alert muted" role="status">
+          <div class="body">
+            <p class="title">Statistiques pas encore disponibles</p>
+            <p>Brevo compte encore les emails de cette campagne. Les chiffres apparaissent en général dans les heures qui suivent l'envoi.</p>
+          </div>
+        </div>
+      </section>
+
+      <p class="section-label">État 4 · Indisponibles (trois raisons possibles, une seule affichée)</p>
+      <section class="card" aria-labelledby="stats-4">
+        <h2 id="stats-4">Ouvertures et clics</h2>
+        <div class="stack">
+          <p>Les statistiques de cette campagne ne sont pas disponibles.</p>
+          <p class="meta">Brevo n'a pas répondu. Rechargez la page dans quelques minutes.</p>
+          <p class="meta">— ou — Cette campagne a été envoyée sans suivi des ouvertures.</p>
+          <p class="meta">— ou — Brevo ne conserve ces chiffres que 90 jours.</p>
+        </div>
+      </section>
+
+      <p class="section-label">État 5 · Aucun email parti</p>
+      <section class="card" aria-labelledby="stats-5">
+        <h2 id="stats-5">Ouvertures et clics</h2>
+        <p class="meta">Aucun email n'est parti : il n'y a rien à mesurer.</p>
+      </section>
+
+      <p class="section-label">État 6 · Chargement</p>
+      <section class="card" aria-labelledby="stats-6" aria-busy="true">
+        <h2 id="stats-6">Ouvertures et clics</h2>
+        <p class="meta">Lecture des statistiques…</p>
+      </section>
+
+      <div class="card collapsed">Cartes existantes inchangées : « Envois par jour », « Destinataires », « Courrier postal », « Récapitulatif », « Contenu envoyé ».</div>
+    </div>
+  </main>
+</div>
+</body>
+</html>

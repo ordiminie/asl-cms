@@ -20,3 +20,5 @@ export const previewCampaignPlanService =
   campaignServiceInterceptor.previewCampaignPlanService
 export const canManageCampaignsService =
   campaignServiceInterceptor.canManageCampaignsService
+export const getCampaignStatisticsService =
+  campaignServiceInterceptor.getCampaignStatisticsService

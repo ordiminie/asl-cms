@@ -35,6 +35,7 @@ import {
   moveCampaignPartTxnDao,
   type PendingRecipientRowModel,
   releaseRecipientClaimTxnDao,
+  saveCampaignStatisticsTxnDao,
   startCampaignPartTxnDao,
 } from '@/db/repositories/campaign-repository'
 import {getOrganizationByIdDao} from '@/db/repositories/organization-repository'
@@ -63,6 +64,7 @@ import {canPerformAction} from './authorization/action-registry-authorization'
 import {resolveMemberBillingProvider} from './billing/resolve-member-billing-provider'
 import {
   isClientEmailEnabledService,
+  readEmailTagStatisticsService,
   type SendEmailPayload,
   sendEmailService,
 } from './email-service'
@@ -93,6 +95,13 @@ import {
   retryDelayMs,
   slidePartsAfterDeferral,
 } from './rules/campaign-schedule-rules'
+import {
+  campaignStatisticsOf,
+  type CampaignStatisticsReading,
+  type CampaignStatisticsSnapshot,
+  campaignStatisticsWindowOf,
+  needsProviderReading,
+} from './rules/campaign-statistics-rules'
 import {
   budgetDayOf,
   deferredRunAfter,
@@ -131,6 +140,7 @@ import {
   CampaignRecipientStatus,
   CAMPAIGNS_PAGE_SIZE,
   CampaignsPageInput,
+  CampaignStatisticsReadResult,
   CampaignTarget,
   CampaignTargetCountsDTO,
   CampaignTemplateId,
@@ -617,6 +627,7 @@ export const sendCampaignService = async (
           nature === 'statutaire' ? target.reinstated : target.unsubscribed,
         status: 'sending',
         sendDate: today,
+        statsTracked: true,
         ...author,
       },
       plan.map((part, index) => ({
@@ -813,10 +824,18 @@ const listUnsubscribeHeaders = (
   'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
 })
 
-/** L'email d'un destinataire, compose sans rien envoyer. */
+/**
+ * Le tag fournisseur d'une campagne (s30, ADR 068 §1) : porte par chaque
+ * email de toutes ses parts, il agrege ses statistiques. Non personnel.
+ */
+const campaignStatisticsTagOf = (campaignId: string): string =>
+  `campaign-${campaignId}`
+
+/** L'email d'un destinataire, compose sans rien envoyer, etiquete (s30). */
 const composeRecipientEmail = async (
   association: CampaignAssociation,
   campaign: {
+    id: string
     subject: string
     preheader: string | null
     bodyMarkdown: string
@@ -843,6 +862,7 @@ const composeRecipientEmail = async (
       association.origin,
       recipient.unsubscribeToken
     ),
+    tags: [campaignStatisticsTagOf(campaign.id)],
   }
 }
 
@@ -1163,4 +1183,110 @@ export const deliverCampaignPartService = async (
 /** Les gestionnaires du planificateur que portent les campagnes (s26). */
 export const campaignScheduledJobHandlers: ScheduledJobHandlers = {
   [CAMPAIGN_DELIVER_PART_JOB_KIND]: deliverCampaignPartService,
+}
+
+type CampaignRow = NonNullable<Awaited<ReturnType<typeof getCampaignByIdDao>>>
+
+/** Le releve conserve d'une campagne, s'il est complet (ADR 068 §4). */
+const statisticsSnapshotOf = (
+  row: CampaignRow
+): CampaignStatisticsSnapshot | null =>
+  row.statsUniqueOpens !== null &&
+  row.statsUniqueClicks !== null &&
+  row.statsReadAt !== null
+    ? {
+        uniqueOpens: row.statsUniqueOpens,
+        uniqueClicks: row.statsUniqueClicks,
+        readAt: row.statsReadAt.toISOString(),
+      }
+    : null
+
+/** Le dernier jour d'envoi prevu : la derniere part, ou son reste reporte. */
+const lastSendDayOf = (
+  row: CampaignRow,
+  parts: Awaited<ReturnType<typeof getCampaignPartsDao>>
+): string =>
+  parts
+    .flatMap((part) =>
+      part.deferredTo
+        ? [part.scheduledFor, part.deferredTo]
+        : [part.scheduledFor]
+    )
+    .reduce((last, day) => (day > last ? day : last), row.sendDate)
+
+/**
+ * L'agregat du tag de la campagne chez le fournisseur. Un echec est attrape
+ * et journalise **sans son message** : il rend la carte indisponible, jamais
+ * la fiche.
+ */
+const readProviderStatistics = async (
+  campaignId: string,
+  window: {startDate: string; endDate: string}
+): Promise<CampaignStatisticsReading> => {
+  try {
+    return await readEmailTagStatisticsService({
+      tag: campaignStatisticsTagOf(campaignId),
+      ...window,
+    })
+  } catch (error) {
+    logger.error('[CAMPAIGN] Lecture des statistiques impossible', {
+      campaignId,
+      error: error instanceof Error ? error.name : 'unknown',
+    })
+    return {status: 'error'}
+  }
+}
+
+/**
+ * Les ouvertures et les clics d'une campagne de l'association (s30, ADR 068).
+ * Ordre : validation -> autorisation -> campagne lue sous `withTenant`
+ * **avant** tout appel au fournisseur (une campagne d'une autre association
+ * est introuvable sans requete) -> lecture dans la fenetre -> releve ecrit
+ * sous `withTenant`, a la consolidation seulement.
+ */
+export const getCampaignStatisticsService = async (
+  input: CampaignByIdInput,
+  now: Date = new Date()
+): Promise<CampaignStatisticsReadResult> => {
+  const data = parseOrThrow(campaignByIdServiceSchema, input)
+  await requireCampaignManager(data.organizationId)
+
+  const found = await withTenant(data.organizationId, async () => {
+    const row = await getCampaignByIdDao(data.organizationId, data.campaignId)
+    if (!row) return undefined
+    return {row, parts: await getCampaignPartsDao([row.id])}
+  })
+  if (!found) return {status: 'not_found'}
+
+  const {row, parts} = found
+  const facts = {
+    status: row.status,
+    sentCount: row.sentCount,
+    statsTracked: row.statsTracked,
+    createdDay: calendarDayOf(row.createdAt),
+    today: calendarDayOf(now),
+  }
+  const window = campaignStatisticsWindowOf(facts.createdDay, facts.today)
+  const reading =
+    window && needsProviderReading(facts)
+      ? await readProviderStatistics(row.id, window)
+      : null
+
+  const {statistics, shouldSave} = campaignStatisticsOf({
+    ...facts,
+    lastSendDay: lastSendDayOf(row, parts),
+    snapshot: statisticsSnapshotOf(row),
+    reading,
+    readAt: now.toISOString(),
+  })
+  if (shouldSave && statistics.state === 'available') {
+    await withTenant(data.organizationId, () =>
+      saveCampaignStatisticsTxnDao(row.id, {
+        uniqueOpens: statistics.uniqueOpens,
+        uniqueClicks: statistics.uniqueClicks,
+        readAt: now,
+      })
+    )
+  }
+  return {status: 'found', statistics}
 }

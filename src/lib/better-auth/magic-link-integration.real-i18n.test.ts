@@ -378,6 +378,7 @@ describe('sendMagicLink', () => {
   it('laisse remonter l’échec du transport jusqu’à Better Auth', async () => {
     vi.mocked(getUserByEmailDao).mockResolvedValue(member)
     const failing = {
+      ...memoryTransport,
       send: vi.fn(() => Promise.reject(new Error('provider refused'))),
     }
     const {getEmailTransport} = await import('@/lib/emails/transport')

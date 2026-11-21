@@ -68,7 +68,11 @@ import SubscriptionCanceledMail from '@/lib/emails/subscription-canceled-email'
 import SubscriptionCompletedMail from '@/lib/emails/subscription-completed-email'
 import SubscriptionDeletedMail from '@/lib/emails/subscription-deleted-email'
 import SubscriptionUpdatedMail from '@/lib/emails/subscription-updated-email'
-import {getEmailTransport} from '@/lib/emails/transport'
+import {
+  getEmailTransport,
+  type TagStatisticsQuery,
+  type TagStatisticsResult,
+} from '@/lib/emails/transport'
 import {
   isEmailTransportError,
   parseEmailAddress,
@@ -215,6 +219,8 @@ export type SendEmailPayload = {
   replyTo?: string
   /** Nom d'expediteur, compose en `Nom <adresse de la plateforme>`. */
   senderName?: string
+  /** Etiquettes du fournisseur (s30, ADR 068) : le tag d'une campagne. */
+  tags?: string[]
 }
 
 /**
@@ -244,6 +250,7 @@ export type ComposedEmail = {
   headers?: Record<string, string>
   replyTo?: string
   senderName?: string
+  tags?: string[]
 }
 
 const composeEmail = async (
@@ -263,6 +270,7 @@ const composeEmail = async (
     ...(payload.headers ? {headers: payload.headers} : {}),
     ...(payload.replyTo ? {replyTo: payload.replyTo} : {}),
     ...(payload.senderName ? {senderName: payload.senderName} : {}),
+    ...(payload.tags ? {tags: payload.tags} : {}),
   }
 }
 
@@ -279,6 +287,7 @@ export const transmitComposedEmail = async (
     ...(email.html ? {html: email.html} : {}),
     ...(email.headers ? {headers: email.headers} : {}),
     ...(email.replyTo ? {replyTo: email.replyTo} : {}),
+    ...(email.tags ? {tags: email.tags} : {}),
   })
 }
 
@@ -1735,3 +1744,12 @@ export const sendInvoiceStatusAlertEmailService = async ({
     {recipientType: 'system'}
   )
 }
+
+/**
+ * L'agregat d'un tag chez le fournisseur actif (s30, ADR 068 §2) : seul point
+ * du produit qui lit des statistiques d'envoi. Un echec du transport remonte
+ * tel quel (`EmailTransportError`).
+ */
+export const readEmailTagStatisticsService = async (
+  query: TagStatisticsQuery
+): Promise<TagStatisticsResult> => getEmailTransport().readTagStatistics(query)

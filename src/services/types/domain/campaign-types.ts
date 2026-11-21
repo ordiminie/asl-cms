@@ -489,3 +489,41 @@ export type CampaignLettersPdfResult =
       letterCount: number
       pageCount: number
     }
+
+/**
+ * Plage maximale, en jours inclusifs, d'une lecture des statistiques chez le
+ * fournisseur (s30, ADR 068 §6) : 89, marge sur la limite de 90 de Brevo et
+ * sur son fuseau.
+ */
+export const CAMPAIGN_STATISTICS_WINDOW_DAYS = 89
+
+/** Pourquoi des statistiques ne sont pas disponibles (s30, ADR 068 §5). */
+export type CampaignStatisticsUnavailableReason =
+  'unreachable' | 'untracked' | 'expired'
+
+/**
+ * Les statistiques d'une campagne telles que le bureau les lit (s30, ADR
+ * 068). **Un chiffre n'existe que dans `available`** : aucun autre etat n'en
+ * porte, pour ne jamais afficher un zero qui n'est pas mesure (critere 3).
+ * Ouvertures et clics en personnes uniques, taux arrondis sur les envois.
+ */
+export type CampaignStatisticsDTO =
+  | {
+      state: 'available'
+      sentCount: number
+      uniqueOpens: number
+      uniqueClicks: number
+      openRate: number
+      clickRate: number
+      /** Instant du releve, ISO. */
+      readAt: string
+      /** Le releve conserve, faute de lecture possible. */
+      fromSnapshot: boolean
+    }
+  | {state: 'pending_sending'; lastSendDay: string}
+  | {state: 'pending_provider'}
+  | {state: 'unavailable'; reason: CampaignStatisticsUnavailableReason}
+  | {state: 'nothing_sent'}
+
+export type CampaignStatisticsReadResult =
+  {status: 'found'; statistics: CampaignStatisticsDTO} | {status: 'not_found'}

@@ -8,6 +8,7 @@ import {
   getCampaignDal,
   getCampaignLetterContextDal,
   getCampaignRecipientsDal,
+  getCampaignStatisticsDal,
 } from '@/app/dal/campaign-dal'
 import {requireCurrentTenantDal} from '@/app/dal/tenant-dal'
 import {BureauAccessDenied} from '@/components/features/association/bureau-access-denied'
@@ -20,8 +21,16 @@ import {
   pageOfParam,
   recipientFilterOfSlug,
 } from '@/components/features/campaigns/campaign-paths'
+import {
+  CampaignStatisticsCard,
+  CampaignStatisticsCardFallback,
+} from '@/components/features/campaigns/campaign-statistics-card'
 import {getCampaignDailySendCap} from '@/services/types/domain/association-settings-types'
-import type {CampaignRecipientFilter} from '@/services/types/domain/campaign-types'
+import type {
+  CampaignDTO,
+  CampaignRecipientFilter,
+  CampaignStatisticsReadResult,
+} from '@/services/types/domain/campaign-types'
 
 type CampaignPageProps = {
   params: Promise<{locale: string; id: string}>
@@ -39,8 +48,8 @@ export async function generateMetadata({
 }
 
 /**
- * Une campagne (ecran 2 du design s26), en lecture seule : avancement, parts,
- * destinataires et courrier postal (s28). `?statut=` filtre la liste des destinataires, `?page=` la
+ * Une campagne (ecran 2 du design s26), en lecture seule : avancement,
+ * ouvertures et clics (s30), parts, destinataires et courrier postal (s28). `?statut=` filtre la liste des destinataires, `?page=` la
  * pagine. L'etat affiche se lit des statuts (ADR 052), sans horloge.
  */
 export default async function BureauCampaignPage({
@@ -102,9 +111,47 @@ async function CampaignSection({
       campaign={result.campaign}
       recipients={recipients?.status === 'found' ? recipients.recipients : null}
       letters={letters}
+      statistics={
+        <Suspense fallback={<CampaignStatisticsCardFallback />}>
+          <CampaignStatisticsSection
+            organizationId={tenant.id}
+            campaign={result.campaign}
+          />
+        </Suspense>
+      }
       dailySendCap={getCampaignDailySendCap(settings)}
       associationName={tenant.name}
       justSent={justSent}
+    />
+  )
+}
+
+const UNREACHABLE_STATISTICS: CampaignStatisticsReadResult = {
+  status: 'found',
+  statistics: {state: 'unavailable', reason: 'unreachable'},
+}
+
+/**
+ * La carte « Ouvertures et clics » (s30), streamee seule : la lenteur ou
+ * l'echec du fournisseur ne touche qu'elle, rendue indisponible.
+ */
+async function CampaignStatisticsSection({
+  organizationId,
+  campaign,
+}: {
+  organizationId: string
+  campaign: CampaignDTO
+}) {
+  const result = await getCampaignStatisticsDal(
+    organizationId,
+    campaign.id
+  ).catch(() => UNREACHABLE_STATISTICS)
+  if (result.status !== 'found') return null
+
+  return (
+    <CampaignStatisticsCard
+      statistics={result.statistics}
+      parts={campaign.parts}
     />
   )
 }

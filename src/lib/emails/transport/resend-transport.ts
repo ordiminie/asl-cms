@@ -6,7 +6,8 @@ type ResendTransportOptions = {apiKey: string}
 
 /**
  * Transport de secours (ADR 017). **Seul fichier du produit a importer le SDK
- * `resend`** : aucun code metier n'appelle un fournisseur directement.
+ * `resend`** : aucun code metier n'appelle un fournisseur directement. Le
+ * secours ne lit pas de statistiques (ADR 068 §2).
  */
 export const createResendTransport = ({
   apiKey,
@@ -40,5 +41,6 @@ export const createResendTransport = ({
         )
       }
     },
+    readTagStatistics: async () => ({status: 'unsupported'}),
   }
 }

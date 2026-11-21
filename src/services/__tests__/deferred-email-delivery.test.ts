@@ -343,6 +343,7 @@ describe('deliverDeferredEmailService — rejeu d’un email reporté (s52)', ()
 
   it('refus certain du fournisseur : unité rendue, ligne rendue en attente, nouvelle tentative plus tard', async () => {
     vi.mocked(getEmailTransport).mockReturnValue({
+      ...memoryTransport,
       send: vi.fn(() =>
         Promise.reject(
           new EmailTransportError('brevo', 'refus', {refused: true})
@@ -368,6 +369,7 @@ describe('deliverDeferredEmailService — rejeu d’un email reporté (s52)', ()
 
   it('issue inconnue : à vérifier, jamais renvoyé, et rien du contenu dans le journal (critère 7)', async () => {
     vi.mocked(getEmailTransport).mockReturnValue({
+      ...memoryTransport,
       send: vi.fn(() => Promise.reject(new Error(`réseau ${SECRET_TEXT}`))),
     })
 
@@ -386,6 +388,7 @@ describe('deliverDeferredEmailService — rejeu d’un email reporté (s52)', ()
 
   const refusingTransport = () =>
     vi.mocked(getEmailTransport).mockReturnValue({
+      ...memoryTransport,
       send: vi.fn(() =>
         Promise.reject(
           new EmailTransportError('brevo', 'refus', {refused: true})
@@ -453,6 +456,7 @@ describe('deliverDeferredEmailService — rejeu d’un email reporté (s52)', ()
       referenceType: 'incident_report',
     })
     vi.mocked(getEmailTransport).mockReturnValue({
+      ...memoryTransport,
       send: vi.fn(() => Promise.reject(new Error('délai dépassé'))),
     })
 
@@ -803,6 +807,7 @@ describe('deliverDeferredEmailService — lien reporté refusé puis renvoyé (s
   it('refus puis nouvelle tentative : le lien est retrouvé par son hash courant et le lien envoyé fonctionne', async () => {
     let calls = 0
     vi.mocked(getEmailTransport).mockReturnValue({
+      ...memoryTransport,
       send: vi.fn((message) => {
         calls += 1
         if (calls === 1) {

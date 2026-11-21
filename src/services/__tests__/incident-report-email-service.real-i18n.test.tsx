@@ -198,6 +198,7 @@ describe('sendIncidentReportNotificationEmailService — avertir le bureau', () 
 
   it('laisse remonter un échec du transport au service appelant', async () => {
     vi.mocked(getEmailTransport).mockReturnValue({
+      ...memoryTransport,
       send: vi.fn(() =>
         Promise.reject(new EmailTransportError('brevo', 'refus'))
       ),
