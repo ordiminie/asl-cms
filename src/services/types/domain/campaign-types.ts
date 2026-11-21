@@ -146,6 +146,11 @@ export type CampaignPartDTO = {
   deferredUntil: string | null
   /** Destinataires de la part reportes a `deferredUntil`. */
   deferredCount: number
+  /**
+   * Jour de Paris ou une part close est reellement partie : celui de son
+   * report s'il y en a eu un, `day` sinon ; rien pour une part non close.
+   */
+  sentDay: string | null
 }
 
 /**

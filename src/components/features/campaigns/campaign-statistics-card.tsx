@@ -170,13 +170,12 @@ function AvailableStatistics({
 }
 
 /**
- * Le dernier jour d'envoi : le plus tardif des jours et des reports des
- * parts, comme la fenetre de lecture du service (jours ISO, ordre lexical).
+ * Le dernier jour d'envoi : le plus tardif des jours ou les parts sont
+ * reellement parties, report compris (revue s30, m7 ; jours ISO, ordre
+ * lexical). Une part non close compte pour son jour prevu.
  */
 function lastDayOf(parts: CampaignPartDTO[]): string {
   return parts
-    .flatMap((part) =>
-      part.deferredUntil ? [part.day, part.deferredUntil] : [part.day]
-    )
+    .map((part) => part.sentDay ?? part.day)
     .reduce((latest, day) => (day > latest ? day : latest))
 }

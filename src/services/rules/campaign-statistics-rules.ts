@@ -66,8 +66,10 @@ export const campaignStatisticsWindowOf = (
 
 /**
  * La plage envoyee au fournisseur (ADR 068 §6) : sa fin est le plus tot du
- * jour de Paris et du jour UTC de la lecture. Entre minuit a Paris et minuit
- * UTC, le jour de Paris serait « demain » pour Brevo, qui compte en UTC.
+ * jour de Paris et du jour UTC de la lecture. Le fuseau des dates
+ * d'`aggregatedReport` n'est pas verifie (UTC ou fuseau du compte, a
+ * confirmer en recette) : le plus tot des deux jours n'est « demain » dans
+ * aucun des deux cas.
  */
 export const providerStatisticsWindowOf = (
   window: {startDate: string; endDate: string},

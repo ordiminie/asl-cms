@@ -358,6 +358,7 @@ describe('toCampaignDto — liste blanche', () => {
         displayState: 'sent',
         deferredUntil: null,
         deferredCount: 0,
+        sentDay: '2026-11-12',
       },
       {
         number: 2,
@@ -368,6 +369,7 @@ describe('toCampaignDto — liste blanche', () => {
         displayState: 'to_verify',
         deferredUntil: null,
         deferredCount: 0,
+        sentDay: '2026-11-13',
       },
       {
         number: 3,
@@ -378,6 +380,7 @@ describe('toCampaignDto — liste blanche', () => {
         displayState: 'scheduled',
         deferredUntil: null,
         deferredCount: 0,
+        sentDay: null,
       },
     ])
   })
@@ -426,6 +429,71 @@ describe('toCampaignDto — liste blanche', () => {
       displayState: 'scheduled',
       deferredUntil: null,
       deferredCount: 0,
+    })
+  })
+  it('une part close reportée part au jour du report ; non reportée, au jour prévu ; non close, pas encore (revue s30, m7)', () => {
+    const closedParts = [
+      {
+        id: 'p1',
+        campaignId: 'c1',
+        number: 1,
+        scheduledFor: '2026-11-12',
+        recipientCount: 100,
+        status: 'sent' as const,
+        deferredTo: null,
+      },
+      {
+        id: 'p2',
+        campaignId: 'c1',
+        number: 2,
+        scheduledFor: '2026-11-13',
+        recipientCount: 100,
+        status: 'sent' as const,
+        deferredTo: '2026-11-16',
+      },
+      {
+        id: 'p3',
+        campaignId: 'c1',
+        number: 3,
+        scheduledFor: '2026-11-14',
+        recipientCount: 96,
+        status: 'failed' as const,
+        deferredTo: '2026-11-17',
+      },
+      {
+        id: 'p4',
+        campaignId: 'c1',
+        number: 4,
+        scheduledFor: '2026-11-15',
+        recipientCount: 96,
+        status: 'sending' as const,
+        deferredTo: '2026-11-18',
+      },
+    ]
+
+    const [nonReportee, reportee, enEchec, entamee] = toCampaignDto(
+      row(),
+      closedParts,
+      []
+    ).parts
+
+    expect(nonReportee).toMatchObject({
+      day: '2026-11-12',
+      sentDay: '2026-11-12',
+    })
+    expect(reportee).toMatchObject({
+      day: '2026-11-13',
+      displayState: 'sent',
+      deferredUntil: null,
+      sentDay: '2026-11-16',
+    })
+    expect(enEchec).toMatchObject({
+      displayState: 'failed',
+      sentDay: '2026-11-17',
+    })
+    expect(entamee).toMatchObject({
+      deferredUntil: '2026-11-18',
+      sentDay: null,
     })
   })
 })

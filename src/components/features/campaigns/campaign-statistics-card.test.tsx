@@ -20,6 +20,7 @@ const partOf = (number: number, day: string): CampaignPartDTO => ({
   displayState: 'sent',
   deferredUntil: null,
   deferredCount: 0,
+  sentDay: day,
 })
 
 const ONE_PART = [partOf(1, '2026-11-12')]
@@ -88,10 +89,10 @@ describe('CampaignStatisticsCard — ouvertures et clics (s30)', () => {
     )
   })
 
-  it('dernière part reportée : la portée finit au jour du report', () => {
+  it('dernière part reportée puis envoyée : la portée finit au jour réel d’envoi (revue s30, m7)', () => {
     renderCard(available, [
       partOf(1, '2026-11-12'),
-      {...partOf(2, '2026-11-13'), deferredUntil: '2026-11-16'},
+      {...partOf(2, '2026-11-13'), sentDay: '2026-11-16'},
     ])
 
     expect(card()).toHaveTextContent(

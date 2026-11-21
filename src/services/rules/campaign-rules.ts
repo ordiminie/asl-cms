@@ -377,6 +377,20 @@ export const deferredDayOf = (
     : null
 }
 
+/**
+ * Le jour ou une part close (envoyee ou en echec) est reellement partie : le
+ * jour de son report s'il est posterieur au jour prevu, le jour prevu sinon
+ * (revue s30, m7). Rien pour une part non close.
+ */
+const sentDayOf = (
+  part: Pick<CampaignPartRow, 'status' | 'scheduledFor' | 'deferredTo'>
+): string | null => {
+  if (part.status !== 'sent' && part.status !== 'failed') return null
+  return part.deferredTo && part.deferredTo > part.scheduledFor
+    ? part.deferredTo
+    : part.scheduledFor
+}
+
 const toPartDto = (
   part: CampaignPartRow,
   countRows: readonly CampaignRecipientCountRow[]
@@ -396,6 +410,7 @@ const toPartDto = (
       : partDisplayStateOf(part.status, counts.toVerify),
     deferredUntil,
     deferredCount: deferredUntil ? counts.scheduled : 0,
+    sentDay: sentDayOf(part),
   }
 }
 

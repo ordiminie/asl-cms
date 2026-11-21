@@ -146,3 +146,19 @@ Arbitrage complémentaire du 21/11/2026 : m1, m2 et m6 corrigés aussi.
         ne fournit pas ces statistiques. » Mettre à jour la règle, le DTO, la carte, les libellés
         (`messages/fr.json`), les tests, le texte e2e du critère 3 (la CI tourne en transport `file` : elle
         affiche désormais la phrase `unsupported`) et le design §States 4. Test d'abord.
+
+## Correctifs de revue — tour 2 (arbitrage du 21/11/2026 : jour réel d'envoi)
+
+Source : `docs/reviews/s30-stats-campagnes.md` (tour 2, `Max severity: minor`, `Ship allowed: yes`).
+
+17. [x] **m7** — la phrase de portée annonce le **jour réel d'envoi** de la dernière part. Le DTO d'une part
+        close (`sent` ou `failed`) expose le jour où elle est réellement partie : `deferredTo` s'il est
+        postérieur à `scheduledFor`, sinon le jour prévu (champ nommé selon le motif de `CampaignPartDTO`).
+        La carte des statistiques prend le maximum de ce jour sur les parts ; `lastDayOf` et son test au DTO
+        impossible (`displayState: 'sent'` + `deferredUntil`) sont remplacés. Tests d'abord : règle ou
+        `toPartDto` (part reportée puis envoyée → jour du report ; part non reportée → jour prévu) et carte
+        (campagne dont la dernière part a été reportée au 16/11 → « au 16/11/2026 »), avec un DTO conforme à
+        ce que le service produit. Ne pas changer l'affichage de la carte des parts.
+18. [x] **m8** — le commentaire de `providerStatisticsWindowOf` et la phrase de l'ADR 068 §6 ne présentent plus
+        le fuseau de Brevo comme un fait : fuseau d'`aggregatedReport` non vérifié (UTC ou fuseau du compte),
+        le plus tôt des deux jours est sûr dans les deux cas ; à confirmer en recette.

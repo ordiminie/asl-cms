@@ -6,6 +6,9 @@ import type {
   CampaignRecipientsPageDTO,
 } from '@/services/types/domain/campaign-types'
 
+const closedOf = (displayState: CampaignPartDTO['displayState']) =>
+  displayState !== 'scheduled' && displayState !== 'sending'
+
 export const partOf = (
   number: number,
   day: string,
@@ -20,6 +23,7 @@ export const partOf = (
   displayState: 'sent',
   deferredUntil: null,
   deferredCount: 0,
+  sentDay: closedOf(overrides.displayState ?? 'sent') ? day : null,
   ...overrides,
 })
 

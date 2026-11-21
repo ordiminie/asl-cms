@@ -46,8 +46,11 @@ ouvertures et clics en **personnes uniques**, taux sur les **emails envoyés** ;
    campagne qui démarre n'a encore rien envoyé, sans que ce soit « rien à mesurer ».
 6. **Fenêtre de lecture** : de la veille du jour (Paris) de création de la campagne à aujourd'hui ; la lecture
    n'a lieu que si cette plage tient en 89 jours (marge sur la limite de 90 et sur le fuseau de Brevo).
-   L'`endDate` envoyée à Brevo est le plus tôt du jour UTC et du jour de Paris de la lecture : entre minuit
-   à Paris et minuit UTC, le jour de Paris serait « demain » pour Brevo.
+   L'`endDate` envoyée à Brevo est le plus tôt du jour UTC et du jour de Paris de la lecture. Le fuseau des
+   dates d'`aggregatedReport` n'est pas vérifié (UTC ou fuseau du compte, à confirmer en recette) : le plus
+   tôt des deux jours est sûr dans les deux cas. Au pire, la tranche de minuit à 1 h (2 h en été) à Paris est
+   exclue de la lecture, ce qui donne « pas encore » ou un relevé réécrit à la lecture suivante ; jamais une
+   date future.
 7. **Taux** = arrondi à l'entier de `unique / sent_count × 100`, **plafonné à 100** : un destinataire
    `to_verify` réellement parti n'est pas compté dans `sent_count`, alors que Brevo compte son ouverture.
 
