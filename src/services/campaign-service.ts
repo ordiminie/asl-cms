@@ -70,6 +70,7 @@ import {AuthorizationError} from './errors/authorization-error'
 import {CampaignTargetUnavailableError} from './errors/campaign-errors'
 import {NotFoundError} from './errors/not-found-error'
 import {ValidationParsedZodError} from './errors/validation-error'
+import {campaignChannelsOf} from './rules/campaign-letter-rules'
 import {
   addressValuesOf,
   campaignTargetCountsOf,
@@ -584,6 +585,12 @@ export const sendCampaignService = async (
     )
     if (target.recipients.length === 0) return {status: 'no_recipient'}
 
+    const {letterProfileIds} = campaignChannelsOf(
+      rows,
+      isTargeted,
+      nature,
+      target
+    )
     await lockCampaignScheduleTxnDao(data.organizationId)
     const plan = planCampaignParts(
       target.recipients.length,
@@ -605,7 +612,7 @@ export const sendCampaignService = async (
         targetGroupId: group?.id ?? null,
         targetGroupName: group?.name ?? null,
         recipientCount: target.recipients.length,
-        withoutEmailCount: target.withoutEmail,
+        withoutEmailCount: letterProfileIds.length,
         unsubscribedCount:
           nature === 'statutaire' ? target.reinstated : target.unsubscribed,
         status: 'sending',
@@ -628,7 +635,8 @@ export const sendCampaignService = async (
             )
           ),
         ],
-      }))
+      })),
+      letterProfileIds
     )
     if (!result) throw new NotFoundError(ASSOCIATION_NOT_FOUND)
 

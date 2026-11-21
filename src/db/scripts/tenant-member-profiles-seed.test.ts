@@ -1,5 +1,6 @@
 import {describe, expect, it} from 'vitest'
 
+import {homonymGroupsOf} from '@/services/rules/campaign-letter-rules'
 import {
   findOverlap,
   isIncomplete,
@@ -68,6 +69,23 @@ describe('seed des propriétaires et des parcelles (s12, ADR 029)', () => {
 
     expect(mailOnly.length).toBeGreaterThanOrEqual(2)
     expect(incomplete.map((row) => row.name)).toEqual(['Hélène Roy'])
+  })
+
+  it('donne à TechCorp deux fiches sans email de même nom et même domicile, sur deux parcelles (s28, critère 2)', () => {
+    const mailOnly = profilesOf(TECHCORP).filter((row) => row.email === null)
+    const groups = homonymGroupsOf(
+      mailOnly.map((row) => ({...row, id: row.id}))
+    )
+
+    expect(groups).toHaveLength(1)
+    const [first, second] = groups[0]
+    expect(groups[0]).toHaveLength(2)
+    expect(first.id).not.toBe(second.id)
+    expect(currentParcelsOf(TECHCORP, first.id)).toHaveLength(1)
+    expect(currentParcelsOf(TECHCORP, second.id)).toHaveLength(1)
+    expect(currentParcelsOf(TECHCORP, first.id)).not.toEqual(
+      currentParcelsOf(TECHCORP, second.id)
+    )
   })
 
   it('porte la parcelle 47 vendue : Dubois du 03/02/1998, puis Roy à partir du 15/06/2026 (critère 3)', () => {

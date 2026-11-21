@@ -22,6 +22,7 @@ export default defineConfig({
           exclude: [
             'src/services/**/*.test.{ts,tsx}',
             'src/**/*.real-i18n.test.{ts,tsx}',
+            'src/lib/letters/**/*.test.ts',
           ],
           globals: true,
           server: {
@@ -42,6 +43,18 @@ export default defineConfig({
           setupFiles: ['./src/services/__tests__/setup-mocks.ts'],
           include: ['src/services/**/*.test.{ts,tsx}'],
           exclude: ['src/**/*.real-i18n.test.{ts,tsx}'],
+          globals: true,
+        },
+      },
+      // Courrier postal (s28, ADR 066) : pdfkit et pdfjs-dist relisent des
+      // octets Node ; sous jsdom, un Buffer n'est pas un Uint8Array du meme
+      // royaume et pdfkit refuse la police.
+      {
+        resolve: {tsconfigPaths: true},
+        test: {
+          name: 'letters',
+          environment: 'node',
+          include: ['src/lib/letters/**/*.test.ts'],
           globals: true,
         },
       },

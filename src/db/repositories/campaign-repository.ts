@@ -16,6 +16,7 @@ import {
 import {
   AddCampaignModel,
   campaign,
+  campaignLetterProfile,
   CampaignModel,
   campaignPart,
   CampaignPartStatusModel,
@@ -51,6 +52,22 @@ export type CampaignTargetRowModel = {
   currentParcelNumbers: string[]
   /** Nom du compte de l'adresse relie a la fiche, `null` sans compte. */
   accountName: string | null
+} & CampaignLetterAddressRowModel
+
+/**
+ * Ce que le courrier lit d'une fiche (s28, ADR 067) : domicile, terrain et
+ * libelle d'entreprise, tels qu'ecrits sur la fiche.
+ */
+export type CampaignLetterAddressRowModel = {
+  homeAddressLine: string | null
+  homeAddressComplement: string | null
+  homePostalCode: string | null
+  homeCity: string | null
+  landAddressLine: string | null
+  landAddressComplement: string | null
+  landPostalCode: string | null
+  landCity: string | null
+  companyName: string | null
 }
 
 export type CampaignPageRows = {rows: CampaignModel[]; total: number}
@@ -163,6 +180,15 @@ export const getCampaignTargetRowsDao = async (
         boolean | null
       >`${memberProfileEmail.unsubscribedAt} is not null`,
       accountName: accountNameOfEmailSql('"member_profile_email"."email"'),
+      homeAddressLine: memberProfile.homeAddressLine,
+      homeAddressComplement: memberProfile.homeAddressComplement,
+      homePostalCode: memberProfile.homePostalCode,
+      homeCity: memberProfile.homeCity,
+      landAddressLine: memberProfile.landAddressLine,
+      landAddressComplement: memberProfile.landAddressComplement,
+      landPostalCode: memberProfile.landPostalCode,
+      landCity: memberProfile.landCity,
+      companyName: memberProfile.companyName,
     })
     .from(memberProfile)
     .leftJoin(
@@ -244,7 +270,8 @@ const assignRecipientsToParts = (
 
 /**
  * Cree la campagne, ses parts et **toutes** ses lignes de destinataire dans la
- * transaction du scope (ADR 051, ADR 052). Une soumission deja vue (double
+ * transaction du scope (ADR 051, ADR 052), puis fige ses fiches sans adresse
+ * email pour le courrier (s28, ADR 065). Une soumission deja vue (double
  * clic, rejeu) ne cree rien : la campagne existante est relue, sans part ni
  * ligne de plus.
  */
@@ -254,7 +281,8 @@ export const createCampaignWithRecipientsTxnDao = async (
     'id' | 'sentCount' | 'createdAt' | 'updatedAt' | 'finishedAt'
   >,
   plan: readonly CampaignPartInput[],
-  recipients: CampaignRecipientInput[]
+  recipients: CampaignRecipientInput[],
+  letterProfileIds: readonly string[]
 ): Promise<CreatedCampaign | undefined> => {
   const [created] = await getDb()
     .insert(campaign)
@@ -323,7 +351,31 @@ export const createCampaignWithRecipientsTxnDao = async (
     inserted,
     recipients
   )
+  await insertLetterProfilesTxnDao(
+    input.organizationId,
+    created.id,
+    letterProfileIds
+  )
   return {campaign: created, created: true, parts}
+}
+
+/** Fige les fiches ciblees sans adresse active d'une campagne (ADR 065). */
+const insertLetterProfilesTxnDao = async (
+  organizationId: string,
+  campaignId: string,
+  memberProfileIds: readonly string[]
+): Promise<void> => {
+  const unique = [...new Set(memberProfileIds)]
+  if (unique.length === 0) return
+  await getDb()
+    .insert(campaignLetterProfile)
+    .values(
+      unique.map((memberProfileId) => ({
+        organizationId,
+        campaignId,
+        memberProfileId,
+      }))
+    )
 }
 
 /**
@@ -1162,4 +1214,24 @@ export const moveCampaignPartTxnDao = async (input: {
         isNull(scheduledJob.lockedAt)
       )
     )
+}
+
+/**
+ * Les fiches sans adresse email figees pour le courrier d'une campagne (s28,
+ * ADR 065). Aucune ligne : la campagne n'en avait pas, ou elle precede s28.
+ */
+export const getCampaignLetterProfileIdsDao = async (
+  organizationId: string,
+  campaignId: string
+): Promise<string[]> => {
+  const rows = await getDb()
+    .select({memberProfileId: campaignLetterProfile.memberProfileId})
+    .from(campaignLetterProfile)
+    .where(
+      and(
+        eq(campaignLetterProfile.organizationId, organizationId),
+        eq(campaignLetterProfile.campaignId, campaignId)
+      )
+    )
+  return rows.map((row) => row.memberProfileId)
 }

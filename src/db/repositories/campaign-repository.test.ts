@@ -29,6 +29,7 @@ import {
   finishCampaignTxnDao,
   getAllottedRecipientsByDayDao,
   getCampaignByIdDao,
+  getCampaignLetterProfileIdsDao,
   getCampaignPartDao,
   getCampaignPartsDao,
   getCampaignRecipientsPageDao,
@@ -179,6 +180,61 @@ describe('getCampaignTargetRowsDao', () => {
   })
 })
 
+describe('getCampaignTargetRowsDao — ce que lit le courrier (s28, ADR 067)', () => {
+  it('lit aussi le domicile, le terrain et le libellé d’entreprise de la fiche', async () => {
+    responses.current = [
+      [
+        [
+          PROFILE_B,
+          'Paul Renaud',
+          null,
+          null,
+          null,
+          '4 rue des Lilas',
+          'Bât. B',
+          '69003',
+          'Lyon',
+          '12 chemin de la Fourche',
+          null,
+          '07140',
+          'Les Vans',
+          'SARL Renaud',
+        ],
+      ],
+      [],
+    ]
+
+    const [row] = await getCampaignTargetRowsDao(ORG_ID)
+
+    for (const column of [
+      'home_address_line',
+      'home_address_complement',
+      'home_postal_code',
+      'home_city',
+      'land_address_line',
+      'land_address_complement',
+      'land_postal_code',
+      'land_city',
+      'company_name',
+    ]) {
+      expect(sent[0].sql).toContain(`"member_profile"."${column}"`)
+    }
+    expect(row).toMatchObject({
+      memberProfileId: PROFILE_B,
+      email: null,
+      homeAddressLine: '4 rue des Lilas',
+      homeAddressComplement: 'Bât. B',
+      homePostalCode: '69003',
+      homeCity: 'Lyon',
+      landAddressLine: '12 chemin de la Fourche',
+      landAddressComplement: null,
+      landPostalCode: '07140',
+      landCity: 'Les Vans',
+      companyName: 'SARL Renaud',
+    })
+  })
+})
+
 describe('getCurrentParcelNumbersForMembersDao', () => {
   it('ne lit que les périodes ouvertes, et regroupe les numéros par fiche', async () => {
     responses.current = [
@@ -229,7 +285,8 @@ describe('createCampaignWithRecipientsTxnDao', () => {
     const result = await createCampaignWithRecipientsTxnDao(
       CAMPAIGN_INPUT,
       PLAN,
-      RECIPIENTS
+      RECIPIENTS,
+      []
     )
 
     expect(sent).toHaveLength(4)
@@ -293,7 +350,8 @@ describe('createCampaignWithRecipientsTxnDao', () => {
       createCampaignWithRecipientsTxnDao(
         CAMPAIGN_INPUT,
         [{number: 1, scheduledFor: '2026-11-12', recipientCount: 1}],
-        RECIPIENTS
+        RECIPIENTS,
+        []
       )
     ).rejects.toThrow()
   })
@@ -304,7 +362,8 @@ describe('createCampaignWithRecipientsTxnDao', () => {
     const result = await createCampaignWithRecipientsTxnDao(
       CAMPAIGN_INPUT,
       PLAN,
-      RECIPIENTS
+      RECIPIENTS,
+      []
     )
 
     expect(sent).toHaveLength(2)
@@ -322,6 +381,86 @@ describe('createCampaignWithRecipientsTxnDao', () => {
       campaign: {id: CAMPAIGN_ID},
       parts: [],
     })
+  })
+})
+
+describe('createCampaignWithRecipientsTxnDao — fiches du courrier figées (s28, ADR 065)', () => {
+  const createdResponses = () => [
+    [campaignRow()],
+    [
+      [PART_1, 1, '2026-11-12'],
+      [PART_2, 2, '2026-11-13'],
+    ],
+    [
+      [RECIPIENT_ID, 'claire@example.fr'],
+      [RECIPIENT_B, 'paul@example.fr'],
+    ],
+  ]
+
+  it('écrit les fiches sans email de la campagne, dans la même transaction, après ses destinataires', async () => {
+    responses.current = createdResponses()
+
+    await createCampaignWithRecipientsTxnDao(CAMPAIGN_INPUT, PLAN, RECIPIENTS, [
+      PROFILE_C,
+      PROFILE_A,
+      PROFILE_C,
+    ])
+
+    expect(sent).toHaveLength(5)
+    expect(sent[4].sql).toMatch(/^insert into "campaign_letter_profile"/)
+    expect(sent[4].params).toEqual([
+      ORG_ID,
+      CAMPAIGN_ID,
+      PROFILE_C,
+      ORG_ID,
+      CAMPAIGN_ID,
+      PROFILE_A,
+    ])
+  })
+
+  it('aucune fiche sans email : aucune écriture de courrier', async () => {
+    responses.current = createdResponses()
+
+    await createCampaignWithRecipientsTxnDao(
+      CAMPAIGN_INPUT,
+      PLAN,
+      RECIPIENTS,
+      []
+    )
+
+    expect(sent.some(({sql}) => sql.includes('campaign_letter_profile'))).toBe(
+      false
+    )
+  })
+
+  it('soumission rejouée : rien n’est figé de plus', async () => {
+    responses.current = [[], [campaignRow()]]
+
+    await createCampaignWithRecipientsTxnDao(CAMPAIGN_INPUT, PLAN, RECIPIENTS, [
+      PROFILE_C,
+    ])
+
+    expect(sent.some(({sql}) => sql.includes('campaign_letter_profile'))).toBe(
+      false
+    )
+  })
+})
+
+describe('getCampaignLetterProfileIdsDao — les fiches du courrier figées (s28, ADR 065)', () => {
+  it('lit les fiches figées de cette campagne, sous l’association', async () => {
+    responses.current = [[[PROFILE_C], [PROFILE_A]]]
+
+    const ids = await getCampaignLetterProfileIdsDao(ORG_ID, CAMPAIGN_ID)
+
+    expect(sent[0].sql).toMatch(/from "campaign_letter_profile"/)
+    expect(sent[0].sql).toContain(
+      '"campaign_letter_profile"."organization_id" = $'
+    )
+    expect(sent[0].sql).toContain('"campaign_letter_profile"."campaign_id" = $')
+    expect(sent[0].params).toEqual(
+      expect.arrayContaining([ORG_ID, CAMPAIGN_ID])
+    )
+    expect(ids).toEqual([PROFILE_C, PROFILE_A])
   })
 })
 

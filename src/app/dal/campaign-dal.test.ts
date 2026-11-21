@@ -12,11 +12,15 @@ vi.mock('@/services/facades/campaign-service-facade', () => ({
   getCampaignService: vi.fn(),
   getCampaignRecipientsService: vi.fn(),
 }))
+vi.mock('@/services/facades/campaign-letter-service-facade', () => ({
+  getCampaignLetterContextService: vi.fn(),
+}))
 vi.mock('@/services/facades/unsubscribe-service-facade', () => ({
   getUnsubscribePageStateService: vi.fn(),
   getMemberUnsubscribeService: vi.fn(),
 }))
 
+import {getCampaignLetterContextService} from '@/services/facades/campaign-letter-service-facade'
 import {
   canManageCampaignsService,
   getCampaignComposerContextService,
@@ -33,6 +37,7 @@ import {
   canManageCurrentCampaignsDal,
   getCampaignComposerContextDal,
   getCampaignDal,
+  getCampaignLetterContextDal,
   getCampaignRecipientsDal,
   getCampaignsPageDal,
 } from './campaign-dal'
@@ -102,6 +107,20 @@ describe('campaign-dal (s25)', () => {
       filter: 'to_verify',
       page: 2,
     })
+  })
+
+  it('lit le contexte du courrier postal d’une campagne, pour le tenant passé (s28)', async () => {
+    vi.mocked(getCampaignLetterContextService).mockResolvedValue({
+      status: 'none',
+    })
+
+    await expect(
+      getCampaignLetterContextDal(ORG_A, CAMPAIGN_ID)
+    ).resolves.toEqual({status: 'none'})
+    expect(getCampaignLetterContextService).toHaveBeenCalledWith(
+      ORG_A,
+      CAMPAIGN_ID
+    )
   })
 
   it('dit si le compte gère les campagnes de l’association du domaine', async () => {

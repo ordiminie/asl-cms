@@ -39,6 +39,7 @@ import {
   getEmailDailySendLimit,
   getEmailLoginReserve,
   getGoogleVerificationCode,
+  getLetterAddressOffset,
   getMagicLinkDailyRequestLimit,
   getMemberEmailConfirmationDays,
   getSettingsForPage,
@@ -46,6 +47,8 @@ import {
   GOOGLE_VERIFICATION_SETTING_KEY,
   hasSettingReferenceCycle,
   isSuperAdminOnlySetting,
+  LETTER_ADDRESS_OFFSET_X_SETTING_KEY,
+  LETTER_ADDRESS_OFFSET_Y_SETTING_KEY,
   MAGIC_LINK_REQUESTS_PER_DAY_SETTING_KEY,
   MEMBER_DEFAULT_LAND_CITY_SETTING_KEY,
   MEMBER_DEFAULT_LAND_POSTAL_CODE_SETTING_KEY,
@@ -223,7 +226,89 @@ describe('registre de production', () => {
         required: false,
         page: 'settings',
       },
+      {
+        key: LETTER_ADDRESS_OFFSET_X_SETTING_KEY,
+        type: 'number',
+        required: false,
+        page: 'settings',
+      },
+      {
+        key: LETTER_ADDRESS_OFFSET_Y_SETTING_KEY,
+        type: 'number',
+        required: false,
+        page: 'settings',
+      },
     ])
+  })
+
+  describe('calage du courrier (s28, ADR 067 §4)', () => {
+    it.each([
+      [LETTER_ADDRESS_OFFSET_X_SETTING_KEY, 'letter.address_offset_x_mm'],
+      [LETTER_ADDRESS_OFFSET_Y_SETTING_KEY, 'letter.address_offset_y_mm'],
+    ])(
+      '%s : un entier de −10 à +10 mm, 0 par défaut, carte « Courrier »',
+      (key, expected) => {
+        const definition = definitionOf(ASSOCIATION_SETTINGS_REGISTRY, key)
+
+        expect(key).toBe(expected)
+        expect(definition).toMatchObject({
+          type: 'number',
+          required: false,
+          integer: true,
+          min: -10,
+          max: 10,
+          default: {value: '0'},
+          unitKey: 'units.millimeters',
+          section: 'letter',
+        })
+        expect(parseSettingValue(definition, '-11')).toMatchObject({
+          valid: false,
+          error: {code: 'belowMin'},
+        })
+        expect(parseSettingValue(definition, '11')).toMatchObject({
+          valid: false,
+          error: {code: 'aboveMax'},
+        })
+        expect(parseSettingValue(definition, '1.5')).toMatchObject({
+          valid: false,
+        })
+        expect(parseSettingValue(definition, '-10')).toMatchObject({
+          valid: true,
+          value: -10,
+        })
+        expect(parseSettingValue(definition, '10')).toMatchObject({
+          valid: true,
+          value: 10,
+        })
+      }
+    )
+
+    it('rend 0 mm par défaut, puis la valeur de l’association', () => {
+      expect(
+        getLetterAddressOffset(
+          resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, [])
+        )
+      ).toEqual({xMm: 0, yMm: 0})
+      expect(
+        getLetterAddressOffset(
+          resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, [
+            {key: LETTER_ADDRESS_OFFSET_X_SETTING_KEY, value: '-3'},
+            {key: LETTER_ADDRESS_OFFSET_Y_SETTING_KEY, value: '4'},
+          ])
+        )
+      ).toEqual({xMm: -3, yMm: 4})
+    })
+
+    it('libellés, aides, unité et carte traduits', () => {
+      const settings = fr.AssociationSettings as unknown as {
+        fields: Record<string, {label: string; help: string}>
+        units: Record<string, string>
+      }
+      expect(settings.fields.letterAddressOffsetX.label).toBeTruthy()
+      expect(settings.fields.letterAddressOffsetY.help).toBeTruthy()
+      expect(settings.units.millimeters).toBe('mm')
+      expect(fr.BureauSettingsPage.cards.letter.title).toBe('Courrier')
+    })
   })
 
   describe('factures des membres (s19, ADR 059)', () => {
@@ -776,6 +861,8 @@ describe('registre de production', () => {
       BILLING_SETTLED_STATUSES_SETTING_KEY,
       BILLING_STATUS_LABELS_SETTING_KEY,
       BILLING_ALERT_EMAIL_SETTING_KEY,
+      LETTER_ADDRESS_OFFSET_X_SETTING_KEY,
+      LETTER_ADDRESS_OFFSET_Y_SETTING_KEY,
     ])
     expect(
       getSettingsForPage(ASSOCIATION_SETTINGS_REGISTRY, 'identity').map(
@@ -1158,6 +1245,8 @@ describe('registre — carte « Referencement » (s11)', () => {
       BILLING_SETTLED_STATUSES_SETTING_KEY,
       BILLING_STATUS_LABELS_SETTING_KEY,
       BILLING_ALERT_EMAIL_SETTING_KEY,
+      LETTER_ADDRESS_OFFSET_X_SETTING_KEY,
+      LETTER_ADDRESS_OFFSET_Y_SETTING_KEY,
     ])
   })
 

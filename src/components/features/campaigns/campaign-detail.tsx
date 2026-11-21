@@ -28,6 +28,7 @@ import {renderRestrictedMarkdown} from '@/lib/cms/render-page-block'
 import {finalSubject} from '@/services/rules/campaign-rules'
 import type {
   CampaignDTO,
+  CampaignLetterContextResult,
   CampaignPartDTO,
   CampaignRecipientFilter,
   CampaignRecipientsPageDTO,
@@ -39,6 +40,7 @@ import {
   sentAtPartsOf,
   shortDayLabelOf,
 } from './campaign-format'
+import {CampaignLetterCard} from './campaign-letter-card'
 import {CampaignPageLink} from './campaign-list'
 import {campaignRecipientsPathOf, CAMPAIGNS_PATH} from './campaign-paths'
 import {CampaignProgressRefresh} from './campaign-progress-refresh'
@@ -53,6 +55,8 @@ type CampaignDetailProps = {
   campaign: CampaignDTO
   /** La page demandee des destinataires ; `null` si elle n'a pas pu etre lue. */
   recipients: CampaignRecipientsPageDTO | null
+  /** Le courrier postal (s28) ; absent s'il n'a pas pu etre lu : pas de carte. */
+  letters?: CampaignLetterContextResult | null
   associationName: string
   /** Le plafond quotidien des campagnes de l'association (Resume). */
   dailySendCap: number
@@ -76,6 +80,7 @@ const strong = (chunks: ReactNode) => (
 export function CampaignDetail({
   campaign,
   recipients,
+  letters,
   associationName,
   dailySendCap,
   justSent,
@@ -93,6 +98,9 @@ export function CampaignDetail({
       <ProgressCard campaign={campaign} />
       {campaign.parts.length > 1 && <PartsCard campaign={campaign} />}
       <RecipientsCard campaign={campaign} recipients={recipients} />
+      {letters && (
+        <CampaignLetterCard campaignId={campaign.id} result={letters} />
+      )}
       <Summary campaign={campaign} dailySendCap={dailySendCap} />
       <SentContent campaign={campaign} associationName={associationName} />
 

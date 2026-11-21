@@ -92,6 +92,19 @@ const groupRow = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 })
 
+/** Ni domicile, ni terrain, ni libelle : ce que le courrier lit (s28). */
+const NO_LETTER_ADDRESS = {
+  homeAddressLine: null,
+  homeAddressComplement: null,
+  homePostalCode: null,
+  homeCity: null,
+  landAddressLine: null,
+  landAddressComplement: null,
+  landPostalCode: null,
+  landCity: null,
+  companyName: null,
+}
+
 const targetRow = (
   memberProfileId: string,
   email: string | null,
@@ -103,6 +116,7 @@ const targetRow = (
   unsubscribed,
   currentParcelNumbers: [],
   accountName: null,
+  ...NO_LETTER_ADDRESS,
 })
 
 const scopeInput = {organizationId: ORG_ID, groupId: GROUP_ID}

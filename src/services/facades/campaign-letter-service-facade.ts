@@ -1,0 +1,8 @@
+import campaignLetterServiceInterceptor from './interceptors/campaign-letter-service-logger-interceptor'
+
+export const getCampaignLetterContextService =
+  campaignLetterServiceInterceptor.getCampaignLetterContextService
+export const generateCampaignLettersService =
+  campaignLetterServiceInterceptor.generateCampaignLettersService
+export const getLetterCalibrationPdfService =
+  campaignLetterServiceInterceptor.getLetterCalibrationPdfService

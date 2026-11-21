@@ -42,6 +42,12 @@ const nextConfig: NextConfig = {
     ],
   },
 
+  // pdfkit lit ses metriques de police sur le disque (`data/*.afm`, relatif a
+  // son propre dossier) : mis en paquet, le chemin casse. Il est donc charge
+  // par le `require` de Node (s28, ADR 066 ; absent de la liste par defaut de
+  // Next, `server-external-packages.jsonc`).
+  serverExternalPackages: ['pdfkit'],
+
   // Remplace experimental.useCache (retiré en Next 16) : active la directive
   // 'use cache', cacheLife/cacheTag, et le PPR par défaut.
   cacheComponents: true,
