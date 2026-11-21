@@ -499,7 +499,7 @@ export const CAMPAIGN_STATISTICS_WINDOW_DAYS = 89
 
 /** Pourquoi des statistiques ne sont pas disponibles (s30, ADR 068 §5). */
 export type CampaignStatisticsUnavailableReason =
-  'unreachable' | 'untracked' | 'expired'
+  'unreachable' | 'untracked' | 'unsupported' | 'expired'
 
 /**
  * Les statistiques d'une campagne telles que le bureau les lit (s30, ADR

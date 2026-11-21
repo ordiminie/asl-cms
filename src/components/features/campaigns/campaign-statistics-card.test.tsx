@@ -142,6 +142,10 @@ describe('CampaignStatisticsCard — ouvertures et clics (s30)', () => {
       'Brevo n’a pas répondu. Rechargez la page dans quelques minutes.',
     ],
     ['untracked', 'Cette campagne a été envoyée sans suivi des ouvertures.'],
+    [
+      'unsupported',
+      'Le service d’envoi utilisé en ce moment ne fournit pas ces statistiques.',
+    ],
     ['expired', 'Brevo ne conserve ces chiffres que 90 jours.'],
   ] as const)(
     'indisponibles (%s) : la phrase et sa raison, sans alerte ni chiffre',

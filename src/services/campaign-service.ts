@@ -101,6 +101,7 @@ import {
   type CampaignStatisticsSnapshot,
   campaignStatisticsWindowOf,
   needsProviderReading,
+  providerStatisticsWindowOf,
 } from './rules/campaign-statistics-rules'
 import {
   budgetDayOf,
@@ -1269,7 +1270,10 @@ export const getCampaignStatisticsService = async (
   const window = campaignStatisticsWindowOf(facts.createdDay, facts.today)
   const reading =
     window && needsProviderReading(facts)
-      ? await readProviderStatistics(row.id, window)
+      ? await readProviderStatistics(
+          row.id,
+          providerStatisticsWindowOf(window, now.toISOString().slice(0, 10))
+        )
       : null
 
   const {statistics, shouldSave} = campaignStatisticsOf({

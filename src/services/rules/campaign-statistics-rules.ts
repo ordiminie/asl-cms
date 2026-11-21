@@ -3,6 +3,7 @@ import type {TagStatisticsResult} from '@/lib/emails/transport'
 import {
   CAMPAIGN_STATISTICS_WINDOW_DAYS,
   type CampaignStatisticsDTO,
+  type CampaignStatisticsUnavailableReason,
   type CampaignStatus,
 } from '../types/domain/campaign-types'
 import {addDays} from './campaign-schedule-rules'
@@ -64,6 +65,19 @@ export const campaignStatisticsWindowOf = (
 }
 
 /**
+ * La plage envoyee au fournisseur (ADR 068 §6) : sa fin est le plus tot du
+ * jour de Paris et du jour UTC de la lecture. Entre minuit a Paris et minuit
+ * UTC, le jour de Paris serait « demain » pour Brevo, qui compte en UTC.
+ */
+export const providerStatisticsWindowOf = (
+  window: {startDate: string; endDate: string},
+  utcToday: string
+): {startDate: string; endDate: string} => ({
+  startDate: window.startDate,
+  endDate: window.endDate < utcToday ? window.endDate : utcToday,
+})
+
+/**
  * Le fournisseur n'est interroge que pour une campagne terminee, dont un
  * email au moins est parti, suivie et encore dans la fenetre.
  */
@@ -78,9 +92,12 @@ export const needsProviderReading = (
   input.statsTracked &&
   campaignStatisticsWindowOf(input.createdDay, input.today) !== null
 
-/** Taux arrondi a l'entier, sur les emails envoyes (ADR 068 §7). */
+/**
+ * Taux arrondi a l'entier, sur les emails envoyes, plafonne a 100 (ADR 068
+ * §7) : un email `to_verify` reellement parti n'est pas dans `sent_count`.
+ */
 const rateOf = (unique: number, sentCount: number): number =>
-  Math.round((unique * 100) / sentCount)
+  Math.min(100, Math.round((unique * 100) / sentCount))
 
 const availableOf = (
   sentCount: number,
@@ -108,7 +125,7 @@ const shown = (
 /** Faute de lecture : le dernier releve s'il existe, sinon la raison. */
 const fallbackOf = (
   input: CampaignStatisticsRuleInput,
-  reason: 'unreachable' | 'untracked' | 'expired'
+  reason: CampaignStatisticsUnavailableReason
 ): CampaignStatisticsOutcome =>
   input.snapshot
     ? shown(
@@ -146,7 +163,9 @@ export const campaignStatisticsOf = (
   if (!reading || reading.status === 'error') {
     return fallbackOf(input, 'unreachable')
   }
-  if (reading.status === 'unsupported') return fallbackOf(input, 'untracked')
+  if (reading.status === 'unsupported') {
+    return fallbackOf(input, 'unsupported')
+  }
   if (reading.requests < input.sentCount) {
     return shown({state: 'pending_provider'})
   }

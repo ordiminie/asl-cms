@@ -4374,6 +4374,7 @@
         "reasons": {
           "unreachable": "Brevo n’a pas répondu. Rechargez la page dans quelques minutes.",
           "untracked": "Cette campagne a été envoyée sans suivi des ouvertures.",
+          "unsupported": "Le service d’envoi utilisé en ce moment ne fournit pas ces statistiques.",
           "expired": "Brevo ne conserve ces chiffres que 90 jours."
         },
         "nothingSent": "Aucun email n’est parti : il n’y a rien à mesurer."

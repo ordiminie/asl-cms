@@ -76,8 +76,10 @@ que dans l'état « disponibles ». Dans tous les autres états, le compteur n'e
 4. **Indisponibles** — pas d'`alert` (ce n'est ni un refus ni une attente) : une phrase `body`
    « Les statistiques de cette campagne ne sont pas disponibles. » suivie d'une raison en `meta` :
    - fournisseur injoignable : « Brevo n'a pas répondu. Rechargez la page dans quelques minutes. » ;
-   - campagne envoyée sans suivi (avant cette fonctionnalité, ou par un service d'envoi de secours) :
+   - campagne envoyée sans suivi (avant cette fonctionnalité) :
      « Cette campagne a été envoyée sans suivi des ouvertures. » ;
+   - service d'envoi du moment sans statistiques (secours, ou transport de test), sans relevé
+     conservé : « Le service d'envoi utilisé en ce moment ne fournit pas ces statistiques. » ;
    - fenêtre du fournisseur dépassée sans relevé conservé (si le plan retient la lecture directe) :
      « Brevo ne conserve ces chiffres que 90 jours. »
 5. **Aucun email parti** (campagne interrompue avant tout envoi) — phrase `meta` seule : « Aucun email

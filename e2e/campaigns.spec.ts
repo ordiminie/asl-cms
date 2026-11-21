@@ -1683,8 +1683,9 @@ test.describe('Campagnes — nature des envois (s27b)', () => {
  * Ouvertures et clics — s30, critères 3 et 4 (ADR 068).
  *
  * En CI, `EMAIL_TRANSPORT=file` ne lit aucune statistique : la fiche d'une
- * campagne envoyée et suivie montre la carte « indisponible », **sans aucun
- * pourcentage** (jamais un zéro inventé). La campagne de l'essai est écrite
+ * campagne envoyée et suivie montre la carte « indisponible », avec la raison
+ * « service sans statistiques », **sans aucun pourcentage** (jamais un zéro
+ * inventé). La campagne de l'essai est écrite
  * en base sous le scope de TechCorp, terminée, sans passer par l'envoi : la
  * carte ne dépend que de son état. Depuis Marketing Pro, l'URL forgée est
  * introuvable et ne rend ni la carte ni un chiffre ; les colonnes du relevé
@@ -1754,6 +1755,11 @@ test.describe('Campagnes — ouvertures et clics (s30)', () => {
           'Les statistiques de cette campagne ne sont pas disponibles.'
         )
       ).toBeVisible({timeout: 15_000})
+      await expect(
+        card.getByText(
+          'Le service d’envoi utilisé en ce moment ne fournit pas ces statistiques.'
+        )
+      ).toBeVisible()
       await expect(card.getByRole('definition')).toHaveCount(0)
       await expect(card.getByText(/\d\s?%/)).toHaveCount(0)
     } finally {

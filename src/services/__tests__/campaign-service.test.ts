@@ -2980,6 +2980,15 @@ describe('getCampaignStatisticsService — ouvertures et clics (s30, ADR 068)', 
     expect(readEmailTagStatisticsService).not.toHaveBeenCalled()
   })
 
+  it('à 00:30 à Paris (23:30 UTC la veille) : Brevo lit jusqu’au jour UTC, jamais « demain »', async () => {
+    await getCampaignStatisticsService(
+      {organizationId: ORG_ID, campaignId: CAMPAIGN_ID},
+      new Date('2026-11-12T23:30:00.000Z')
+    )
+
+    expect(readEmailTagStatisticsService).toHaveBeenCalledWith(TAG_QUERY)
+  })
+
   it('identifiant hors forme : erreur de validation, aucune lecture', async () => {
     await expect(
       getCampaignStatisticsService(

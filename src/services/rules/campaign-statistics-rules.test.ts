@@ -5,6 +5,7 @@ import {
   type CampaignStatisticsRuleInput,
   campaignStatisticsWindowOf,
   needsProviderReading,
+  providerStatisticsWindowOf,
 } from './campaign-statistics-rules'
 
 const READ_AT = '2026-11-21T09:32:00.000Z'
@@ -55,6 +56,21 @@ describe('campaignStatisticsWindowOf — fenêtre de lecture (ADR 068 §6)', () 
 
   it('une plage de 90 jours (89 jours d’écart) ne se lit plus', () => {
     expect(campaignStatisticsWindowOf('2026-01-02', '2026-03-31')).toBeNull()
+  })
+})
+
+describe('providerStatisticsWindowOf — la plage envoyée au fournisseur (ADR 068 §6)', () => {
+  const window = {startDate: '2026-11-11', endDate: '2026-11-13'}
+
+  it('après minuit à Paris, avant minuit UTC : la fin est le jour UTC', () => {
+    expect(providerStatisticsWindowOf(window, '2026-11-12')).toEqual({
+      startDate: '2026-11-11',
+      endDate: '2026-11-12',
+    })
+  })
+
+  it('le reste du temps, jours égaux : la plage est inchangée', () => {
+    expect(providerStatisticsWindowOf(window, '2026-11-13')).toEqual(window)
   })
 })
 
@@ -181,6 +197,28 @@ describe('campaignStatisticsOf — un chiffre n’est affiché que consolidé (c
     expect(result.statistics).toMatchObject({openRate: 52, clickRate: 1})
   })
 
+  it('le taux est plafonné à 100 : un email à vérifier parti hors `sent_count` ne le dépasse pas', () => {
+    const result = campaignStatisticsOf(
+      input({
+        sentCount: 3,
+        reading: {
+          status: 'found',
+          requests: 4,
+          delivered: 4,
+          uniqueOpens: 4,
+          uniqueClicks: 4,
+        },
+      })
+    )
+
+    expect(result.statistics).toMatchObject({
+      state: 'available',
+      uniqueOpens: 4,
+      openRate: 100,
+      clickRate: 100,
+    })
+  })
+
   it('aucun email parti : rien à mesurer, aucun taux calculé', () => {
     const result = campaignStatisticsOf(
       input({status: 'interrupted', sentCount: 0, reading: null})
@@ -245,11 +283,11 @@ describe('campaignStatisticsOf — un chiffre n’est affiché que consolidé (c
     })
   })
 
-  it('transport sans statistiques sans relevé : indisponible, sans suivi', () => {
+  it('transport sans statistiques sans relevé : indisponible, service sans statistiques', () => {
     expect(
       campaignStatisticsOf(input({reading: {status: 'unsupported'}}))
     ).toEqual({
-      statistics: {state: 'unavailable', reason: 'untracked'},
+      statistics: {state: 'unavailable', reason: 'unsupported'},
       shouldSave: false,
     })
   })

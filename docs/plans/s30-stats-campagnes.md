@@ -134,5 +134,15 @@ Source : `docs/reviews/s30-stats-campagnes.md` (tour 1, `Max severity: major`, `
 13. [x] **m5** — corriger le commentaire de `[id]/page.tsx` (la carte des statistiques lit l'horloge et peut
         écrire le relevé) ; lignes ≤ 80 caractères.
 
-Hors correctif (restent au rapport pour le tour final) : m1 (taux > 100 %), m2 (`endDate` et fuseau, à
-vérifier en recette), m6 (libellé `untracked`).
+Arbitrage complémentaire du 21/11/2026 : m1, m2 et m6 corrigés aussi.
+
+14. [x] **m1** — `rateOf` plafonne le taux à 100 (une ligne `to_verify` réellement partie n'est pas dans
+        `sent_count`). Test d'abord : `uniqueOpens > sentCount` → 100. Une phrase dans l'ADR 068 §7.
+15. [x] **m2** — l'`endDate` envoyée à Brevo est le plus tôt du jour UTC et du jour de Paris de `now` (jamais
+        « demain » pour Brevo). Test d'abord : à 00:30 Paris (23:30 UTC la veille), `endDate` = jour UTC. Une
+        phrase dans l'ADR 068 §6.
+16. [x] **m6** — scinder la raison : `untracked` (campagne non suivie) garde sa phrase ; nouvelle raison
+        `unsupported` (transport sans statistiques, aucun relevé) : « Le service d'envoi utilisé en ce moment
+        ne fournit pas ces statistiques. » Mettre à jour la règle, le DTO, la carte, les libellés
+        (`messages/fr.json`), les tests, le texte e2e du critère 3 (la CI tourne en transport `file` : elle
+        affiche désormais la phrase `unsupported`) et le design §States 4. Test d'abord.
