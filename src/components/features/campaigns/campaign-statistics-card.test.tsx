@@ -88,6 +88,17 @@ describe('CampaignStatisticsCard — ouvertures et clics (s30)', () => {
     )
   })
 
+  it('dernière part reportée : la portée finit au jour du report', () => {
+    renderCard(available, [
+      partOf(1, '2026-11-12'),
+      {...partOf(2, '2026-11-13'), deferredUntil: '2026-11-16'},
+    ])
+
+    expect(card()).toHaveTextContent(
+      'Sur l’ensemble de la campagne : 2 envois, du 12/11/2026 au 16/11/2026.'
+    )
+  })
+
   it('un vrai zéro consolidé s’affiche 0 · 0 %', () => {
     renderCard({
       ...available,

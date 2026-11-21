@@ -38,11 +38,12 @@ ouvertures et clics en **personnes uniques**, taux sur les **emails envoyés** ;
    **seulement quand l'agrégat est consolidé** : campagne terminée (`sent` ou `interrupted`) **et**
    `requests` Brevo ≥ `sent_count`. Le relevé est de la restitution (des compteurs fournis par Brevo), pas de la
    mesure. Il est écrit par la lecture de la fiche, sous `withTenant`, dans la table déjà isolée par la RLS.
-5. **Règle d'affichage**, dans l'ordre : aucun email parti → « rien à mesurer » ; campagne en cours → « après
-   le dernier envoi » ; non suivie → indisponible ; dans la fenêtre Brevo → lecture : consolidée → chiffres +
-   relevé écrit, sinon « pas encore disponibles » ; lecture impossible (erreur, hors fenêtre, transport sans
-   statistiques) → dernier relevé s'il existe, sinon indisponible avec sa raison. **Un chiffre n'est affiché
-   que s'il est consolidé.**
+5. **Règle d'affichage**, dans l'ordre : campagne en cours → « après le dernier envoi » ; aucun email parti,
+   campagne terminée → « rien à mesurer » ; non suivie → indisponible ; dans la fenêtre Brevo → lecture :
+   consolidée → chiffres + relevé écrit, sinon « pas encore disponibles » ; lecture impossible (erreur, hors
+   fenêtre, transport sans statistiques) → dernier relevé s'il existe, sinon indisponible avec sa raison.
+   **Un chiffre n'est affiché que s'il est consolidé.** « En cours » passe avant « aucun email parti » : une
+   campagne qui démarre n'a encore rien envoyé, sans que ce soit « rien à mesurer ».
 6. **Fenêtre de lecture** : de la veille du jour (Paris) de création de la campagne à aujourd'hui ; la lecture
    n'a lieu que si cette plage tient en 89 jours (marge sur la limite de 90 et sur le fuseau de Brevo).
 7. **Taux** = arrondi à l'entier de `unique / sent_count × 100`.

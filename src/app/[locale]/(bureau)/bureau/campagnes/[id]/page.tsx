@@ -48,9 +48,11 @@ export async function generateMetadata({
 }
 
 /**
- * Une campagne (ecran 2 du design s26), en lecture seule : avancement,
- * ouvertures et clics (s30), parts, destinataires et courrier postal (s28). `?statut=` filtre la liste des destinataires, `?page=` la
- * pagine. L'etat affiche se lit des statuts (ADR 052), sans horloge.
+ * Une campagne (ecran 2 du design s26) : avancement, ouvertures et clics
+ * (s30), parts, destinataires et courrier postal (s28). `?statut=` filtre
+ * la liste des destinataires, `?page=` la pagine. L'etat de l'envoi se lit
+ * des statuts (ADR 052), sans horloge ; la carte des statistiques, elle,
+ * lit l'horloge et peut ecrire le releve de la campagne (ADR 068).
  */
 export default async function BureauCampaignPage({
   params,

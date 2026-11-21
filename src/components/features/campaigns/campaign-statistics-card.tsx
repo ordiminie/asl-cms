@@ -8,6 +8,7 @@ import type {
   CampaignStatisticsDTO,
 } from '@/services/types/domain/campaign-types'
 
+import {CardHeading} from './campaign-card-heading'
 import {dayLabelOf, sentAtPartsOf} from './campaign-format'
 
 type CampaignStatisticsCardProps = {
@@ -48,9 +49,7 @@ function StatisticsFrame({children}: {children: ReactNode}) {
 
   return (
     <Card className="gap-4 px-4 py-6 shadow-none sm:px-6">
-      <h2 className="font-serif text-[24px] leading-snug font-semibold">
-        {t('title')}
-      </h2>
+      <CardHeading>{t('title')}</CardHeading>
       {children}
     </Card>
   )
@@ -139,7 +138,6 @@ function AvailableStatistics({
     ],
   ]
   const first = parts.at(0)
-  const last = parts.at(-1)
 
   return (
     <>
@@ -156,12 +154,12 @@ function AvailableStatistics({
           </div>
         ))}
       </dl>
-      {parts.length > 1 && first && last && (
+      {parts.length > 1 && first && (
         <Meta>
           {t('scope', {
             parts: parts.length,
             from: dayLabelOf(first.day),
-            to: dayLabelOf(last.day),
+            to: dayLabelOf(lastDayOf(parts)),
           })}
         </Meta>
       )}
@@ -169,4 +167,16 @@ function AvailableStatistics({
       <Meta>{t('source', sentAtPartsOf(statistics.readAt))}</Meta>
     </>
   )
+}
+
+/**
+ * Le dernier jour d'envoi : le plus tardif des jours et des reports des
+ * parts, comme la fenetre de lecture du service (jours ISO, ordre lexical).
+ */
+function lastDayOf(parts: CampaignPartDTO[]): string {
+  return parts
+    .flatMap((part) =>
+      part.deferredUntil ? [part.day, part.deferredUntil] : [part.day]
+    )
+    .reduce((latest, day) => (day > latest ? day : latest))
 }

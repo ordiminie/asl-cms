@@ -117,3 +117,22 @@ de** savoir si l'information passe.
 - Migration générée par Drizzle ; aucune valeur en dur (libellés dans `messages/fr.json`).
 - Aucun appel au fournisseur hors de `email-service` ; aucune nouvelle occurrence de `withRlsBypass()`.
 - Une PR, revue passée (`Ship allowed: yes`), recette Brevo notée sur la carte Trello « Mise en PROD ».
+
+## Correctifs de revue — tour 1 (arbitrage du 21/11/2026 : corriger avant la PR)
+
+Source : `docs/reviews/s30-stats-campagnes.md` (tour 1, `Max severity: major`, `Ship allowed: yes`).
+
+10. [x] **M1** — ADR 068 §5 : inverser les deux premiers cas (« campagne en cours → après le dernier envoi ;
+        aucun email parti, campagne terminée → rien à mesurer ») et justifier l'ordre en une phrase (une
+        campagne qui démarre n'a encore rien envoyé, sans que ce soit « rien à mesurer ») ; aligner la
+        docstring de `campaignStatisticsOf` sur le code. Le comportement ne change pas (déjà testé).
+11. [x] **m3** — la phrase de portée de la carte prend pour dernier jour le maximum de `day` et de
+        `deferredUntil` des parts, comme le service. Test : une dernière part reportée annonce le jour du
+        report.
+12. [x] **m4** — le titre de la carte réutilise `CardHeading` (l'exporter ou l'extraire dans un module
+        partagé des campagnes) au lieu d'un `h2` recopié. Tests existants verts.
+13. [x] **m5** — corriger le commentaire de `[id]/page.tsx` (la carte des statistiques lit l'horloge et peut
+        écrire le relevé) ; lignes ≤ 80 caractères.
+
+Hors correctif (restent au rapport pour le tour final) : m1 (taux > 100 %), m2 (`endDate` et fuseau, à
+vérifier en recette), m6 (libellé `untracked`).

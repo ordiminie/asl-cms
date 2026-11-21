@@ -34,6 +34,7 @@ import type {
   CampaignRecipientsPageDTO,
 } from '@/services/types/domain/campaign-types'
 
+import {CardHeading} from './campaign-card-heading'
 import {
   dayLabelOf,
   daysInWordsOf,
@@ -314,14 +315,6 @@ function FailedAlert({campaign}: {campaign: CampaignDTO}) {
         </p>
       </AlertDescription>
     </Alert>
-  )
-}
-
-function CardHeading({children}: {children: ReactNode}) {
-  return (
-    <h2 className="font-serif text-[24px] leading-snug font-semibold">
-      {children}
-    </h2>
   )
 }
 

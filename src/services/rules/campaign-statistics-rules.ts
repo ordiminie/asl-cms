@@ -122,8 +122,8 @@ const fallbackOf = (
     : shown({state: 'unavailable', reason})
 
 /**
- * L'etat affiche (ADR 068 §5), dans l'ordre : rien de parti, campagne en
- * cours, non suivie, hors fenetre, puis la lecture. Consolide = `requests`
+ * L'etat affiche (ADR 068 §5), dans l'ordre : campagne en cours, rien de
+ * parti, non suivie, hors fenetre, puis la lecture. Consolide = `requests`
  * du fournisseur >= `sentCount` : alors seulement des chiffres, et un releve
  * a ecrire. Une campagne `sending` sans email encore parti attend son
  * dernier envoi : « rien a mesurer » est reserve a une campagne terminee.
