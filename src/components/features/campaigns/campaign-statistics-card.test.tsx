@@ -100,6 +100,37 @@ describe('CampaignStatisticsCard — ouvertures et clics (s30)', () => {
     )
   })
 
+  it('campagne interrompue : une part vide ne compte ni dans les envois ni dans les dates (revue s30, m9)', () => {
+    renderCard(available, [
+      partOf(1, '2026-11-12'),
+      partOf(2, '2026-11-13'),
+      {
+        ...partOf(3, '2026-11-14'),
+        receivedCount: 0,
+        displayState: 'failed',
+        sentDay: null,
+      },
+    ])
+
+    expect(card()).toHaveTextContent(
+      'Sur l’ensemble de la campagne : 2 envois, du 12/11/2026 au 13/11/2026.'
+    )
+  })
+
+  it('une seule part réellement envoyée : pas de phrase de portée (revue s30, m9)', () => {
+    renderCard(available, [
+      partOf(1, '2026-11-12'),
+      {
+        ...partOf(2, '2026-11-13'),
+        receivedCount: 0,
+        displayState: 'failed',
+        sentDay: null,
+      },
+    ])
+
+    expect(card()).not.toHaveTextContent('Sur l’ensemble de la campagne')
+  })
+
   it('un vrai zéro consolidé s’affiche 0 · 0 %', () => {
     renderCard({
       ...available,

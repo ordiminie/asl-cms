@@ -162,3 +162,17 @@ Source : `docs/reviews/s30-stats-campagnes.md` (tour 2, `Max severity: minor`, `
 18. [x] **m8** — le commentaire de `providerStatisticsWindowOf` et la phrase de l'ADR 068 §6 ne présentent plus
         le fuseau de Brevo comme un fait : fuseau d'`aggregatedReport` non vérifié (UTC ou fuseau du compte),
         le plus tôt des deux jours est sûr dans les deux cas ; à confirmer en recette.
+
+## Correctifs de revue — tour 3 (arbitrage du 21/11/2026 : ignorer les parts vides)
+
+Source : `docs/reviews/s30-stats-campagnes.md` (tour 3, `Max severity: minor`, `Ship allowed: yes`).
+
+19. [x] **m9** — une part close **sans aucun email parti** (aucun destinataire reçu ni à vérifier, typiquement
+        une part passée `failed` par l'interruption de la campagne) ne compte plus dans la phrase de portée :
+        ni dans les dates (« du … au … »), ni dans le nombre d'envois (`{parts}`). Son `sentDay` vaut `null`
+        (elle n'est jamais partie) ; la docstring de `sentDay` dit exactement cela. Si une seule part a
+        réellement envoyé, la phrase de portée est omise comme pour une campagne à une part. Tests d'abord :
+        règle (`failed` sans envoi → `sentDay` `null` ; `failed` avec au moins un envoi → jour réel, report
+        compris) et carte (campagne interrompue : parts 12/11 et 13/11 envoyées, part 14/11 vide → « 2 envois,
+        du 12/11/2026 au 13/11/2026 »), avec des DTO conformes à ce que le service produit. Ne pas changer
+        l'affichage de la carte des parts.

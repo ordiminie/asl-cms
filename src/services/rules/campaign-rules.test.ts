@@ -471,10 +471,17 @@ describe('toCampaignDto — liste blanche', () => {
       },
     ]
 
+    const sentCounts = ['p1', 'p2', 'p3'].map((partId) => ({
+      campaignId: 'c1',
+      partId,
+      status: 'sent' as const,
+      total: 40,
+    }))
+
     const [nonReportee, reportee, enEchec, entamee] = toCampaignDto(
       row(),
       closedParts,
-      []
+      sentCounts
     ).parts
 
     expect(nonReportee).toMatchObject({
@@ -495,6 +502,43 @@ describe('toCampaignDto — liste blanche', () => {
       deferredUntil: '2026-11-18',
       sentDay: null,
     })
+  })
+})
+
+describe('sentDay — une part close sans aucun email parti n’est jamais partie (revue s30, m9)', () => {
+  const failedPart = (id: string, deferredTo: string | null = null) => ({
+    id,
+    campaignId: 'c1',
+    number: 3,
+    scheduledFor: '2026-11-14',
+    recipientCount: 96,
+    status: 'failed' as const,
+    deferredTo,
+  })
+  const countOf = (
+    partId: string,
+    status: 'sent' | 'to_verify' | 'failed',
+    total: number
+  ) => ({campaignId: 'c1', partId, status, total})
+
+  it('une part passée en échec par l’interruption, sans reçu ni à vérifier : pas de jour d’envoi', () => {
+    const [part] = toCampaignDto(
+      row(),
+      [failedPart('p3')],
+      [countOf('p3', 'failed', 96)]
+    ).parts
+
+    expect(part).toMatchObject({displayState: 'failed', sentDay: null})
+  })
+
+  it('une part en échec avec au moins un email à vérifier : son jour réel, report compris', () => {
+    const [part] = toCampaignDto(
+      row(),
+      [failedPart('p3', '2026-11-17')],
+      [countOf('p3', 'to_verify', 1), countOf('p3', 'failed', 95)]
+    ).parts
+
+    expect(part).toMatchObject({displayState: 'failed', sentDay: '2026-11-17'})
   })
 })
 

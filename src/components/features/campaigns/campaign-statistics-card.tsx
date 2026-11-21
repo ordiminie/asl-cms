@@ -137,7 +137,8 @@ function AvailableStatistics({
       }),
     ],
   ]
-  const first = parts.at(0)
+  const sentParts = parts.filter((part) => part.sentDay !== null)
+  const first = sentParts.at(0)
 
   return (
     <>
@@ -154,12 +155,12 @@ function AvailableStatistics({
           </div>
         ))}
       </dl>
-      {parts.length > 1 && first && (
+      {sentParts.length > 1 && first && (
         <Meta>
           {t('scope', {
-            parts: parts.length,
+            parts: sentParts.length,
             from: dayLabelOf(first.day),
-            to: dayLabelOf(lastDayOf(parts)),
+            to: dayLabelOf(lastDayOf(sentParts)),
           })}
         </Meta>
       )}
@@ -172,7 +173,8 @@ function AvailableStatistics({
 /**
  * Le dernier jour d'envoi : le plus tardif des jours ou les parts sont
  * reellement parties, report compris (revue s30, m7 ; jours ISO, ordre
- * lexical). Une part non close compte pour son jour prevu.
+ * lexical). Seules comptent les parts parties : une part sans jour d'envoi
+ * est ecartee de la portee en amont (revue s30, m9).
  */
 function lastDayOf(parts: CampaignPartDTO[]): string {
   return parts
