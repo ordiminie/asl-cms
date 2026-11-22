@@ -978,6 +978,24 @@ crée de token ni de composant : ils composent l'existant.
   PDF ne sait pas embarquer deux instances du même woff2 variable. Le gras écrit par le bureau dans le
   corps est la Regular au trait épaissi, l'italique une oblique : la police du site n'a pas d'italique.
 
+### 3.18 Formes retenues par s31 — les documents partagés
+
+Écarts de la maquette `docs/designs/s31-documents-partages.md` (manques 1 et 2), versés ici par le
+plan de s31 (ADR 069). Aucun ne crée de token ni de composant : ils composent l'existant.
+
+- **Carte groupée par catégorie** — « Documents de l'association » dans l'espace membre, rendue dans
+  les **trois** états de l'espace (avec parcelles, sans parcelle, sans fiche) : titre `h2`, `meta`,
+  puis un groupe par catégorie (`h3` 17 px / 600, ordre alphabétique), documents du plus récent au plus
+  ancien. Ligne : `FileText`, titre écrit par le bureau (jamais le nom du fichier), `meta` « Déposé le
+  `jj/mm/aaaa` · PDF · `poids` » (`data`), **une seule action** `outline` « Télécharger » (`Download`
+  20 px, nom accessible complet, pleine largeur 56 px sous 640 px). Le lien mène à la route authentifiée
+  **par identifiant** (`/api/documents/{id}`), jamais à un chemin de stockage. Pied de carte vers la
+  page Contact. Chargement : trois lignes `skeleton`, `aria-busy`.
+- **Écran des catégories sans adresse de routage** (manque 1) — l'écran générique de s10/s23
+  (`ReportCategoriesManager`) reçoit le paramètre `showRoutingEmail` (défaut : affichée). Pour un
+  domaine qui n'envoie rien (les documents), la colonne et le champ du `dialog` disparaissent ; le
+  `dialog` n'a plus qu'un champ, et le serveur n'écrit aucune adresse.
+
 ---
 
 ## 4 · Le contenu — rendu public des cinq blocs
@@ -1373,6 +1391,7 @@ des composants à improviser. À traiter en `/ks-design` ou `/ks-research` de la
 | Barre     | **`<ImpersonationBar />` en mobile** — titre sur deux lignes, détail, puis bouton pleine largeur 56 px, icône retirée (≈ 170 px, sous le quart de 844 px)                                                                                                                                                                                                                                                       | s48, s41      |
 | Barre     | **Compte à rebours** — emplacement non spécifié au §2.6 ; en s48 il remplace la ligne de détail, annoncé en `aria-live="polite"`                                                                                                                                                                                                                                                                                | s48, s41      |
 | Bouton    | **Bouton qui est un lien** (s48, boîte « autre domaine ») — style `default` appliqué à un `<a>` (`Button asChild`), non décrit                                                                                                                                                                                                                                                                                  | s48           |
+| Documents | **Document retiré entre-temps** (s31, manque 2) — la route rend un 404 nu, le navigateur affiche sa page d'erreur. Aucune forme pour « ce document n'est plus disponible » hors de la page ; acceptable en V1, la page se recharge après un retrait                                                                                                                                                             | s31           |
 | Technique | **Échelle de `z-index`** — seules deux valeurs sont posées (`PreviewBar` 50, `ImpersonationBar` 60). Avec trois bandes persistantes, les dialogues, les popovers, les tiroirs et les toasts, une échelle explicite évite les conflits au cas par cas                                                                                                                                                            | s04, s07, s41 |
 
 ### Point d'implémentation à vérifier

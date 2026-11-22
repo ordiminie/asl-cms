@@ -33,6 +33,7 @@ import type {
   MyLandDTO,
   MyLandsDTO,
 } from '@/services/types/domain/member-space-types'
+import type {SharedDocumentDTO} from '@/services/types/domain/shared-document-types'
 
 import {MyContactCard} from './my-contact-card'
 import {MyEmailsCard, MyEmailsCardLoading} from './my-emails-card'
@@ -40,6 +41,10 @@ import type {MyEmailActions} from './my-emails-validation'
 import {MyInvoicesCard, MyInvoicesCardLoading} from './my-invoices-card'
 import {MyQuestionCard} from './my-question-card'
 import {MyReportsCard, MyReportsCardLoading} from './my-reports-card'
+import {
+  MySharedDocumentsCard,
+  MySharedDocumentsCardLoading,
+} from './my-shared-documents-card'
 
 /**
  * Espace membre (s46, s12d ecran C). Composants serveur, sans etat client :
@@ -55,6 +60,8 @@ const HEADING_CLASS = 'font-serif text-3xl font-semibold tracking-tight'
  * « Mes signalements » (s22) et « Une question pour le bureau ? » (s23), ou
  * la page de s46 pour un compte sans fiche (C5). Un compte sans parcelle
  * garde ses coordonnees (s16, C7), ses adresses et ses signalements.
+ * « Documents de l'association » (s31) est rendue dans les **trois** etats :
+ * tout membre authentifie la lit, compte du bureau sans fiche compris.
  */
 export function MemberSpace({
   landsPromise,
@@ -67,6 +74,7 @@ export function MemberSpace({
   questionSent = false,
   invoicesPromise,
   openInvoicePdfAction,
+  sharedDocumentsPromise,
 }: {
   landsPromise: Promise<MyLandsDTO | undefined>
   contactPromise: Promise<MyContactDTO | undefined>
@@ -82,6 +90,8 @@ export function MemberSpace({
   invoicesPromise: Promise<MyInvoicesDTO | undefined>
   /** Le PDF d'une facture, relu au clic (s20). */
   openInvoicePdfAction: MyInvoicePdfAction
+  /** « Documents de l'association » (s31), lue a part, sans etre attendue. */
+  sharedDocumentsPromise: Promise<SharedDocumentDTO[] | undefined>
 }) {
   const lands = use(landsPromise)
   const contact = use(contactPromise)
@@ -91,12 +101,17 @@ export function MemberSpace({
       (land) => land.current.length > 0 || land.former.length > 0
     )
 
-  if (!contact) return <MemberSpaceWithoutProfile />
+  const documents = <MySharedDocuments promise={sharedDocumentsPromise} />
+
+  if (!contact) {
+    return <MemberSpaceWithoutProfile>{documents}</MemberSpaceWithoutProfile>
+  }
 
   if (!lands || !hasParcels) {
     return (
       <MemberSpaceWithoutParcels>
         <MyContactCard contact={contact} action={contactAction} />
+        {documents}
         <MyEmails emailsPromise={emailsPromise} actions={emailActions} />
         <MyReports reportsPromise={reportsPromise} sent={reportSent} />
         <MyQuestionCard sent={questionSent} />
@@ -115,6 +130,7 @@ export function MemberSpace({
         invoicesPromise={invoicesPromise}
         openPdfAction={openInvoicePdfAction}
       />
+      {documents}
       <MyContactCard contact={contact} action={contactAction} />
       <MyEmails emailsPromise={emailsPromise} actions={emailActions} />
       <MyReports reportsPromise={reportsPromise} sent={reportSent} />
@@ -220,6 +236,33 @@ function MyReportsList({
   return <MyReportsCard reports={reports} sent={sent} />
 }
 
+/**
+ * « Documents de l'association » (s31) : lue a part, derriere son propre
+ * `<Suspense>` ; rien si la lecture ne rend rien.
+ */
+function MySharedDocuments({
+  promise,
+}: {
+  promise: Promise<SharedDocumentDTO[] | undefined>
+}) {
+  return (
+    <Suspense fallback={<MySharedDocumentsCardLoading />}>
+      <MySharedDocumentsList promise={promise} />
+    </Suspense>
+  )
+}
+
+function MySharedDocumentsList({
+  promise,
+}: {
+  promise: Promise<SharedDocumentDTO[] | undefined>
+}) {
+  const documents = use(promise)
+  if (!documents) return null
+
+  return <MySharedDocumentsCard documents={documents} />
+}
+
 const LOADING_LINES = [0, 1, 2]
 
 /** Chargement (1c) : la salutation, et les cartes en `skeleton`, sans marqueur. */
@@ -254,13 +297,17 @@ export function MemberSpaceLoading({name}: {name: string}) {
   )
 }
 
-/** C5 : la page de s46, pour un compte sans fiche dans cette association. */
-function MemberSpaceWithoutProfile() {
+/**
+ * C5 : la page de s46, pour un compte sans fiche dans cette association, et
+ * sous son titre les documents de l'association (s31).
+ */
+function MemberSpaceWithoutProfile({children}: {children: ReactNode}) {
   const t = useTranslations('MemberSpacePage')
 
   return (
     <div className="space-y-8">
       <h1 className={HEADING_CLASS}>{t('title')}</h1>
+      {children}
       <SecurityCard />
     </div>
   )

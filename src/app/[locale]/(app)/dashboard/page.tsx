@@ -7,6 +7,7 @@ import {
   getMyInvoicesDal,
   getMyLandsDal,
 } from '@/app/dal/member-space-dal'
+import {getMySharedDocumentsDal} from '@/app/dal/shared-document-dal'
 import withAuth, {
   type WithAuthProps,
 } from '@/components/features/auth/with-auth'
@@ -57,7 +58,8 @@ type DashboardPageProps = WithAuthProps & {
  * retrogradation, `?role=retire` le dit en tete (s14, A12). « Mes
  * signalements » (s22) se lit a part ; apres une declaration,
  * `?signalement=envoye` le dit dans la carte (A5). Apres une question au
- * bureau (s23), `?question=envoyee` le dit dans sa carte (A2).
+ * bureau (s23), `?question=envoyee` le dit dans sa carte (A2). « Documents
+ * de l'association » (s31) se lit a part, dans les trois etats de l'espace.
  */
 async function Page({user, searchParams}: DashboardPageProps) {
   const landsPromise = getMyLandsDal()
@@ -65,6 +67,7 @@ async function Page({user, searchParams}: DashboardPageProps) {
   const emailsPromise = getMyEmailsDal()
   const reportsPromise = getMyIncidentReportsDal()
   const invoicesPromise = getMyInvoicesDal()
+  const sharedDocumentsPromise = getMySharedDocumentsDal()
   const {role, signalement, question} = await searchParams
 
   return (
@@ -82,6 +85,7 @@ async function Page({user, searchParams}: DashboardPageProps) {
           questionSent={question === QUESTION_SENT}
           invoicesPromise={invoicesPromise}
           openInvoicePdfAction={openMyInvoicePdfAction}
+          sharedDocumentsPromise={sharedDocumentsPromise}
         />
       </Suspense>
     </div>

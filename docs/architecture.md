@@ -267,7 +267,8 @@ web devant l'application (s12b), qui a la sienne et tronque au-delà.
 **Inventaire des clés de fichier depuis s12c** (ADR 045) : `src/lib/files/file-key-inventory.ts` est la
 liste **unique** des endroits où la base référence un fichier de `LOCAL_STORAGE_ROOT` — les colonnes
 `…_key` (`organization.identity_logo_key`, `identity_favicon_key`, `page.share_image_key`,
-`news.image_key`, `board_member.photo_key`, `water_analysis.poster_key`, `report_key`) **et** les
+`news.image_key`, `board_member.photo_key`, `water_analysis.poster_key`, `report_key`,
+`shared_document.file_key`) **et** les
 chemins JSON des blocs de page (`content_block.data` : `fileKey` des blocs image et PDF,
 `images[].fileKey` de la galerie), qu'aucun nom de colonne ne révèle. Le test de restauration
 (`e2e/backup-restore.spec.ts`) vérifie chaque clé listée contre les fichiers restaurés ;
@@ -366,18 +367,23 @@ Entités ajoutées par ASL-CMS, par domaine :
   et `scheduled_job` (ADR 006). Chaque modèle porte une **nature** : un désinscrit sort des envois
   facultatifs, reste dans les envois statutaires. La classification est une **donnée de configuration**,
   à confirmer par le conseil RGPD — pas une constante.
-- **Documents** — `document` (partagé ou nominatif), le stockage nominatif étant **physiquement séparé
-  par membre** (ADR 004).
+- **Documents** — `shared_document` (s31, ADR 069) : les documents **partagés** avec tous les membres
+  authentifiés (statuts, PV, ordres du jour), table **dédiée**, sans discriminant partagé / nominatif.
+  Catégorie du domaine `document` de `association_category` ; PDF seul, 10 Mo ; clé
+  `{org}/shared-documents/{id}/file-{uuid}.pdf` **hors** de `CONTENT_FILE_SCOPES`, servie par la seule
+  route authentifiée `GET /api/documents/[id]` (identifiant relu sous le tenant du domaine, `no-store`).
+  Les documents nominatifs (s32) auront leur propre modèle, le stockage nominatif étant **physiquement
+  séparé par membre** (ADR 004).
 - **Autorisation** — ⚠️ pas une table : `action_registry` est un **module de code isomorphe**
   (`src/services/types/domain/action-registry-types.ts`, ADR 018), sans écran ni migration. Chaque
   story y déclare ses actions avec leurs rôles d'association par défaut ; `canPerformAction`
   (`src/services/authorization/action-registry-authorization.ts`) le lit pour trancher. s37
   ajoutera la table de surcharge par tenant, qui composera avec ce registre sans le remplacer.
 
-### Classement RLS des 54 tables du schéma
+### Classement RLS des 55 tables du schéma
 
 Le critère 9 de s01 exige que l'ensemble des tables **exemptées** soit exactement celui listé ici.
-Les 54 tables du schéma (20 après le retrait ADR 009, plus `organization_setting` de s02, plus `rate_limit_event` de s03, plus `page` et `content_block` de s04, plus `menu_item` de s04b, plus `news` de s05, plus `board_member` de s06, plus `contact_message` de s08, plus `water_analysis` de s09, plus `association_category`, `incident_report` et `incident_report_event` de s10, plus `member_profile`, `parcel` et `parcel_ownership` de s12, plus `member_role_event` de s14, plus `impersonation_event` de s48, plus `member_note` de s24, plus `campaign`, `campaign_recipient` et `member_unsubscribe` de s25, plus `scheduled_job` et `campaign_part` de s26, plus `email_send_budget` et `deferred_email` de s52, plus `member_question` de s23, plus `member_profile_account` de s53, plus `member_profile_email` de s54, moins `member_unsubscribe` retirée par s54, ADR 057, plus `member_invoice` et `invoice_status_alert` de s19, plus `recipient_group` et `recipient_group_member` de s27, plus `campaign_recipient_profile` de s27, ADR 061, plus `billing_sync_state` de s20, ADR 062, plus `campaign_letter_profile` de s28, ADR 065) sont donc toutes classées, sans reste. Toute
+Les 55 tables du schéma (20 après le retrait ADR 009, plus `organization_setting` de s02, plus `rate_limit_event` de s03, plus `page` et `content_block` de s04, plus `menu_item` de s04b, plus `news` de s05, plus `board_member` de s06, plus `contact_message` de s08, plus `water_analysis` de s09, plus `association_category`, `incident_report` et `incident_report_event` de s10, plus `member_profile`, `parcel` et `parcel_ownership` de s12, plus `member_role_event` de s14, plus `impersonation_event` de s48, plus `member_note` de s24, plus `campaign`, `campaign_recipient` et `member_unsubscribe` de s25, plus `scheduled_job` et `campaign_part` de s26, plus `email_send_budget` et `deferred_email` de s52, plus `member_question` de s23, plus `member_profile_account` de s53, plus `member_profile_email` de s54, moins `member_unsubscribe` retirée par s54, ADR 057, plus `member_invoice` et `invoice_status_alert` de s19, plus `recipient_group` et `recipient_group_member` de s27, plus `campaign_recipient_profile` de s27, ADR 061, plus `billing_sync_state` de s20, ADR 062, plus `campaign_letter_profile` de s28, ADR 065, plus `shared_document` de s31, ADR 069) sont donc toutes classées, sans reste. Toute
 addition à cette liste se justifie en revue, et chaque ligne ci-dessous porte sa justification.
 
 Le classement est tenu par un test (`src/db/rls-inventory.test.ts`, hors du glob de schéma de
@@ -386,7 +392,7 @@ déclarations `pgTable` et les `FORCE ROW LEVEL SECURITY` des migrations, et éc
 manque au classement ou si un décompte ci-dessous ne correspond plus. C'est la dérive de
 `rate_limit_event`, scopée en s03 mais classée seulement en s05, qui l'a motivé.
 
-**Scopée par une policy RLS forcée** — 35 tables
+**Scopée par une policy RLS forcée** — 36 tables
 
 | Table                        | Pourquoi                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -425,6 +431,7 @@ manque au classement ou si un décompte ci-dessous ne correspond plus. C'est la 
 | `billing_sync_state`         | État de la synchronisation Pennylane (s20, ADR 062 §7) : clé primaire `organization_id` (`CASCADE`), `last_attempt_at`, `last_success_at`, `last_error`, `counts`, `unmatched_customers` et `terrain_mismatches` en jsonb. Policy `tenant_isolation` forcée (`0070`). Ni adresse de PDF ni moyen de paiement. s38 devra la déclarer.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | `recipient_group`            | Groupe de destinataires composé par le bureau (s27, ADR 060). Porte son propre `organization_id`, policy `tenant_isolation` forcée (`0066`), sans jointure. Nom unique par association sans casse (`UNIQUE (organization_id, lower(name))`). Sa suppression ne touche ni les fiches ni les campagnes : `campaign.target_group_id` en `SET NULL`, nom copié dans `campaign.target_group_name`. s38 devra la déclarer.                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | `recipient_group_member`     | Appartenance d'une fiche à un groupe (s27, ADR 060). Porte son propre `organization_id`, policy `tenant_isolation` forcée (`0066`), sans jointure. Clé primaire `(group_id, member_profile_id)` ; groupe et fiche en `CASCADE` : une fiche supprimée quitte ses groupes. Le service refuse une fiche illisible sous le tenant. s38 devra la déclarer.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `shared_document`            | Documents partagés avec tous les membres authentifiés de l'association (s31, ADR 069). Porte son propre `organization_id`, policy `tenant_isolation` forcée (`0076`), sans jointure. `category_id` vers une catégorie du domaine `document` en `RESTRICT` (suppression logique : le nom reste lisible). `file_key` **hors** des portées publiques de `CONTENT_FILE_SCOPES`, servie par la seule route authentifiée `GET /api/documents/[id]` : un identifiant d'une autre association ne rend rien.                                                                                                                                                                                                                                                                                                                                       |
 
 **Plan identité — exemptées** (ADR 014) : ces tables ne portent aucune donnée de l'association et
 répondent à « qui est cet utilisateur, et où a-t-il le droit d'aller ». Elles sont lues **avant**

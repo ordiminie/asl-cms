@@ -32,6 +32,7 @@ import * as parcel from './parcel-model'
 import * as post from './post-model'
 import * as recipientGroup from './recipient-group-model'
 import * as scheduledJob from './scheduled-job-model'
+import * as sharedDocument from './shared-document-model'
 import * as subscription from './subscription-model'
 import * as user from './user-model'
 import * as userSubmission from './user-submission-model'
@@ -66,6 +67,7 @@ const db = drizzle(pool, {
     ...boardMember,
     ...contactMessage,
     ...waterAnalysis,
+    ...sharedDocument,
     ...associationCategory,
     ...incidentReport,
     ...impersonationEvent,

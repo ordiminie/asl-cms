@@ -400,3 +400,76 @@ describe('ReportCategoriesManager — paramétré pour les sujets des questions 
     )
   })
 })
+
+describe('ReportCategoriesManager — paramétré pour les documents partagés (s31, manque 1)', () => {
+  const renderDocumentManager = (items: ManagedCategoryDTO[]) =>
+    render(
+      <ReportCategoriesManager
+        list={listOf(items.map((item) => ({...item, domain: 'document'})))}
+        labels="BureauDocumentCategoriesPage"
+        backHref="/bureau/documents"
+        showUsageCount
+        showRoutingEmail={false}
+        {...actions}
+      />
+    )
+
+  it('titre « Catégories de documents », retour aux documents, sans colonne de routage', () => {
+    renderDocumentManager([category({name: 'Statuts', usageCount: 2})])
+
+    expect(
+      screen.getByRole('heading', {level: 1, name: 'Catégories de documents'})
+    ).toBeInTheDocument()
+    expect(screen.getByRole('link', {name: 'Documents'})).toHaveAttribute(
+      'href',
+      '/bureau/documents'
+    )
+    const headers = within(screen.getByRole('table'))
+      .getAllByRole('columnheader')
+      .map((header) => header.textContent)
+    expect(headers).toEqual(['Catégorie', 'Documents rangés', 'Action'])
+    const [row] = tableRows()
+    expect(within(row).getAllByRole('cell')[1]).toHaveTextContent(
+      /^2 documents$/
+    )
+  })
+
+  it('le dialog ne propose que le nom, et n envoie aucune adresse', async () => {
+    const user = userEvent.setup()
+    actions.createAction.mockResolvedValue({status: 'saved', name: 'Statuts'})
+    renderDocumentManager([])
+
+    await user.click(
+      screen.getByRole('button', {name: 'Ajouter une catégorie'})
+    )
+    const dialog = screen.getByRole('dialog', {name: 'Ajouter une catégorie'})
+    expect(within(dialog).getAllByRole('textbox')).toHaveLength(1)
+    await user.type(
+      within(dialog).getByRole('textbox', {name: 'Nom de la catégorie'}),
+      'Statuts'
+    )
+    await user.click(
+      within(dialog).getByRole('button', {name: 'Enregistrer la catégorie'})
+    )
+
+    const formData = actions.createAction.mock.calls[0][1] as FormData
+    expect(formData.get('name')).toBe('Statuts')
+    expect(formData.get('routingEmail') ?? '').toBe('')
+  })
+
+  it('la suppression dit que les documents rangés gardent ce nom', async () => {
+    const user = userEvent.setup()
+    renderDocumentManager([category({name: 'Statuts', usageCount: 3})])
+
+    await user.click(screen.getAllByRole('button', {name: 'Modifier'})[0])
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', {
+        name: 'Supprimer la catégorie',
+      })
+    )
+
+    expect(await screen.findByRole('alertdialog')).toHaveTextContent(
+      'Les 3 documents rangés dans cette catégorie restent visibles des membres, sous ce nom.'
+    )
+  })
+})

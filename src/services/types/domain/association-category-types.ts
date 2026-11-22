@@ -10,11 +10,14 @@
 export const CategoryDomainConst = {
   REPORT: 'report',
   QUESTION: 'question',
+  /** Categories des documents partages (s31, ADR 069). */
+  DOCUMENT: 'document',
 } as const
 
 export const CATEGORY_DOMAINS = [
   CategoryDomainConst.REPORT,
   CategoryDomainConst.QUESTION,
+  CategoryDomainConst.DOCUMENT,
 ] as const
 
 export type CategoryDomain = (typeof CATEGORY_DOMAINS)[number]

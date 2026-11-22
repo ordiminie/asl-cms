@@ -86,3 +86,39 @@ describe('TEST_TENANT_CATEGORIES — sujets des questions du premier tenant (s23
     expect(categoriesOf('marketing-pro', 'question')).toEqual([])
   })
 })
+
+describe('TEST_TENANT_CATEGORIES — catégories des documents partagés (s31, ADR 069)', () => {
+  it('donne à TechCorp les trois catégories de seed, sans adresse de routage', () => {
+    expect(categoriesOf('techcorp-solutions', 'document')).toEqual([
+      {
+        organizationSlug: 'techcorp-solutions',
+        domain: 'document',
+        name: 'Statuts',
+        routingEmail: null,
+      },
+      {
+        organizationSlug: 'techcorp-solutions',
+        domain: 'document',
+        name: 'Procès-verbaux',
+        routingEmail: null,
+      },
+      {
+        organizationSlug: 'techcorp-solutions',
+        domain: 'document',
+        name: 'Ordres du jour',
+        routingEmail: null,
+      },
+    ])
+  })
+
+  it('donne à Marketing Pro sa propre catégorie, pour prouver l’isolation', () => {
+    const a = categoriesOf('techcorp-solutions', 'document').map(
+      (row) => row.name
+    )
+    const b = categoriesOf('marketing-pro', 'document')
+
+    expect(b).toHaveLength(1)
+    expect(b[0].routingEmail).toBeNull()
+    expect(a).not.toContain(b[0].name)
+  })
+})

@@ -2006,6 +2006,7 @@
       "reports": "Signalements",
       "memberProfiles": "Propriétaires",
       "memberQuestions": "Questions des membres",
+      "sharedDocuments": "Documents",
       "recipientGroups": "Groupes",
       "campaigns": "Campagnes",
       "sends": "Envois"
@@ -3315,6 +3316,145 @@
       "failed": "Le changement n’a pas été enregistré. Rien n’est perdu : réessayez."
     }
   },
+  "BureauDocumentCategoriesPage": {
+    "metadata": {
+      "title": "Catégories de documents"
+    },
+    "breadcrumb": {
+      "label": "Fil d’Ariane",
+      "parent": "Documents",
+      "categories": "Catégories"
+    },
+    "title": "Catégories de documents",
+    "count": "{count, plural, =0 {0 catégorie} one {# catégorie} other {# catégories}} sur {max} possibles.",
+    "add": "Ajouter une catégorie",
+    "columns": {
+      "name": "Catégorie",
+      "routingEmail": "Adresse de routage",
+      "usage": "Documents rangés",
+      "action": "Action"
+    },
+    "none": "Aucune",
+    "usage": "{count, plural, =0 {0 document} one {# document} other {# documents}}",
+    "edit": "Modifier",
+    "empty": "Aucune catégorie. Un document se range dans une catégorie : créez-en une, par exemple « Statuts ».",
+    "limitReached": "Vous avez déjà {max} catégories, le maximum. Supprimez-en une avant d’en ajouter une autre.",
+    "saved": "Catégorie « {name} » enregistrée.",
+    "deleted": "Catégorie « {name} » supprimée.",
+    "dialog": {
+      "addTitle": "Ajouter une catégorie",
+      "editTitle": "Modifier la catégorie",
+      "summary": "La catégorie n’a pas été enregistrée.",
+      "optional": "Facultatif",
+      "counter": "{count} / {max}",
+      "fields": {
+        "name": {
+          "label": "Nom de la catégorie"
+        },
+        "routingEmail": {
+          "label": "Adresse de routage",
+          "help": ""
+        }
+      },
+      "cancel": "Annuler",
+      "save": "Enregistrer la catégorie",
+      "saving": "Enregistrement…",
+      "delete": "Supprimer la catégorie"
+    },
+    "deleteDialog": {
+      "title": "Supprimer la catégorie « {name} » ?",
+      "description": "Elle ne sera plus proposée au dépôt. {count, plural, =0 {Aucun document n’est rangé dans cette catégorie.} one {Le document rangé dans cette catégorie reste visible des membres, sous ce nom.} other {Les # documents rangés dans cette catégorie restent visibles des membres, sous ce nom.}}",
+      "cancel": "Annuler",
+      "confirm": "Supprimer la catégorie"
+    },
+    "validation": {
+      "nameRequired": "Donnez un nom à la catégorie.",
+      "nameMax": "Le nom ne doit pas dépasser 40 caractères.",
+      "emailInvalid": "Cette adresse semble incomplète. Corrigez-la, ou laissez le champ vide.",
+      "duplicate": "Une catégorie porte déjà ce nom."
+    },
+    "errors": {
+      "forbidden": "Seul le bureau de l’association peut gérer les catégories de documents.",
+      "failed": "Le changement n’a pas été enregistré. Rien n’est perdu : réessayez."
+    }
+  },
+  "BureauSharedDocumentsPage": {
+    "metadata": {
+      "title": "Documents"
+    },
+    "title": "Documents",
+    "intro": "Les documents partagés avec tous les membres de l’association, dans leur espace.",
+    "manageCategories": "Gérer les catégories",
+    "newAction": "Déposer un document",
+    "tableTitle": "Documents partagés",
+    "columns": {
+      "title": "Titre",
+      "category": "Catégorie",
+      "createdAt": "Déposé le",
+      "weight": "Poids",
+      "action": "Action"
+    },
+    "downloadLabel": "Télécharger « {title} » (PDF, {weight})",
+    "remove": "Retirer",
+    "removeLabel": "« {title} »",
+    "empty": "Aucun document partagé. Déposez les statuts, un procès-verbal ou un ordre du jour : tous les membres le verront dans leur espace.",
+    "notice": {
+      "published": "Document déposé. « {title} » est visible dès maintenant dans l’espace des membres, carte « Documents de l’association ».",
+      "publishedUntitled": "Document déposé. Il est visible dès maintenant dans l’espace des membres, carte « Documents de l’association ».",
+      "deleted": "Document retiré. Il n’apparaît plus dans l’espace des membres et son adresse ne sert plus le fichier."
+    },
+    "deleteDialog": {
+      "title": "Retirer « {title} » ?",
+      "description": "Il disparaît de l’espace des membres et son adresse cesse de servir le fichier. Le fichier est effacé : pour le remettre, il faudra le déposer à nouveau.",
+      "cancel": "Annuler",
+      "confirm": "Retirer le document",
+      "pending": "Retrait en cours…"
+    },
+    "errors": {
+      "forbidden": "Seul le bureau de l’association peut gérer les documents partagés.",
+      "failed": "Le document n’a pas été déposé. Rien n’est perdu : réessayez.",
+      "deleteFailed": "Le document n’a pas été retiré. Rechargez la page, puis réessayez."
+    },
+    "form": {
+      "metadataTitle": "Déposer un document",
+      "breadcrumb": {
+        "label": "Fil d’Ariane",
+        "parent": "Documents",
+        "current": "Déposer un document"
+      },
+      "title": "Déposer un document",
+      "titleLabel": "Titre",
+      "titleHelp": "Le titre que lisent les membres, par exemple « Procès-verbal de l’AG du 14 juin 2025 ».",
+      "titleCounter": "{count} / {max}",
+      "categoryLabel": "Catégorie",
+      "categoryPlaceholder": "Choisissez une catégorie",
+      "fileLabel": "Fichier",
+      "fileHelp": "PDF uniquement, {maxSize} Mo au plus.",
+      "chooseFile": "Choisir un fichier",
+      "replaceFile": "Choisir un autre fichier",
+      "fileChosen": "{name} · {weight}",
+      "submit": "Déposer le document",
+      "submitting": "Dépôt en cours…",
+      "cancel": "Annuler",
+      "sending": "Envoi de {name}",
+      "errorSummaryTitle": "Le document n’a pas été déposé. Rien n’est perdu.",
+      "failed": "Le document n’a pas été déposé. Rien n’est perdu : réessayez.",
+      "noCategory": {
+        "title": "Aucune catégorie de document.",
+        "description": "Un document se range dans une catégorie. Créez-en une d’abord, par exemple « Statuts ».",
+        "action": "Gérer les catégories"
+      },
+      "issues": {
+        "title_missing": "Saisissez un titre, par exemple « Statuts de l’ASL ».",
+        "title_too_long": "Le titre ne doit pas dépasser {max} caractères.",
+        "category_missing": "Choisissez une catégorie.",
+        "category_unavailable": "Cette catégorie n’est plus proposée. Choisissez-en une autre.",
+        "file_missing": "Choisissez le fichier PDF à déposer.",
+        "file_format": "Ce fichier n’est pas un PDF. Enregistrez le document en PDF puis déposez-le à nouveau.",
+        "file_size": "Ce fichier pèse {weight} : le plafond est de {maxSize} Mo."
+      }
+    }
+  },
   "SearchPreview": {
     "label": "Dans Google",
     "address": "{host} › {path}",
@@ -4067,6 +4207,16 @@
       "syncFailed": "Les factures n’ont pas pu être mises à jour. Voici vos factures telles qu’elles étaient le {date} à {hour} h {minute}.",
       "syncFailedNever": "Les factures n’ont pas pu être mises à jour.",
       "unlinked": "Vos factures ne sont pas encore reliées à votre espace. Le bureau en est informé et s’en occupe."
+    },
+    "documents": {
+      "title": "Documents de l’association",
+      "description": "Les statuts, procès-verbaux et ordres du jour publiés par le bureau.",
+      "meta": "Déposé le <data>{date}</data> · PDF · <data>{weight}</data>",
+      "download": "Télécharger",
+      "downloadLabel": "Télécharger « {title} » (PDF, {weight})",
+      "footer": "Un document vous manque ? Écrivez au bureau depuis la page <contact>Contact</contact>.",
+      "empty": "Aucun document publié pour l’instant. Les statuts, procès-verbaux et ordres du jour apparaîtront ici dès leur dépôt par le bureau.",
+      "emptyFooter": "Vous cherchez un document ? Écrivez au bureau depuis la page <contact>Contact</contact>."
     }
   },
   "MemberReportPage": {

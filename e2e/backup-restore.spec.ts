@@ -233,6 +233,8 @@ type Fixture = {
   newsIds: string[]
   boardIds: string[]
   waterIds: string[]
+  sharedDocumentIds: string[]
+  documentCategoryIds: string[]
   files: string[]
 }
 
@@ -257,6 +259,8 @@ const seedFixture = async (tenants: string[]): Promise<Fixture> =>
         newsIds: [],
         boardIds: [],
         waterIds: [],
+        sharedDocumentIds: [],
+        documentCategoryIds: [],
         files: [],
       }
       const run = randomUUID().slice(0, 8)
@@ -332,6 +336,19 @@ const seedFixture = async (tenants: string[]): Promise<Fixture> =>
           [tenant, file('affiche.png'), file('rapport.pdf')]
         )
         fixture.waterIds.push(waterRow.rows[0].id)
+
+        const categoryRow = await client.query<{id: string}>(
+          `insert into association_category (organization_id, domain, name)
+           values ($1, 'document', $2) returning id`,
+          [tenant, `Sauvegarde s12c ${run}`]
+        )
+        fixture.documentCategoryIds.push(categoryRow.rows[0].id)
+        const documentRow = await client.query<{id: string}>(
+          `insert into shared_document (organization_id, title, category_id, file_key, file_bytes)
+           values ($1, 'Sauvegarde s12c', $2, $3, 10) returning id`,
+          [tenant, categoryRow.rows[0].id, file('document.pdf')]
+        )
+        fixture.sharedDocumentIds.push(documentRow.rows[0].id)
       }
 
       return fixture
@@ -360,6 +377,14 @@ const removeFixture = async (fixture: Fixture) => {
       await client.query(
         `delete from water_analysis where id = any($1::uuid[])`,
         [fixture.waterIds]
+      )
+      await client.query(
+        `delete from shared_document where id = any($1::uuid[])`,
+        [fixture.sharedDocumentIds]
+      )
+      await client.query(
+        `delete from association_category where id = any($1::uuid[])`,
+        [fixture.documentCategoryIds]
       )
     })
   )
