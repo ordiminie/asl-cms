@@ -104,3 +104,20 @@ describe('createResendTransport', () => {
     ).rejects.toMatchObject({refused: false})
   })
 })
+
+describe('createResendTransport — statistiques (s30, ADR 068)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('le secours ne lit aucune statistique et n’appelle pas le SDK', async () => {
+    await expect(
+      createResendTransport({apiKey: 're_test'}).readTagStatistics({
+        tag: 'campaign-x',
+        startDate: '2026-11-11',
+        endDate: '2026-11-21',
+      })
+    ).resolves.toEqual({status: 'unsupported'})
+    expect(sendMock).not.toHaveBeenCalled()
+  })
+})

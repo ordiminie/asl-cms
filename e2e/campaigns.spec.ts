@@ -1678,3 +1678,157 @@ test.describe('Campagnes — nature des envois (s27b)', () => {
     }
   })
 })
+
+/**
+ * Ouvertures et clics — s30, critères 3 et 4 (ADR 068).
+ *
+ * En CI, `EMAIL_TRANSPORT=file` ne lit aucune statistique : la fiche d'une
+ * campagne envoyée et suivie montre la carte « indisponible », avec la raison
+ * « service sans statistiques », **sans aucun pourcentage** (jamais un zéro
+ * inventé). La campagne de l'essai est écrite
+ * en base sous le scope de TechCorp, terminée, sans passer par l'envoi : la
+ * carte ne dépend que de son état. Depuis Marketing Pro, l'URL forgée est
+ * introuvable et ne rend ni la carte ni un chiffre ; les colonnes du relevé
+ * restent sous la RLS de `campaign`.
+ */
+const STATS_MARKER = `s30-${RUN}`
+const STATS_CARD_TITLE = 'Ouvertures et clics'
+
+const insertSentCampaign = async (organizationId: string): Promise<string> =>
+  inTenantScope(organizationId, async (client) => {
+    const campaign = await client.query<{id: string}>(
+      `insert into campaign
+         (organization_id, submission_id, subject, body_markdown, target_kind,
+          recipient_count, without_email_count, unsubscribed_count, sent_count,
+          status, send_date, stats_tracked, stats_unique_opens,
+          stats_unique_clicks, finished_at)
+       values ($1, uuid_generate_v4(), $2, 'Bonjour {nom}', 'all_members',
+               3, 0, 0, 3, 'sent', current_date, true, null, null, now())
+       returning id`,
+      [organizationId, `Statistiques ${STATS_MARKER}`]
+    )
+    const id = campaign.rows[0].id
+    await client.query(
+      `insert into campaign_part
+         (organization_id, campaign_id, number, scheduled_for, recipient_count,
+          status, finished_at)
+       values ($1, $2, 1, current_date, 3, 'sent', now())`,
+      [organizationId, id]
+    )
+    return id
+  })
+
+test.describe('Campagnes — ouvertures et clics (s30)', () => {
+  let statsCampaignId = ''
+
+  const cleanUpStatsRun = () =>
+    asMaintenance((client) =>
+      client.query(`delete from campaign where subject like $1`, [
+        `%${STATS_MARKER}%`,
+      ])
+    )
+
+  test.beforeAll(async () => {
+    await cleanUpStatsRun()
+    const {a} = await tenantIds()
+    statsCampaignId = await insertSentCampaign(a)
+  })
+
+  test.afterAll(async () => {
+    await cleanUpStatsRun()
+  })
+
+  test('critère 3 — sans statistiques du fournisseur, la carte le dit et ne montre aucun chiffre', async ({
+    browser,
+  }) => {
+    test.setTimeout(120_000)
+    const bureau = await newSession(browser, TENANT_A, OWNER_A)
+    try {
+      await bureau.goto(`${TENANT_A}${CAMPAIGNS_ROUTE}/${statsCampaignId}`, {
+        waitUntil: 'networkidle',
+      })
+      const card = bureau
+        .getByRole('heading', {level: 2, name: STATS_CARD_TITLE})
+        .locator('xpath=..')
+      await expect(
+        card.getByText(
+          'Les statistiques de cette campagne ne sont pas disponibles.'
+        )
+      ).toBeVisible({timeout: 15_000})
+      await expect(
+        card.getByText(
+          'Le service d’envoi utilisé en ce moment ne fournit pas ces statistiques.'
+        )
+      ).toBeVisible()
+      await expect(card.getByRole('definition')).toHaveCount(0)
+      await expect(card.getByText(/\d\s?%/)).toHaveCount(0)
+    } finally {
+      await bureau.context().close()
+    }
+  })
+
+  test('critère 4 — accès croisé : depuis l’autre association, ni la carte ni un chiffre ; le relevé reste sous la RLS', async ({
+    browser,
+  }) => {
+    test.setTimeout(120_000)
+    const ids = await tenantIds()
+    await inTenantScope(ids.a, (client) =>
+      client.query(
+        `update campaign
+            set stats_unique_opens = 2, stats_unique_clicks = 1,
+                stats_read_at = now()
+          where id = $1`,
+        [statsCampaignId]
+      )
+    )
+
+    const seenFromB = await inTenantScope(ids.b, (client) =>
+      client.query(
+        `select stats_unique_opens, stats_unique_clicks, stats_read_at
+           from campaign where id = $1`,
+        [statsCampaignId]
+      )
+    )
+    expect(seenFromB.rowCount, 'un oubli de scope ne fuite pas').toBe(0)
+    const withoutScope = await withAppRoleClient((client) =>
+      client.query(`select stats_unique_opens from campaign where id = $1`, [
+        statsCampaignId,
+      ])
+    )
+    expect(withoutScope.rowCount).toBe(0)
+    const writtenFromB = await inTenantScope(ids.b, (client) =>
+      client.query(
+        `update campaign set stats_unique_opens = 999 where id = $1`,
+        [statsCampaignId]
+      )
+    )
+    expect(writtenFromB.rowCount).toBe(0)
+
+    const boardB = await newSession(browser, TENANT_B, BOARD_B)
+    try {
+      await boardB.goto(`${TENANT_B}${CAMPAIGNS_ROUTE}/${statsCampaignId}`, {
+        waitUntil: 'networkidle',
+      })
+      await expect(
+        boardB.getByText(
+          'Cette campagne n’existe pas ou n’appartient pas à votre association.'
+        )
+      ).toBeVisible({timeout: 15_000})
+      await expect(
+        boardB.getByRole('heading', {level: 2, name: STATS_CARD_TITLE})
+      ).toHaveCount(0)
+      await expect(boardB.getByText(/\d\s?%/)).toHaveCount(0)
+      await expect(boardB.getByText(STATS_MARKER)).toHaveCount(0)
+    } finally {
+      await boardB.context().close()
+    }
+
+    const kept = await inTenantScope(ids.a, (client) =>
+      client.query<{stats_unique_opens: number}>(
+        `select stats_unique_opens from campaign where id = $1`,
+        [statsCampaignId]
+      )
+    )
+    expect(kept.rows[0].stats_unique_opens).toBe(2)
+  })
+})

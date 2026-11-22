@@ -151,8 +151,26 @@ describe('campaign (ADR 051)', () => {
         'created_at',
         'updated_at',
         'finished_at',
+        'stats_tracked',
+        'stats_unique_opens',
+        'stats_unique_clicks',
+        'stats_read_at',
       ].sort()
     )
+  })
+
+  it('statistiques (s30, ADR 068) : suivi non nul, faux par défaut ; relevé nullable', () => {
+    expect(t.column('stats_tracked')?.getSQLType()).toBe('boolean')
+    expect(t.column('stats_tracked')?.notNull).toBe(true)
+    expect(t.column('stats_tracked')?.default).toBe(false)
+    for (const name of ['stats_unique_opens', 'stats_unique_clicks']) {
+      expect(t.column(name)?.getSQLType(), name).toBe('integer')
+      expect(t.column(name)?.notNull, name).toBe(false)
+    }
+    expect(t.column('stats_read_at')?.getSQLType()).toBe(
+      'timestamp with time zone'
+    )
+    expect(t.column('stats_read_at')?.notNull).toBe(false)
   })
 
   it('exige le contenu et les décomptes ; aperçu, modèle et fin nullables', () => {

@@ -8,6 +8,7 @@ import {
   getCampaignComposerContextService,
   getCampaignRecipientsService,
   getCampaignService,
+  getCampaignStatisticsService,
   listCampaignsService,
 } from '@/services/facades/campaign-service-facade'
 import {
@@ -17,6 +18,7 @@ import {
   CampaignReadResult,
   CampaignRecipientFilter,
   CampaignRecipientsReadResult,
+  CampaignStatisticsReadResult,
 } from '@/services/types/domain/campaign-types'
 
 import {requireCurrentTenantDal} from './tenant-dal'
@@ -82,4 +84,17 @@ export const getCampaignLetterContextDal = cache(
     campaignId: string
   ): Promise<CampaignLetterContextResult> =>
     getCampaignLetterContextService(organizationId, campaignId)
+)
+
+/**
+ * Les ouvertures et les clics d'une campagne (s30, ADR 068) : lus chez le
+ * fournisseur a chaque affichage, sans cache persistant (ils changent pendant
+ * des jours), derriere le `<Suspense>` propre a la carte.
+ */
+export const getCampaignStatisticsDal = cache(
+  async (
+    organizationId: string,
+    campaignId: string
+  ): Promise<CampaignStatisticsReadResult> =>
+    getCampaignStatisticsService({organizationId, campaignId})
 )

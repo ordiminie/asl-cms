@@ -595,3 +595,35 @@ describe('CampaignDetail — part reportée faute de budget d’envoi (s52, écr
     expect(screen.queryByText(/reportées au/)).toBeNull()
   })
 })
+
+describe('CampaignDetail — carte « Ouvertures et clics » (s30)', () => {
+  it('juste après « Avancement », avant « Envois par jour »', () => {
+    render(
+      <CampaignDetail
+        campaign={spreadCampaignOf('a')}
+        recipients={recipientsPageOf([recipientOf('r1')])}
+        statistics={<h2>Ouvertures et clics</h2>}
+        associationName="ASL Les Pins"
+        dailySendCap={100}
+        justSent={false}
+      />
+    )
+
+    const titles = screen
+      .getAllByRole('heading', {level: 2})
+      .map((heading) => heading.textContent)
+    expect(titles.slice(0, 3)).toEqual([
+      'Avancement',
+      'Ouvertures et clics',
+      'Envois par jour',
+    ])
+  })
+
+  it('sans carte fournie, rien entre « Avancement » et la suite', () => {
+    renderDetail()
+
+    expect(
+      screen.queryByRole('heading', {level: 2, name: 'Ouvertures et clics'})
+    ).toBeNull()
+  })
+})

@@ -7,6 +7,7 @@ import {EmailTransport, EmailTransportError} from './email-transport'
 /**
  * Transport de developpement et de bout en bout : chaque message est ecrit en
  * JSON dans `dir`, rien ne part. C'est la boite de sortie que lisent les e2e.
+ * Aucune statistique : rien n'est mesure (s30).
  */
 export const createFileTransport = (dir: string): EmailTransport => ({
   send: async (message) => {
@@ -25,4 +26,5 @@ export const createFileTransport = (dir: string): EmailTransport => ({
       })
     }
   },
+  readTagStatistics: async () => ({status: 'unsupported'}),
 })

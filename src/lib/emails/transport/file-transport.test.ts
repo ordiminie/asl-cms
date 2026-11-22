@@ -110,3 +110,40 @@ describe('createMemoryTransport', () => {
     ])
   })
 })
+
+const statisticsQuery = {
+  tag: 'campaign-0d9a2c1e-5b7f-4e8a-9c3d-2f1e0a9b8c7d',
+  startDate: '2026-11-11',
+  endDate: '2026-11-21',
+}
+
+describe('readTagStatistics — transports sans statistiques (s30, ADR 068)', () => {
+  it('le transport fichier ne sait pas lire de statistiques', async () => {
+    await expect(
+      createFileTransport(os.tmpdir()).readTagStatistics(statisticsQuery)
+    ).resolves.toEqual({status: 'unsupported'})
+  })
+
+  it('le transport mémoire répond « non pris en charge » par défaut', async () => {
+    await expect(
+      createMemoryTransport().readTagStatistics(statisticsQuery)
+    ).resolves.toEqual({status: 'unsupported'})
+  })
+
+  it('le transport mémoire rend les statistiques amorcées et trace ses requêtes', async () => {
+    const transport = createMemoryTransport()
+    const found = {
+      status: 'found' as const,
+      requests: 302,
+      delivered: 300,
+      uniqueOpens: 154,
+      uniqueClicks: 42,
+    }
+    transport.setTagStatistics(found)
+
+    await expect(transport.readTagStatistics(statisticsQuery)).resolves.toEqual(
+      found
+    )
+    expect(transport.statisticsQueries).toEqual([statisticsQuery])
+  })
+})

@@ -69,6 +69,7 @@ import {getEmailTransport} from '@/lib/emails/transport'
 import {getBooleanSettingService} from '@/services/app-settings-service'
 import {getAssociationSettingsService} from '@/services/association-settings-service'
 import {
+  readEmailTagStatisticsService,
   sendEmailService,
   sendSimpleEmailService,
 } from '@/services/email-service'
@@ -152,6 +153,7 @@ describe('sendEmailService — tout envoi passe par EmailTransport', () => {
 
   it('laisse remonter l’échec du transport tel quel', async () => {
     vi.mocked(getEmailTransport).mockReturnValue({
+      ...memoryTransport,
       send: vi.fn(() =>
         Promise.reject(new EmailTransportError('brevo', 'refus'))
       ),
@@ -398,6 +400,7 @@ describe('sendEmailService — le budget quotidien se tient dans l’adaptateur 
   it('un refus certain du fournisseur rend l’unité décomptée, puis remonte', async () => {
     vi.mocked(claimReportableSendTxnDao).mockResolvedValue(true)
     vi.mocked(getEmailTransport).mockReturnValue({
+      ...memoryTransport,
       send: vi.fn(() =>
         Promise.reject(
           new EmailTransportError('brevo', 'refus', {refused: true})
@@ -417,6 +420,7 @@ describe('sendEmailService — le budget quotidien se tient dans l’adaptateur 
   it('une issue inconnue garde l’unité décomptée (le budget est un majorant)', async () => {
     vi.mocked(claimReportableSendTxnDao).mockResolvedValue(true)
     vi.mocked(getEmailTransport).mockReturnValue({
+      ...memoryTransport,
       send: vi.fn(() => Promise.reject(new Error('réseau'))),
     })
 
@@ -463,5 +467,77 @@ describe('sendEmailService — le budget quotidien se tient dans l’adaptateur 
       )
     expect(callWithoutContext).toBeTypeOf('function')
     expect(callWithOptionsOnly).toBeTypeOf('function')
+  })
+})
+
+describe('sendEmailService — étiquettes du fournisseur (s30, ADR 068)', () => {
+  beforeEach(() => {
+    memoryTransport.messages.length = 0
+    vi.mocked(getEmailTransport).mockReturnValue(memoryTransport)
+  })
+
+  it('un envoi étiqueté arrive étiqueté au transport', async () => {
+    await sendEmailService(
+      {
+        to: 'membre@exemple.test',
+        subject: 'Objet',
+        text: 'Texte',
+        tags: ['campaign-0d9a2c1e-5b7f-4e8a-9c3d-2f1e0a9b8c7d'],
+      },
+      PLATFORM,
+      {recipientType: 'system'}
+    )
+
+    expect(memoryTransport.messages[0].tags).toEqual([
+      'campaign-0d9a2c1e-5b7f-4e8a-9c3d-2f1e0a9b8c7d',
+    ])
+  })
+
+  it('un envoi sans étiquette n’a pas de `tags`', async () => {
+    await sendEmailService(
+      {to: 'membre@exemple.test', subject: 'Objet', text: 'Texte'},
+      PLATFORM,
+      {recipientType: 'system'}
+    )
+
+    expect(memoryTransport.messages[0]).not.toHaveProperty('tags')
+  })
+})
+
+describe('readEmailTagStatisticsService — lecture par le transport actif (s30)', () => {
+  const query = {
+    tag: 'campaign-0d9a2c1e-5b7f-4e8a-9c3d-2f1e0a9b8c7d',
+    startDate: '2026-11-11',
+    endDate: '2026-11-21',
+  }
+
+  beforeEach(() => {
+    memoryTransport.statisticsQueries.length = 0
+    memoryTransport.setTagStatistics({status: 'unsupported'})
+    vi.mocked(getEmailTransport).mockReturnValue(memoryTransport)
+  })
+
+  afterEach(() => {
+    memoryTransport.setTagStatistics({status: 'unsupported'})
+  })
+
+  it('rend l’agrégat du transport pour la requête reçue', async () => {
+    const found = {
+      status: 'found' as const,
+      requests: 302,
+      delivered: 300,
+      uniqueOpens: 154,
+      uniqueClicks: 42,
+    }
+    memoryTransport.setTagStatistics(found)
+
+    await expect(readEmailTagStatisticsService(query)).resolves.toEqual(found)
+    expect(memoryTransport.statisticsQueries).toEqual([query])
+  })
+
+  it('un transport sans statistiques le dit', async () => {
+    await expect(readEmailTagStatisticsService(query)).resolves.toEqual({
+      status: 'unsupported',
+    })
   })
 })

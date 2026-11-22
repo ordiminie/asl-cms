@@ -11,6 +11,7 @@ vi.mock('@/services/facades/campaign-service-facade', () => ({
   listCampaignsService: vi.fn(),
   getCampaignService: vi.fn(),
   getCampaignRecipientsService: vi.fn(),
+  getCampaignStatisticsService: vi.fn(),
 }))
 vi.mock('@/services/facades/campaign-letter-service-facade', () => ({
   getCampaignLetterContextService: vi.fn(),
@@ -26,6 +27,7 @@ import {
   getCampaignComposerContextService,
   getCampaignRecipientsService,
   getCampaignService,
+  getCampaignStatisticsService,
   listCampaignsService,
 } from '@/services/facades/campaign-service-facade'
 import {
@@ -40,6 +42,7 @@ import {
   getCampaignLetterContextDal,
   getCampaignRecipientsDal,
   getCampaignsPageDal,
+  getCampaignStatisticsDal,
 } from './campaign-dal'
 import {requireCurrentTenantDal} from './tenant-dal'
 import {
@@ -129,6 +132,24 @@ describe('campaign-dal (s25)', () => {
 
     await expect(canManageCurrentCampaignsDal()).resolves.toBe(false)
     expect(canManageCampaignsService).toHaveBeenCalledWith(ORG_A)
+  })
+
+  it('lit les statistiques d’une campagne, pour le tenant passé (s30)', async () => {
+    vi.mocked(getCampaignStatisticsService).mockResolvedValue({
+      status: 'found',
+      statistics: {state: 'pending_provider'},
+    })
+
+    await expect(getCampaignStatisticsDal(ORG_A, CAMPAIGN_ID)).resolves.toEqual(
+      {
+        status: 'found',
+        statistics: {state: 'pending_provider'},
+      }
+    )
+    expect(getCampaignStatisticsService).toHaveBeenCalledWith({
+      organizationId: ORG_A,
+      campaignId: CAMPAIGN_ID,
+    })
   })
 
   it('laisse remonter un refus d’autorisation', async () => {

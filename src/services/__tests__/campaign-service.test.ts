@@ -42,6 +42,7 @@ vi.mock('@/db/repositories/campaign-repository', () => ({
   markCampaignPartDeferredTxnDao: vi.fn(),
   getSlidableCampaignPartsDao: vi.fn(),
   moveCampaignPartTxnDao: vi.fn(),
+  saveCampaignStatisticsTxnDao: vi.fn(),
 }))
 vi.mock('@/db/repositories/recipient-group-repository', () => ({
   getRecipientGroupByIdDao: vi.fn(),
@@ -66,6 +67,7 @@ vi.mock('../association-settings-service', () => ({
 vi.mock('../email-service', () => ({
   sendEmailService: vi.fn(),
   isClientEmailEnabledService: vi.fn(),
+  readEmailTagStatisticsService: vi.fn(),
 }))
 vi.mock('@/lib/emails/campaign-email', () => ({
   default: vi.fn(async () => null),
@@ -111,6 +113,7 @@ import {
   markStaleSendingRecipientsToVerifyTxnDao,
   moveCampaignPartTxnDao,
   releaseRecipientClaimTxnDao,
+  saveCampaignStatisticsTxnDao,
   startCampaignPartTxnDao,
 } from '@/db/repositories/campaign-repository'
 import {getOrganizationByIdDao} from '@/db/repositories/organization-repository'
@@ -136,12 +139,17 @@ import {
   getCampaignComposerContextService,
   getCampaignRecipientsService,
   getCampaignService,
+  getCampaignStatisticsService,
   listCampaignsService,
   previewCampaignPlanService,
   previewCampaignService,
   sendCampaignService,
 } from '../campaign-service'
-import {isClientEmailEnabledService, sendEmailService} from '../email-service'
+import {
+  isClientEmailEnabledService,
+  readEmailTagStatisticsService,
+  sendEmailService,
+} from '../email-service'
 import {AuthorizationError} from '../errors/authorization-error'
 import {CampaignTargetUnavailableError} from '../errors/campaign-errors'
 import {NotFoundError} from '../errors/not-found-error'
@@ -301,6 +309,8 @@ const expectNoDaoCall = () => {
     getCampaignRecipientsPageDao,
     getCampaignPartsDao,
     getRecipientStatusCountsDao,
+    saveCampaignStatisticsTxnDao,
+    readEmailTagStatisticsService,
   ]) {
     expect(dao).not.toHaveBeenCalled()
   }
@@ -401,6 +411,14 @@ const calls: [string, () => Promise<unknown>][] = [
         campaignId: CAMPAIGN_ID,
         filter: 'all',
         page: 1,
+      }),
+  ],
+  [
+    'lire les statistiques',
+    () =>
+      getCampaignStatisticsService({
+        organizationId: ORG_ID,
+        campaignId: CAMPAIGN_ID,
       }),
   ],
 ]
@@ -2726,5 +2744,259 @@ describe('nature des envois — réintégration des désinscrits (s27b, ADR 064)
       previewCampaignPlanService(ORG_ID, ALL, 'urgent' as never)
     ).rejects.toBeInstanceOf(ValidationParsedZodError)
     expect(getCampaignTargetRowsDao).not.toHaveBeenCalled()
+  })
+})
+
+describe('campagnes étiquetées pour leurs statistiques (s30, ADR 068)', () => {
+  beforeEach(async () => {
+    await setupAuthUserMocked(board)
+  })
+
+  it('deux parts livrées : chaque email porte le même tag de campagne (critère 2)', async () => {
+    const store = fakeStore()
+    store.parts = twoParts()
+    store.recipients = [
+      ...recipientsOf(PART_1, 3),
+      ...recipientsOf(PART_2, 2, 4),
+    ]
+
+    await deliver(PART_1)
+    await deliver(PART_2)
+
+    const tags = vi
+      .mocked(sendEmailService)
+      .mock.calls.map(([payload]) => payload.tags)
+    expect(tags).toHaveLength(5)
+    for (const tag of tags) expect(tag).toEqual([`campaign-${CAMPAIGN_ID}`])
+  })
+
+  it('la campagne créée est suivie : ses statistiques pourront être lues', async () => {
+    await sendCampaignService(sendInput)
+
+    const [campaign] = vi.mocked(createCampaignWithRecipientsTxnDao).mock
+      .calls[0]
+    expect(campaign).toMatchObject({statsTracked: true})
+  })
+})
+
+describe('getCampaignStatisticsService — ouvertures et clics (s30, ADR 068)', () => {
+  const NOW = new Date('2026-11-12T13:32:00.000Z')
+  const TAG_QUERY = {
+    tag: `campaign-${CAMPAIGN_ID}`,
+    startDate: '2026-11-11',
+    endDate: '2026-11-12',
+  }
+  const consolidated = {
+    status: 'found' as const,
+    requests: 302,
+    delivered: 300,
+    uniqueOpens: 154,
+    uniqueClicks: 42,
+  }
+  const sentCampaign = (overrides: Record<string, unknown> = {}) =>
+    campaignRow({
+      status: 'sent',
+      sentCount: 302,
+      statsTracked: true,
+      statsUniqueOpens: null,
+      statsUniqueClicks: null,
+      statsReadAt: null,
+      finishedAt: new Date('2026-11-12T13:40:00Z'),
+      ...overrides,
+    }) as never
+  const read = () =>
+    getCampaignStatisticsService(
+      {organizationId: ORG_ID, campaignId: CAMPAIGN_ID},
+      NOW
+    )
+
+  beforeEach(async () => {
+    await setupAuthUserMocked(board)
+    vi.mocked(getCampaignByIdDao).mockResolvedValue(sentCampaign())
+    vi.mocked(readEmailTagStatisticsService).mockResolvedValue(consolidated)
+    vi.mocked(saveCampaignStatisticsTxnDao).mockResolvedValue()
+  })
+
+  it('[ORGANIZATION ADMIN] le bureau lit les chiffres consolidés de sa campagne (critère 1)', async () => {
+    await expect(read()).resolves.toEqual({
+      status: 'found',
+      statistics: {
+        state: 'available',
+        sentCount: 302,
+        uniqueOpens: 154,
+        uniqueClicks: 42,
+        openRate: 51,
+        clickRate: 14,
+        readAt: NOW.toISOString(),
+        fromSnapshot: false,
+      },
+    })
+    expect(readEmailTagStatisticsService).toHaveBeenCalledWith(TAG_QUERY)
+  })
+
+  it('[SUPER_ADMIN] le SuperAdmin hors imitation lit aussi', async () => {
+    await setupAuthUserMocked(userTestSuperAdmin)
+
+    await expect(read()).resolves.toMatchObject({status: 'found'})
+  })
+
+  it('la campagne est lue sous le tenant avant tout appel au fournisseur', async () => {
+    const order: string[] = []
+    vi.mocked(getCampaignByIdDao).mockImplementation(async () => {
+      order.push(`campaign:${scope.current}`)
+      return sentCampaign()
+    })
+    vi.mocked(readEmailTagStatisticsService).mockImplementation(async () => {
+      order.push(`provider:${scope.current}`)
+      return consolidated
+    })
+
+    await read()
+
+    expect(order).toEqual([`campaign:${ORG_ID}`, 'provider:undefined'])
+    expect(getCampaignByIdDao).toHaveBeenCalledWith(ORG_ID, CAMPAIGN_ID)
+  })
+
+  it('une campagne d’une autre association est introuvable, le fournisseur jamais appelé (critère 4)', async () => {
+    vi.mocked(getCampaignByIdDao).mockResolvedValue(undefined)
+
+    await expect(read()).resolves.toEqual({status: 'not_found'})
+    expect(readEmailTagStatisticsService).not.toHaveBeenCalled()
+    expect(saveCampaignStatisticsTxnDao).not.toHaveBeenCalled()
+  })
+
+  it('consolidé : le relevé est écrit sous le tenant', async () => {
+    const scopes: (string | undefined)[] = []
+    vi.mocked(saveCampaignStatisticsTxnDao).mockImplementation(async () => {
+      scopes.push(scope.current)
+    })
+
+    await read()
+
+    expect(saveCampaignStatisticsTxnDao).toHaveBeenCalledWith(CAMPAIGN_ID, {
+      uniqueOpens: 154,
+      uniqueClicks: 42,
+      readAt: NOW,
+    })
+    expect(scopes).toEqual([ORG_ID])
+  })
+
+  it('pas encore consolidé : « pas encore », aucun relevé écrit (critère 3)', async () => {
+    vi.mocked(readEmailTagStatisticsService).mockResolvedValue({
+      ...consolidated,
+      requests: 12,
+    })
+
+    await expect(read()).resolves.toEqual({
+      status: 'found',
+      statistics: {state: 'pending_provider'},
+    })
+    expect(saveCampaignStatisticsTxnDao).not.toHaveBeenCalled()
+  })
+
+  it('fournisseur en échec : indisponible, journalisé sans le message, rien écrit', async () => {
+    vi.mocked(readEmailTagStatisticsService).mockRejectedValue(
+      new EmailTransportError('brevo', 'Brevo injoignable secret-detail')
+    )
+
+    await expect(read()).resolves.toEqual({
+      status: 'found',
+      statistics: {state: 'unavailable', reason: 'unreachable'},
+    })
+    expect(saveCampaignStatisticsTxnDao).not.toHaveBeenCalled()
+    expect(JSON.stringify(vi.mocked(logger.error).mock.calls)).not.toContain(
+      'secret-detail'
+    )
+    expect(logger.error).toHaveBeenCalled()
+  })
+
+  it('fournisseur en échec avec un relevé : le relevé conservé, sans réécriture', async () => {
+    vi.mocked(getCampaignByIdDao).mockResolvedValue(
+      sentCampaign({
+        statsUniqueOpens: 150,
+        statsUniqueClicks: 40,
+        statsReadAt: new Date('2026-11-12T10:00:00Z'),
+      })
+    )
+    vi.mocked(readEmailTagStatisticsService).mockRejectedValue(
+      new EmailTransportError('brevo', 'Brevo injoignable')
+    )
+
+    await expect(read()).resolves.toMatchObject({
+      status: 'found',
+      statistics: {
+        state: 'available',
+        uniqueOpens: 150,
+        uniqueClicks: 40,
+        readAt: '2026-11-12T10:00:00.000Z',
+        fromSnapshot: true,
+      },
+    })
+    expect(saveCampaignStatisticsTxnDao).not.toHaveBeenCalled()
+  })
+
+  it('campagne en cours : dernier jour d’envoi lu des parts, fournisseur non appelé', async () => {
+    vi.mocked(getCampaignByIdDao).mockResolvedValue(
+      sentCampaign({status: 'sending', sentCount: 100, finishedAt: null})
+    )
+    vi.mocked(getCampaignPartsDao).mockResolvedValue([
+      {
+        id: 'p1',
+        campaignId: CAMPAIGN_ID,
+        number: 1,
+        scheduledFor: '2026-11-12',
+        recipientCount: 100,
+        status: 'sent',
+        deferredTo: '2026-11-15',
+      },
+      {
+        id: 'p2',
+        campaignId: CAMPAIGN_ID,
+        number: 2,
+        scheduledFor: '2026-11-14',
+        recipientCount: 100,
+        status: 'scheduled',
+        deferredTo: null,
+      },
+    ])
+
+    await expect(read()).resolves.toEqual({
+      status: 'found',
+      statistics: {state: 'pending_sending', lastSendDay: '2026-11-15'},
+    })
+    expect(getCampaignPartsDao).toHaveBeenCalledWith([CAMPAIGN_ID])
+    expect(readEmailTagStatisticsService).not.toHaveBeenCalled()
+  })
+
+  it('campagne antérieure à s30 (non suivie) : indisponible, fournisseur non appelé', async () => {
+    vi.mocked(getCampaignByIdDao).mockResolvedValue(
+      sentCampaign({statsTracked: false})
+    )
+
+    await expect(read()).resolves.toEqual({
+      status: 'found',
+      statistics: {state: 'unavailable', reason: 'untracked'},
+    })
+    expect(readEmailTagStatisticsService).not.toHaveBeenCalled()
+  })
+
+  it('à 00:30 à Paris (23:30 UTC la veille) : Brevo lit jusqu’au jour UTC, jamais « demain »', async () => {
+    await getCampaignStatisticsService(
+      {organizationId: ORG_ID, campaignId: CAMPAIGN_ID},
+      new Date('2026-11-12T23:30:00.000Z')
+    )
+
+    expect(readEmailTagStatisticsService).toHaveBeenCalledWith(TAG_QUERY)
+  })
+
+  it('identifiant hors forme : erreur de validation, aucune lecture', async () => {
+    await expect(
+      getCampaignStatisticsService(
+        {organizationId: ORG_ID, campaignId: 'pas-un-uuid'},
+        NOW
+      )
+    ).rejects.toBeInstanceOf(ValidationParsedZodError)
+    expect(getCampaignByIdDao).not.toHaveBeenCalled()
+    expect(readEmailTagStatisticsService).not.toHaveBeenCalled()
   })
 })

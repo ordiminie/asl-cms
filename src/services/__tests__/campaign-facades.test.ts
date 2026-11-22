@@ -12,6 +12,7 @@ describe('façades des campagnes (s25, ADR 051)', () => {
         'getCampaignComposerContextService',
         'getCampaignRecipientsService',
         'getCampaignService',
+        'getCampaignStatisticsService',
         'listCampaignsService',
         'previewCampaignPlanService',
         'previewCampaignService',

@@ -34,6 +34,7 @@ import type {
   CampaignRecipientsPageDTO,
 } from '@/services/types/domain/campaign-types'
 
+import {CardHeading} from './campaign-card-heading'
 import {
   dayLabelOf,
   daysInWordsOf,
@@ -57,6 +58,12 @@ type CampaignDetailProps = {
   recipients: CampaignRecipientsPageDTO | null
   /** Le courrier postal (s28) ; absent s'il n'a pas pu etre lu : pas de carte. */
   letters?: CampaignLetterContextResult | null
+  /**
+   * La carte « Ouvertures et clics » (s30), deja enveloppee par la page dans
+   * son propre `<Suspense>` : la lecture du fournisseur ne retarde jamais la
+   * fiche.
+   */
+  statistics?: ReactNode
   associationName: string
   /** Le plafond quotidien des campagnes de l'association (Resume). */
   dailySendCap: number
@@ -81,6 +88,7 @@ export function CampaignDetail({
   campaign,
   recipients,
   letters,
+  statistics,
   associationName,
   dailySendCap,
   justSent,
@@ -96,6 +104,7 @@ export function CampaignDetail({
 
       <StateBanner campaign={campaign} justSent={justSent} />
       <ProgressCard campaign={campaign} />
+      {statistics}
       {campaign.parts.length > 1 && <PartsCard campaign={campaign} />}
       <RecipientsCard campaign={campaign} recipients={recipients} />
       {letters && (
@@ -306,14 +315,6 @@ function FailedAlert({campaign}: {campaign: CampaignDTO}) {
         </p>
       </AlertDescription>
     </Alert>
-  )
-}
-
-function CardHeading({children}: {children: ReactNode}) {
-  return (
-    <h2 className="font-serif text-[24px] leading-snug font-semibold">
-      {children}
-    </h2>
   )
 }
 

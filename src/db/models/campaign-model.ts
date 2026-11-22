@@ -1,5 +1,6 @@
 import {sql} from 'drizzle-orm'
 import {
+  boolean,
   date,
   index,
   integer,
@@ -108,6 +109,17 @@ export const campaign = pgTable(
       .defaultNow()
       .notNull(),
     finishedAt: timestamp('finished_at', {withTimezone: true}),
+    /**
+     * Statistiques de campagne (s30, ADR 068) : `stats_tracked` dit que chaque
+     * email porte le tag fournisseur de la campagne (`false` pour les
+     * campagnes anterieures, jamais agregees). Le releve conserve
+     * (`stats_unique_*`, `stats_read_at`) n'est ecrit qu'a la consolidation de
+     * l'agregat Brevo : restitution, pas mesure. Sous la RLS de `campaign`.
+     */
+    statsTracked: boolean('stats_tracked').default(false).notNull(),
+    statsUniqueOpens: integer('stats_unique_opens'),
+    statsUniqueClicks: integer('stats_unique_clicks'),
+    statsReadAt: timestamp('stats_read_at', {withTimezone: true}),
   },
   (table) => [
     unique('campaign_organization_submission_unique').on(

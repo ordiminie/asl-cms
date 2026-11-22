@@ -6,22 +6,33 @@ import type {
   CampaignRecipientsPageDTO,
 } from '@/services/types/domain/campaign-types'
 
+const closedOf = (displayState: CampaignPartDTO['displayState']) =>
+  displayState !== 'scheduled' && displayState !== 'sending'
+
 export const partOf = (
   number: number,
   day: string,
   recipientCount: number,
   overrides: Partial<CampaignPartDTO> = {}
-): CampaignPartDTO => ({
-  number,
-  day,
-  recipientCount,
-  receivedCount: recipientCount,
-  toVerifyCount: 0,
-  displayState: 'sent',
-  deferredUntil: null,
-  deferredCount: 0,
-  ...overrides,
-})
+): CampaignPartDTO => {
+  const receivedCount = overrides.receivedCount ?? recipientCount
+  const toVerifyCount = overrides.toVerifyCount ?? 0
+  const sent =
+    closedOf(overrides.displayState ?? 'sent') &&
+    receivedCount + toVerifyCount > 0
+  return {
+    number,
+    day,
+    recipientCount,
+    receivedCount,
+    toVerifyCount,
+    displayState: 'sent',
+    deferredUntil: null,
+    deferredCount: 0,
+    sentDay: sent ? day : null,
+    ...overrides,
+  }
+}
 
 /** La campagne de 296 membres en trois parts, part 3 programmee (ecran 2a). */
 export const spreadCampaignOf = (

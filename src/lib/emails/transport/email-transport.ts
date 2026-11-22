@@ -17,10 +17,41 @@ export type EmailMessage = {
   headers?: Record<string, string>
   /** Adresse de reponse, une adresse seule. */
   replyTo?: string
+  /**
+   * Etiquettes du fournisseur (s30, ADR 068) : `campaign-<uuid>` sur chaque
+   * email d'une campagne, pour en agreger les statistiques.
+   */
+  tags?: string[]
 }
+
+/** Une plage de jours `YYYY-MM-DD` pour l'agregat d'un tag (ADR 068 §6). */
+export type TagStatisticsQuery = {
+  tag: string
+  startDate: string
+  endDate: string
+}
+
+/**
+ * L'agregat d'un tag tel que le fournisseur le compte, ou `unsupported` pour
+ * un transport qui ne sait pas lire de statistiques (ADR 068 §2).
+ */
+export type TagStatisticsResult =
+  | {
+      status: 'found'
+      requests: number
+      delivered: number
+      uniqueOpens: number
+      uniqueClicks: number
+    }
+  | {status: 'unsupported'}
 
 export type EmailTransport = {
   send: (message: EmailMessage) => Promise<void>
+  /**
+   * Obligatoire (ADR 068 §2) : un transport sans statistiques le dit par
+   * `unsupported`. Un echec reseau ou un refus leve `EmailTransportError`.
+   */
+  readTagStatistics: (query: TagStatisticsQuery) => Promise<TagStatisticsResult>
 }
 
 export const EMAIL_TRANSPORT_NAMES = [
