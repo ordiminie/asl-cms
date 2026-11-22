@@ -8,6 +8,7 @@ import type {
   MyLandDTO,
   MyLandsDTO,
 } from '@/services/types/domain/member-space-types'
+import type {SharedDocumentDTO} from '@/services/types/domain/shared-document-types'
 
 import {MemberSpace, MemberSpaceLoading} from './member-space'
 
@@ -39,13 +40,19 @@ const renderSpace = async (
     syncedAt: null,
     lastSyncFailed: false,
     unlinked: false,
-  }
+  },
+  options: {
+    documents?: SharedDocumentDTO[]
+    /** Sans fiche : la lecture des coordonnees ne rend rien (C5). */
+    withoutProfile?: boolean
+  } = {}
 ) => {
   const parcelsPromise = Promise.resolve(lands)
-  const contactPromise = Promise.resolve({
-    ...CONTACT,
-    landCount: lands.lands.length,
-  })
+  const contactPromise = Promise.resolve(
+    options.withoutProfile
+      ? undefined
+      : {...CONTACT, landCount: lands.lands.length}
+  )
   await act(async () => {
     render(
       <Suspense fallback={null}>
@@ -64,6 +71,7 @@ const renderSpace = async (
           reportSent={false}
           invoicesPromise={Promise.resolve(invoices ?? undefined)}
           openInvoicePdfAction={vi.fn()}
+          sharedDocumentsPromise={Promise.resolve(options.documents ?? [])}
         />
       </Suspense>
     )
@@ -289,5 +297,63 @@ describe('MemberSpace — « Mes factures » (s19, écran 1)', () => {
     await renderSpace(THREE_LANDS, null)
 
     expect(screen.queryByRole('region', {name: 'Mes factures'})).toBeNull()
+  })
+})
+
+describe('MemberSpace — « Documents de l’association » (s31, écran 1)', () => {
+  const DOCUMENTS: SharedDocumentDTO[] = [
+    {
+      id: '33333333-3333-4333-8333-333333333333',
+      title: 'Statuts de l’ASL',
+      categoryName: 'Statuts',
+      fileBytes: 620 * 1024,
+      createdAt: new Date('2026-01-10T10:00:00Z'),
+    },
+  ]
+  const documentsCard = () =>
+    screen.findByRole('region', {name: 'Documents de l’association'})
+  const follows = (a: Element, b: Element) =>
+    Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)
+
+  it('avec parcelles : la carte suit « Mes factures »', async () => {
+    await renderSpace(THREE_LANDS, undefined, {documents: DOCUMENTS})
+
+    const card = await documentsCard()
+    const invoices = screen.getByRole('region', {name: 'Mes factures'})
+    const contact = screen.getByRole('region', {name: 'Mes coordonnées'})
+    expect(follows(invoices, card)).toBe(true)
+    expect(follows(card, contact)).toBe(true)
+    expect(within(card).getByText('Statuts de l’ASL')).toBeInTheDocument()
+  })
+
+  it('sans parcelle : la carte suit « Mes coordonnées »', async () => {
+    await renderSpace({accountName: 'Lucie', lands: []}, undefined, {
+      documents: DOCUMENTS,
+    })
+
+    const card = await documentsCard()
+    const contact = screen.getByRole('region', {name: 'Mes coordonnées'})
+    expect(follows(contact, card)).toBe(true)
+  })
+
+  it('sans fiche (compte du bureau, par exemple) : la carte est rendue sous le titre', async () => {
+    await renderSpace({accountName: 'Lucie', lands: []}, null, {
+      documents: DOCUMENTS,
+      withoutProfile: true,
+    })
+
+    const card = await documentsCard()
+    expect(within(card).getByText('Statuts de l’ASL')).toBeInTheDocument()
+    expect(screen.queryByRole('region', {name: 'Mes coordonnées'})).toBeNull()
+  })
+
+  it('aucun lien de la page ne pointe vers un chemin de stockage', async () => {
+    await renderSpace(THREE_LANDS, undefined, {documents: DOCUMENTS})
+    await documentsCard()
+
+    const hrefs = screen
+      .getAllByRole('link')
+      .map((link) => link.getAttribute('href') ?? '')
+    expect(hrefs.some((href) => href.includes('shared-documents/'))).toBe(false)
   })
 })

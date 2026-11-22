@@ -81,11 +81,14 @@ type CategoryFormAction = (
 ) => Promise<CategoryActionResult>
 
 /**
- * Les espaces de libelles des ecrans de categories : signalements (s10) et
- * sujets des questions des membres (s23). Memes cles, textes adaptes.
+ * Les espaces de libelles des ecrans de categories : signalements (s10),
+ * sujets des questions des membres (s23) et categories des documents
+ * partages (s31). Memes cles, textes adaptes.
  */
 export type CategoryLabelsNamespace =
-  'BureauReportCategoriesPage' | 'BureauQuestionCategoriesPage'
+  | 'BureauReportCategoriesPage'
+  | 'BureauQuestionCategoriesPage'
+  | 'BureauDocumentCategoriesPage'
 
 const CategoryLabelsContext = createContext<CategoryLabelsNamespace>(
   'BureauReportCategoriesPage'
@@ -110,6 +113,11 @@ type ReportCategoriesManagerProps = {
   intro?: ReactNode
   /** Une colonne du nombre d'objets portant chaque categorie (s23). */
   showUsageCount?: boolean
+  /**
+   * L'adresse de routage, colonne et champ du `dialog` ; masquee pour un
+   * domaine qui n'envoie rien (s31 : les documents partages).
+   */
+  showRoutingEmail?: boolean
 }
 
 type Editing = {mode: 'add'} | {mode: 'edit'; category: ManagedCategoryDTO}
@@ -152,6 +160,7 @@ function CategoriesScreen({
   backHref = REPORTS_PATH,
   intro,
   showUsageCount = false,
+  showRoutingEmail = true,
 }: Omit<ReportCategoriesManagerProps, 'labels'>) {
   const t = useCategoryTranslations()
   const [editing, setEditing] = useState<Editing | null>(null)
@@ -240,6 +249,7 @@ function CategoriesScreen({
               <CategoriesTable
                 items={list.items}
                 showUsageCount={showUsageCount}
+                showRoutingEmail={showRoutingEmail}
                 onEdit={(category) => setEditing({mode: 'edit', category})}
               />
             </CardContent>
@@ -250,6 +260,7 @@ function CategoriesScreen({
                 <CategoryCard
                   category={category}
                   showUsageCount={showUsageCount}
+                  showRoutingEmail={showRoutingEmail}
                   onEdit={() => setEditing({mode: 'edit', category})}
                 />
               </li>
@@ -268,6 +279,7 @@ function CategoriesScreen({
         }}
         createAction={createAction}
         updateAction={updateAction}
+        showRoutingEmail={showRoutingEmail}
       />
 
       <DeleteCategoryDialog
@@ -329,10 +341,12 @@ function RoutingEmail({email}: {email: string | null}) {
 function CategoriesTable({
   items,
   showUsageCount,
+  showRoutingEmail,
   onEdit,
 }: {
   items: ManagedCategoryDTO[]
   showUsageCount: boolean
+  showRoutingEmail: boolean
   onEdit: (category: ManagedCategoryDTO) => void
 }) {
   const t = useCategoryTranslations()
@@ -342,7 +356,9 @@ function CategoriesTable({
       <TableHeader>
         <TableRow>
           <TableHead className="px-4">{t('columns.name')}</TableHead>
-          <TableHead>{t('columns.routingEmail')}</TableHead>
+          {showRoutingEmail && (
+            <TableHead>{t('columns.routingEmail')}</TableHead>
+          )}
           {showUsageCount && <TableHead>{t('columns.usage')}</TableHead>}
           <TableHead>{t('columns.action')}</TableHead>
         </TableRow>
@@ -353,9 +369,11 @@ function CategoriesTable({
             <TableCell className="px-4 text-[17px] font-semibold">
               {category.name}
             </TableCell>
-            <TableCell className="text-[17px]">
-              <RoutingEmail email={category.routingEmail} />
-            </TableCell>
+            {showRoutingEmail && (
+              <TableCell className="text-[17px]">
+                <RoutingEmail email={category.routingEmail} />
+              </TableCell>
+            )}
             {showUsageCount && (
               <TableCell className="text-[17px] tabular-nums">
                 {t('usage', {count: category.usageCount})}
@@ -381,10 +399,12 @@ function CategoriesTable({
 function CategoryCard({
   category,
   showUsageCount,
+  showRoutingEmail,
   onEdit,
 }: {
   category: ManagedCategoryDTO
   showUsageCount: boolean
+  showRoutingEmail: boolean
   onEdit: () => void
 }) {
   const t = useCategoryTranslations()
@@ -393,10 +413,16 @@ function CategoryCard({
     <Card className="gap-3 px-4 py-4 shadow-none">
       <h2 className="text-lg leading-snug font-semibold">{category.name}</h2>
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-[17px]">
-        <dt className="text-muted-foreground">{t('columns.routingEmail')}</dt>
-        <dd>
-          <RoutingEmail email={category.routingEmail} />
-        </dd>
+        {showRoutingEmail && (
+          <>
+            <dt className="text-muted-foreground">
+              {t('columns.routingEmail')}
+            </dt>
+            <dd>
+              <RoutingEmail email={category.routingEmail} />
+            </dd>
+          </>
+        )}
         {showUsageCount && (
           <>
             <dt className="text-muted-foreground">{t('columns.usage')}</dt>
@@ -429,6 +455,7 @@ function CategoryDialog({
   onDelete,
   createAction,
   updateAction,
+  showRoutingEmail,
 }: {
   editing: Editing | null
   onClose: () => void
@@ -436,6 +463,7 @@ function CategoryDialog({
   onDelete: (category: ManagedCategoryDTO) => void
   createAction: CategoryFormAction
   updateAction: CategoryFormAction
+  showRoutingEmail: boolean
 }) {
   const t = useCategoryTranslations('dialog')
 
@@ -459,6 +487,7 @@ function CategoryDialog({
               onSaved={onSaved}
               onDelete={onDelete}
               action={editing.mode === 'add' ? createAction : updateAction}
+              showRoutingEmail={showRoutingEmail}
             />
           </>
         )}
@@ -473,12 +502,14 @@ function CategoryForm({
   onSaved,
   onDelete,
   action,
+  showRoutingEmail,
 }: {
   editing: Editing
   onCancel: () => void
   onSaved: (result: CategoryActionResult) => void
   onDelete: (category: ManagedCategoryDTO) => void
   action: CategoryFormAction
+  showRoutingEmail: boolean
 }) {
   const t = useCategoryTranslations()
   const category = editing.mode === 'edit' ? editing.category : undefined
@@ -558,35 +589,37 @@ function CategoryForm({
           )}
         />
 
-        <FormField
-          control={form.control}
-          name="routingEmail"
-          render={({field}) => (
-            <FormItem>
-              <FormLabel className="text-base font-medium">
-                {t('dialog.fields.routingEmail.label')}{' '}
-                <span className="text-muted-foreground font-normal">
-                  {t('dialog.optional')}
-                </span>
-              </FormLabel>
-              <FormControl>
-                <Input
-                  type="email"
-                  inputMode="email"
-                  autoComplete="off"
-                  autoCapitalize="none"
-                  spellCheck={false}
-                  className={FIELD_INVALID_CLASS}
-                  {...field}
-                />
-              </FormControl>
-              <FormDescription className="text-base">
-                {t('dialog.fields.routingEmail.help')}
-              </FormDescription>
-              <FormMessage className={FIELD_MESSAGE_CLASS} />
-            </FormItem>
-          )}
-        />
+        {showRoutingEmail && (
+          <FormField
+            control={form.control}
+            name="routingEmail"
+            render={({field}) => (
+              <FormItem>
+                <FormLabel className="text-base font-medium">
+                  {t('dialog.fields.routingEmail.label')}{' '}
+                  <span className="text-muted-foreground font-normal">
+                    {t('dialog.optional')}
+                  </span>
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    type="email"
+                    inputMode="email"
+                    autoComplete="off"
+                    autoCapitalize="none"
+                    spellCheck={false}
+                    className={FIELD_INVALID_CLASS}
+                    {...field}
+                  />
+                </FormControl>
+                <FormDescription className="text-base">
+                  {t('dialog.fields.routingEmail.help')}
+                </FormDescription>
+                <FormMessage className={FIELD_MESSAGE_CLASS} />
+              </FormItem>
+            )}
+          />
+        )}
 
         <DialogFooter className="gap-3 sm:justify-between">
           {category ? (

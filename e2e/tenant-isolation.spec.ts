@@ -490,3 +490,134 @@ test.describe('s19 — member_invoice et invoice_status_alert isolées entre ass
     })
   })
 })
+
+test.describe('s31 — documents partagés : RLS de shared_document (ADR 069)', () => {
+  /** Une ligne par association, écrite sous `bypass` puis retirée. */
+  const created: {a?: string; b?: string; categories: string[]} = {
+    categories: [],
+  }
+
+  const inScope = async <T>(
+    client: Client,
+    organizationId: string,
+    read: () => Promise<T>
+  ): Promise<T> => {
+    await client.query('begin')
+    try {
+      await client.query(`select set_config('app.organization_id', $1, true)`, [
+        organizationId,
+      ])
+      return await read()
+    } finally {
+      await client.query('rollback')
+    }
+  }
+
+  const inBypass = async <T>(client: Client, write: () => Promise<T>) => {
+    await client.query('begin')
+    try {
+      await client.query(`select set_config('app.bypass_rls', 'on', true)`)
+      const result = await write()
+      await client.query('commit')
+      return result
+    } catch (error) {
+      await client.query('rollback')
+      throw error
+    }
+  }
+
+  test.beforeAll(async () => {
+    await withAppRoleClient(async (client) => {
+      const {a, b} = await tenantIds(client)
+      await inBypass(client, async () => {
+        for (const [slot, organizationId] of [
+          ['a', a],
+          ['b', b],
+        ] as const) {
+          const category = await client.query<{id: string}>(
+            `insert into association_category (organization_id, domain, name)
+             values ($1, 'document', $2) returning id`,
+            [organizationId, `RLS s31 ${Date.now().toString(36)} ${slot}`]
+          )
+          created.categories.push(category.rows[0].id)
+          const document = await client.query<{id: string}>(
+            `insert into shared_document (organization_id, title, category_id, file_key, file_bytes)
+             values ($1, 'RLS s31', $2, $3, 1) returning id`,
+            [
+              organizationId,
+              category.rows[0].id,
+              `${organizationId}/shared-documents/rls/file.pdf`,
+            ]
+          )
+          created[slot] = document.rows[0].id
+        }
+      })
+    })
+  })
+
+  test.afterAll(async () => {
+    await withAppRoleClient((client) =>
+      inBypass(client, async () => {
+        await client.query(
+          `delete from shared_document where id = any($1::uuid[])`,
+          [[created.a, created.b].filter(Boolean)]
+        )
+        await client.query(
+          `delete from association_category where id = any($1::uuid[])`,
+          [created.categories]
+        )
+      })
+    )
+  })
+
+  test('hors scope de tenant, aucun document ne sort', async () => {
+    await withAppRoleClient(async (client) => {
+      expect(
+        (await client.query('select id from shared_document')).rowCount
+      ).toBe(0)
+    })
+  })
+
+  test('dans le scope de A, seuls les documents de A sortent ; celui de A est invisible depuis B', async () => {
+    await withAppRoleClient(async (client) => {
+      const {a, b} = await tenantIds(client)
+
+      const fromA = await inScope(client, a, () =>
+        client.query<{id: string; organization_id: string}>(
+          'select id, organization_id from shared_document'
+        )
+      )
+      const forgedFromB = await inScope(client, b, () =>
+        client.query('select id from shared_document where id = $1', [
+          created.a,
+        ])
+      )
+
+      expect(fromA.rows.map((row) => row.id)).toContain(created.a)
+      expect(fromA.rows.map((row) => row.id)).not.toContain(created.b)
+      for (const row of fromA.rows) expect(row.organization_id).toBe(a)
+      expect(forgedFromB.rowCount).toBe(0)
+    })
+  })
+
+  test('écrire un document pour une autre association est refusé', async () => {
+    await withAppRoleClient(async (client) => {
+      const {a, b} = await tenantIds(client)
+
+      await client.query('begin')
+      await client.query(`select set_config('app.organization_id', $1, true)`, [
+        a,
+      ])
+
+      await expect(
+        client.query(
+          `insert into shared_document (organization_id, title, category_id, file_key, file_bytes)
+           values ($1, 'Forgé', $2, 'forge.pdf', 1)`,
+          [b, created.categories[1]]
+        )
+      ).rejects.toThrow(/row-level security/i)
+
+      await client.query('rollback')
+    })
+  })
+})

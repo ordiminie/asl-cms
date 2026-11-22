@@ -152,6 +152,17 @@ export const ActionIdConst = {
    * cible reste sous `CAMPAIGN_MANAGE`. Un membre simple n'y a aucun acces.
    */
   CAMPAIGN_GROUP_MANAGE: 'campaign.group.manage',
+  /**
+   * Gerer les documents partages (s31, ADR 069) : deposer, retirer, et
+   * administrer les categories du domaine `document`. Une seule entree pour
+   * tous les verbes, sur le precedent de `REPORT_MANAGE`.
+   */
+  SHARED_DOCUMENT_MANAGE: 'shared.document.manage',
+  /**
+   * Consulter et telecharger les documents partages de son association (s31,
+   * ADR 069) : tout membre authentifie, quel que soit son role.
+   */
+  SHARED_DOCUMENT_READ: 'shared.document.read',
 } as const
 
 export const ACTION_REGISTRY: ActionRegistry = [
@@ -226,5 +237,13 @@ export const ACTION_REGISTRY: ActionRegistry = [
   {
     id: ActionIdConst.CAMPAIGN_GROUP_MANAGE,
     defaultRoles: ['owner', 'board'],
+  },
+  {
+    id: ActionIdConst.SHARED_DOCUMENT_MANAGE,
+    defaultRoles: ['owner', 'board'],
+  },
+  {
+    id: ActionIdConst.SHARED_DOCUMENT_READ,
+    defaultRoles: ['owner', 'board', 'member'],
   },
 ]

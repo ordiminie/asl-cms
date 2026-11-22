@@ -55,6 +55,19 @@ vi.mock('@/app/dal/member-space-dal', () => ({
   ),
   getMyLandsDal: vi.fn(),
 }))
+vi.mock('@/app/dal/shared-document-dal', () => ({
+  getMySharedDocumentsDal: vi.fn(() =>
+    Promise.resolve([
+      {
+        id: '33333333-3333-4333-8333-333333333333',
+        title: 'Statuts de l’ASL',
+        categoryName: 'Statuts',
+        fileBytes: 1024,
+        createdAt: new Date('2026-01-10T10:00:00Z'),
+      },
+    ])
+  ),
+}))
 vi.mock('./actions', () => ({
   updateMyContactAction: vi.fn(),
   openMyInvoicePdfAction: vi.fn(),
@@ -160,7 +173,12 @@ describe('/dashboard — compte sans fiche (s46, s12d C5)', () => {
     expect(
       screen.getByRole('link', {name: 'Gérer la sécurité du compte'})
     ).toHaveAttribute('href', '/account')
-    expect(screen.getAllByRole('link')).toHaveLength(1)
+    const documents = await screen.findByRole('region', {
+      name: 'Documents de l’association',
+    })
+    expect(
+      screen.getAllByRole('link').filter((link) => !documents.contains(link))
+    ).toHaveLength(1)
     expect(screen.queryByRole('region', {name: 'Mes coordonnées'})).toBeNull()
   })
 
@@ -599,5 +617,19 @@ describe('/dashboard — « Une question pour le bureau ? » (s23, écran A)', (
     expect(
       within(myQuestion()).getByRole('link', {name: 'Poser une autre question'})
     ).toHaveAttribute('href', '/dashboard/question')
+  })
+})
+
+describe('DashboardPage — « Documents de l’association » (s31)', () => {
+  it('passe la promesse des documents partagés à l’espace membre', async () => {
+    vi.mocked(getMyLandsDal).mockResolvedValue(undefined)
+    vi.mocked(getMyContactDal).mockResolvedValue(undefined)
+    vi.mocked(getMyIncidentReportsDal).mockResolvedValue(undefined)
+
+    await renderDashboard()
+
+    expect(
+      await screen.findByRole('region', {name: 'Documents de l’association'})
+    ).toHaveTextContent('Statuts de l’ASL')
   })
 })

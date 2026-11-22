@@ -12,6 +12,10 @@ import {
   buildPageBlockFileKey,
   isPageBlockFileKeyAllowed,
 } from './page-block-types'
+import {
+  buildSharedDocumentFileKey,
+  SHARED_DOCUMENT_KEY_PREFIX,
+} from './shared-document-types'
 
 const ORG_ID = '11111111-1111-4111-8111-111111111111'
 const OTHER_ORG_ID = '22222222-2222-4222-8222-222222222222'
@@ -229,5 +233,21 @@ describe('format et signature', () => {
       valid: false,
       reason: 'format',
     })
+  })
+})
+
+describe('garde — les documents partagés restent hors des portées publiques (s31, ADR 069)', () => {
+  const DOCUMENT_ID = '77777777-7777-4777-8777-777777777777'
+
+  it("la portée des documents partagés n'est pas une portée de contenu", () => {
+    expect(CONTENT_FILE_SCOPES as readonly string[]).not.toContain(
+      SHARED_DOCUMENT_KEY_PREFIX
+    )
+  })
+
+  it('la route publique refuse la clé d un document partagé', () => {
+    const key = buildSharedDocumentFileKey(ORG_ID, DOCUMENT_ID)
+
+    expect(isContentFileKeyAllowed(ORG_ID, key)).toBe(false)
   })
 })

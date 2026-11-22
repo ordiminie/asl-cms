@@ -1,0 +1,14 @@
+import sharedDocumentServiceInterceptor from './interceptors/shared-document-service-logger-interceptor'
+
+export const canManageSharedDocumentsService =
+  sharedDocumentServiceInterceptor.canManageSharedDocumentsService
+export const deleteSharedDocumentService =
+  sharedDocumentServiceInterceptor.deleteSharedDocumentService
+export const getSharedDocumentsForBureauService =
+  sharedDocumentServiceInterceptor.getSharedDocumentsForBureauService
+export const getSharedDocumentsForMemberService =
+  sharedDocumentServiceInterceptor.getSharedDocumentsForMemberService
+export const publishSharedDocumentService =
+  sharedDocumentServiceInterceptor.publishSharedDocumentService
+export const readSharedDocumentFileService =
+  sharedDocumentServiceInterceptor.readSharedDocumentFileService

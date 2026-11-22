@@ -28,6 +28,7 @@ export const FILE_KEY_COLUMNS: readonly FileKeyColumn[] = [
   {table: 'board_member', column: 'photo_key'},
   {table: 'water_analysis', column: 'poster_key'},
   {table: 'water_analysis', column: 'report_key'},
+  {table: 'shared_document', column: 'file_key'},
 ]
 
 /**

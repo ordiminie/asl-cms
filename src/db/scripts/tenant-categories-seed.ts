@@ -10,6 +10,10 @@ import type {CategoryDomain} from '../../services/types/domain/association-categ
  * L'adresse du responsable forage est portee **par la categorie « Fuite
  * d'eau »** (ADR 028, consequences), plus par un reglage. Marketing Pro a sa
  * propre categorie, pour prouver l'isolation entre deux tenants.
+ *
+ * Les categories des documents partages (s31, ADR 069) : « Statuts »,
+ * « Proces-verbaux », « Ordres du jour » sont des valeurs de seed du premier
+ * tenant (ADR 010), jamais des constantes ; Marketing Pro a la sienne.
  */
 export type TestTenantCategory = {
   organizationSlug: string
@@ -59,6 +63,30 @@ export const TEST_TENANT_CATEGORIES: readonly TestTenantCategory[] = [
     organizationSlug: 'techcorp-solutions',
     domain: 'question',
     name: 'Voirie et portails',
+    routingEmail: null,
+  },
+  {
+    organizationSlug: 'techcorp-solutions',
+    domain: 'document',
+    name: 'Statuts',
+    routingEmail: null,
+  },
+  {
+    organizationSlug: 'techcorp-solutions',
+    domain: 'document',
+    name: 'Procès-verbaux',
+    routingEmail: null,
+  },
+  {
+    organizationSlug: 'techcorp-solutions',
+    domain: 'document',
+    name: 'Ordres du jour',
+    routingEmail: null,
+  },
+  {
+    organizationSlug: 'marketing-pro',
+    domain: 'document',
+    name: 'Comptes rendus',
     routingEmail: null,
   },
 ]

@@ -191,3 +191,40 @@ describe('ACTION_REGISTRY — factures des membres (s19, ADR 059)', () => {
     ).toBe(false)
   })
 })
+
+describe('ACTION_REGISTRY — documents partagés (s31, ADR 069)', () => {
+  it('shared.document.manage autorise la Presidente et le bureau, refuse un membre simple', () => {
+    expect(ActionIdConst.SHARED_DOCUMENT_MANAGE).toBe('shared.document.manage')
+    for (const role of ['owner', 'board'] as const) {
+      expect(
+        isActionAllowedForRole(
+          ACTION_REGISTRY,
+          ActionIdConst.SHARED_DOCUMENT_MANAGE,
+          role
+        ),
+        role
+      ).toBe(true)
+    }
+    expect(
+      isActionAllowedForRole(
+        ACTION_REGISTRY,
+        ActionIdConst.SHARED_DOCUMENT_MANAGE,
+        'member'
+      )
+    ).toBe(false)
+  })
+
+  it('shared.document.read autorise tout membre de l association', () => {
+    expect(ActionIdConst.SHARED_DOCUMENT_READ).toBe('shared.document.read')
+    for (const role of ['owner', 'board', 'member'] as const) {
+      expect(
+        isActionAllowedForRole(
+          ACTION_REGISTRY,
+          ActionIdConst.SHARED_DOCUMENT_READ,
+          role
+        ),
+        role
+      ).toBe(true)
+    }
+  })
+})

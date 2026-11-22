@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>s31 — Documents de l’association (maquette de référence)</title>
+<style>
+  /* Tokens copiés de docs/design-system.md §1.1 et §1.9 — clair seul (ADR 033). Rien d'autre. */
+  :root {
+    --radius: 0.5rem;
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.22 0.015 250);
+    --card: oklch(1 0 0);
+    --muted: oklch(0.972 0.005 240);
+    --muted-foreground: oklch(0.45 0.02 245);
+    --border: oklch(0.9 0.008 245);
+    --input: oklch(0.66 0.014 245);
+    --ring: oklch(0.55 0.11 235);
+    --primary: oklch(0.35 0.06 240);
+    --primary-foreground: oklch(0.985 0.003 240);
+    --secondary: oklch(0.965 0.006 240);
+    --secondary-foreground: oklch(0.3 0.02 245);
+    --destructive: oklch(0.48 0.17 27);
+    --destructive-text: oklch(0.48 0.17 27);
+    --link: oklch(0.45 0.13 250);
+    --warning: oklch(0.94 0.06 75);
+    --warning-border: oklch(0.6 0.13 65);
+    --warning-foreground: oklch(0.3 0.08 60);
+    --accent-hue: 195;
+    --accent: oklch(0.958 0.024 var(--accent-hue));
+    --accent-foreground: oklch(0.38 0.08 var(--accent-hue));
+    --accent-solid: oklch(0.55 0.1 var(--accent-hue));
+    --sidebar: oklch(0.985 0.004 250);
+    --sidebar-accent: oklch(0.93 0.012 245);
+    --sidebar-border: oklch(0.91 0.008 245);
+    --table-stripe: oklch(0.99 0.002 250);
+    --overlay: oklch(0.22 0.015 250 / 0.5);
+    --font-sans: 'Public Sans', ui-sans-serif, system-ui, sans-serif;
+    --font-serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--muted); color: var(--foreground); font-family: var(--font-sans); font-size: 17px; line-height: 1.6; }
+  a { color: var(--link); text-decoration: underline; text-underline-offset: 4px; }
+  .doc { max-width: 1232px; margin: 0 auto; padding: 32px 16px 64px; }
+  .doc > header h1 { font-family: var(--font-serif); font-size: 34px; line-height: 1.15; font-weight: 600; margin: 0 0 8px; }
+  .doc > header p { margin: 0 0 8px; max-width: 68ch; }
+  .state { margin-top: 48px; }
+  .state-label { font-family: var(--font-mono); font-size: 12px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted-foreground); margin: 0 0 4px; }
+  .state h2.state-title { font-family: var(--font-serif); font-size: 26px; line-height: 1.2; font-weight: 600; margin: 0 0 8px; }
+  .state .note { font-size: 15px; color: var(--muted-foreground); max-width: 68ch; margin: 0 0 16px; }
+  .frames { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+  .frame { container-type: inline-size; background: var(--background); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .frame.desktop { flex: 1 1 760px; max-width: 1000px; min-width: 0; }
+  .frame.mobile { flex: 0 1 390px; width: 390px; max-width: 100%; }
+  .frame-cap { font-size: 15px; color: var(--muted-foreground); padding: 4px 16px; border-bottom: 1px solid var(--border); background: var(--muted); }
+
+  /* En-tête de l'espace membre — §3.12 */
+  .ms-head { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 16px 24px; border-bottom: 1px solid var(--border); }
+  .mark { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .mono-square { width: 44px; height: 44px; border-radius: 8px; background: var(--accent-solid); color: var(--primary-foreground); font-family: var(--font-serif); font-weight: 600; display: grid; place-items: center; flex-shrink: 0; }
+  .mark-name { font-weight: 600; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 48px; padding: 0 16px; border-radius: 8px; font-size: 16px; font-weight: 600; font-family: var(--font-sans); border: 1px solid transparent; white-space: nowrap; flex-shrink: 0; }
+  .btn-default { background: var(--primary); color: var(--primary-foreground); }
+  .btn-outline { background: var(--background); color: var(--foreground); border-color: var(--input); }
+  .ico { width: 20px; height: 20px; flex-shrink: 0; }
+  .ico-16 { width: 16px; height: 16px; flex-shrink: 0; }
+  .ms-body { max-width: 1000px; margin: 0 auto; padding: 32px 24px; display: flex; flex-direction: column; gap: 24px; }
+  .marker { display: flex; align-items: center; gap: 8px; font-size: 15px; flex-wrap: wrap; }
+  .marker strong { font-weight: 600; font-size: 17px; }
+  .h1 { font-family: var(--font-serif); font-size: 34px; line-height: 1.15; font-weight: 600; margin: 0; text-wrap: pretty; }
+  .card { border: 1px solid var(--border); border-radius: 8px; padding: 24px; background: var(--card); }
+  .card-title { font-family: var(--font-serif); font-size: 20px; font-weight: 600; margin: 0 0 4px; }
+  .card-lead { color: var(--muted-foreground); font-size: 15px; margin: 0 0 16px; }
+  .terrain { border-top: 1px solid var(--border); padding: 16px 0; }
+  .terrain:first-of-type { border-top: 0; padding-top: 0; }
+  .terrain-head { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; margin: 0; font-size: 17px; font-weight: 600; }
+  .data { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 17px; }
+  .meta { font-size: 15px; color: var(--muted-foreground); }
+  .line { display: flex; align-items: center; gap: 8px; min-height: 56px; border-top: 1px solid var(--border); flex-wrap: wrap; }
+  .line:first-child { border-top: 0; }
+  .line .grow { flex: 1 1 auto; min-width: 0; }
+  .sub { font-size: 17px; font-weight: 600; margin: 16px 0 0; }
+  .foot { border-top: 1px solid var(--border); margin-top: 16px; padding-top: 16px; font-size: 15px; }
+  .pair { margin: 0 0 24px; }
+  .pair dt { font-size: 16px; font-weight: 500; color: var(--muted-foreground); }
+  .pair dd { margin: 4px 0 0; }
+  .alert { display: flex; gap: 12px; border-radius: 8px; padding: 16px; border: 1px solid var(--border); background: var(--background); }
+  .alert p { margin: 0; }
+  .alert .t { font-weight: 600; }
+  .alert-warning { background: var(--warning); border-color: var(--warning-border); color: var(--warning-foreground); }
+  .alert-status .ico { color: var(--primary); }
+  .alert-neutral-info { background: var(--muted); }
+  .actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 16px; }
+  .skeleton { background: var(--muted); border-radius: 4px; height: 56px; margin-top: 8px; }
+  .skel-short { height: 22px; width: 40%; }
+
+  /* Back-office — sidebar 248 px → tiroir sous lg */
+  .bo { display: flex; min-height: 100%; }
+  .bo-side { width: 248px; flex-shrink: 0; background: var(--sidebar); border-right: 1px solid var(--sidebar-border); padding: 16px; font-size: 16px; }
+  .bo-side .item { padding: 8px 12px; border-radius: 8px; }
+  .bo-side .item.active { background: var(--sidebar-accent); font-weight: 600; }
+  .bo-top { display: none; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  .bo-main { flex: 1 1 auto; min-width: 0; padding: 32px; }
+  .bo-col { max-width: 800px; display: flex; flex-direction: column; gap: 24px; }
+  .crumb { font-size: 15px; color: var(--muted-foreground); }
+  .h3 { font-size: 20px; font-weight: 600; margin: 0 0 16px; }
+  .field label { display: block; font-size: 16px; font-weight: 500; margin-bottom: 4px; }
+  .field .opt { color: var(--muted-foreground); font-weight: 400; font-size: 15px; }
+  .input { height: 48px; border: 1px solid var(--input); border-radius: 8px; padding: 0 12px; display: flex; align-items: center; font-size: 17px; width: 100%; }
+  .input.focus { outline: 2px solid var(--ring); outline-offset: 2px; }
+  .help { font-size: 15px; color: var(--muted-foreground); margin: 4px 0 0; }
+  .field-error { color: var(--destructive-text); font-size: 16px; font-weight: 500; margin: 4px 0 0; }
+  .input.err { border: 2px solid var(--destructive); }
+
+  /* Tableau du bureau — §2.1, §3.5 */
+  table { width: 100%; border-collapse: collapse; font-size: 17px; }
+  th { background: var(--muted); font-size: 15px; font-weight: 600; text-align: left; padding: 12px 16px; }
+  td { padding: 8px 16px; border-top: 1px solid var(--border); height: 56px; vertical-align: middle; }
+  tr:nth-child(even) td { background: var(--table-stripe); }
+  .badge { display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border-radius: 999px; border: 1px solid var(--border); font-size: 15px; }
+  .cards-m { display: none; }
+  .pcard { border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-top: 12px; }
+  .pcard dl { margin: 8px 0 0; }
+  .pcard dt { font-size: 15px; color: var(--muted-foreground); }
+  .pcard dd { margin: 0 0 8px; }
+
+  /* Mobile : < 640 px dans le cadre (container query) */
+  @container (max-width: 640px) {
+    .ms-head { padding: 12px 16px; }
+    .ms-body { padding: 24px 16px; }
+    .h1 { font-size: 30px; }
+    .btn-block { width: 100%; height: 56px; font-size: 17px; }
+    .actions { flex-direction: column; }
+    .actions .btn { width: 100%; height: 56px; font-size: 17px; }
+    .card { padding: 16px; }
+    .bo-side { display: none; }
+    .bo-top { display: flex; }
+    .bo-main { padding: 24px 16px; }
+    .input { height: 56px; }
+    .table-d { display: none; }
+    .cards-m { display: block; }
+    .pcard .btn { width: 100%; height: 56px; }
+  }
+  @container (min-width: 641px) and (max-width: 1023px) {
+    .bo-side { display: none; }
+    .bo-top { display: flex; }
+  }
+  /* Ajouts s19 — composition de l'existant (§2.1 badge, §3.10 statuts) */
+  .badge-dot::before { content: ''; width: 8px; height: 8px; border-radius: 999px; background: var(--primary); margin-right: 8px; }
+  .badge-secondary { background: var(--secondary); color: var(--secondary-foreground); border-color: var(--secondary); }
+  .badge-muted { color: var(--muted-foreground); }
+  .num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+  .amount { font-weight: 600; }
+  .row-title { font-weight: 600; margin: 0; }
+  .mail { border: 1px solid var(--border); border-radius: 8px; padding: 24px; font-size: 17px; background: var(--background); }
+  .mail p { margin: 0 0 12px; }
+  .grid2 { display: flex; gap: 16px; flex-wrap: wrap; }
+  .grid2 .field { flex: 1 1 200px; }
+  @container (max-width: 640px) {
+    .grid2 { flex-direction: column; }
+  }
+  /* Ajouts s31 — composition de l'existant (§2.1 table, §3.2 états, alert-dialog) */
+  .num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .row-title { font-weight: 600; margin: 0; }
+  .cat { font-size: 17px; font-weight: 600; margin: 24px 0 0; }
+  .cat:first-of-type { margin-top: 8px; }
+  .doc-line { display: flex; align-items: center; gap: 12px; min-height: 64px; border-top: 1px solid var(--border); padding: 8px 0; }
+  .doc-line .grow { flex: 1 1 auto; min-width: 0; }
+  .doc-line .ttl { font-weight: 600; margin: 0; overflow-wrap: anywhere; }
+  .badge-secondary { background: var(--secondary); color: var(--secondary-foreground); border-color: var(--secondary); }
+  .upload { border: 1px dashed var(--input); border-radius: 8px; padding: 24px; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+  .select { justify-content: space-between; }
+  .err-summary { border: 2px solid var(--destructive); }
+  .err-summary .ico { color: var(--destructive-text); }
+  .overlay { background: var(--overlay); padding: 48px 24px; display: grid; place-items: center; }
+  .dialog { background: var(--background); border: 1px solid var(--border); border-radius: 12px; padding: 24px; max-width: 480px; width: 100%; }
+  .dialog h3 { font-family: var(--font-serif); font-size: 20px; font-weight: 600; margin: 0 0 8px; }
+  .dialog p { margin: 0 0 16px; }
+  .dialog .actions { justify-content: flex-end; }
+  .btn-destructive { background: var(--destructive); color: var(--primary-foreground); }
+  .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  @container (max-width: 640px) {
+    .doc-line { flex-wrap: wrap; }
+    .doc-line .btn { width: 100%; height: 56px; font-size: 17px; }
+    .toolbar { flex-direction: column; align-items: stretch; }
+    .toolbar .btn { width: 100%; height: 56px; }
+    .overlay { padding: 24px 0 0; place-items: end stretch; }
+    .dialog { border-radius: 12px 12px 0 0; max-width: none; }
+    .dialog .actions { flex-direction: column-reverse; }
+  }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+  <symbol id="i-map" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14.1 4.6 9.9 2.4a2 2 0 0 0-1.8 0L3.6 4.6A1 1 0 0 0 3 5.5v14.9a1 1 0 0 0 1.4.9l3.7-1.9a2 2 0 0 1 1.8 0l4.2 2.2a2 2 0 0 0 1.8 0l4.5-2.2a1 1 0 0 0 .6-.9V3.6a1 1 0 0 0-1.4-.9l-3.7 1.9a2 2 0 0 1-1.8 0z"/><path d="M15 5.8v15M9 3.2v15"/></symbol>
+  <symbol id="i-droplet" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5S5 13 5 15a7 7 0 0 0 7 7z"/></symbol>
+  <symbol id="i-logout" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5M21 12H9"/></symbol>
+  <symbol id="i-warn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21.7 18-8-14a2 2 0 0 0-3.4 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3z"/><path d="M12 9v4M12 17h.01"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></symbol>
+  <symbol id="i-receipt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8M12 17.5v-11"/></symbol>
+  <symbol id="i-arrow-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7M19 12H5"/></symbol>
+  <symbol id="i-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v4a2 2 0 0 0 2 2h4M10 9H8M16 13H8M16 17H8"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></symbol>
+</svg>
+
+<div class="doc">
+<header>
+  <p class="state-label">Maquette de référence — ne pas copier en production</p>
+  <h1>s31 — Documents de l’association</h1>
+  <p>Association fictive « Clos-Fleuri » (monogramme CF, teinte 195). Trois catégories de seed : « Statuts », « Procès-verbaux »,
+  « Ordres du jour » — administrables par le bureau, jamais codées en dur. Documents en PDF seul, 10 Mo au plus.</p>
+  <p class="meta">Chaque écran : cadre ordinateur, puis cadre mobile 390 px. Clair seul (ADR 033).</p>
+</header>
+
+<!-- ===================== E1 — Espace membre ===================== -->
+<section class="state">
+  <p class="state-label">Écran 1 · état 1a</p>
+  <h2 class="state-title">Espace membre — carte « Documents de l’association »</h2>
+  <p class="note">Sur /dashboard, après « Mes factures » (ou après « Mes coordonnées » quand la carte factures n’est pas rendue) ; présente
+  dans les trois états de l’espace, compte sans fiche compris. Groupée par catégorie (ordre alphabétique), documents du plus récent au plus ancien.
+  Une seule action par ligne : « Télécharger », qui pointe vers la route authentifiée par identifiant — jamais un chemin de stockage.</p>
+  <div class="frames">
+    <div class="frame desktop"><div class="frame-cap">Ordinateur · 1 280 px</div>
+      <div class="ms-body">
+        <div class="card">
+          <h2 class="card-title">Documents de l’association</h2>
+          <p class="card-lead">Les statuts, procès-verbaux et ordres du jour publiés par le bureau.</p>
+          <h3 class="cat">Ordres du jour</h3>
+          <div class="doc-line"><svg class="ico"><use href="#i-file"/></svg><div class="grow"><p class="ttl">Ordre du jour de l’AG 2026</p><span class="meta">Déposé le <span class="num">02/05/2026</span> · PDF · <span class="num">180 Ko</span></span></div><span class="btn btn-outline"><svg class="ico"><use href="#i-download"/></svg>Télécharger</span></div>
+          <h3 class="cat">Procès-verbaux</h3>
+          <div class="doc-line"><svg class="ico"><use href="#i-file"/></svg><div class="grow"><p class="ttl">Procès-verbal de l’AG du 14 juin 2025</p><span class="meta">Déposé le <span class="num">30/06/2025</span> · PDF · <span class="num">1,4 Mo</span></span></div><span class="btn btn-outline"><svg class="ico"><use href="#i-download"/></svg>Télécharger</span></div>
+          <h3 class="cat">Statuts</h3>
+          <div class="doc-line"><svg class="ico"><use href="#i-file"/></svg><div class="grow"><p class="ttl">Statuts de l’ASL, version du 12 mars 2019</p><span class="meta">Déposé le <span class="num">10/01/2026</span> · PDF · <span class="num">620 Ko</span></span></div><span class="btn btn-outline"><svg class="ico"><use href="#i-download"/></svg>Télécharger</span></div>
+          <p class="foot">Un document vous manque ? Écrivez au bureau depuis la <a href="#">page Contact</a>.</p>
+        </div>
+      </div>
+    </div>
+    <div class="frame mobile"><div class="frame-cap">Mobile · 390 px</div>
+      <div class="ms-body">
+        <div class="card">
+          <h2 class="card-title">Documents de l’association</h2>
+          <p class="card-lead">Les statuts, procès-verbaux et ordres du jour publiés par le bureau.</p>
+          <h3 class="cat">Ordres du jour</h3>
+          <div class="doc-line"><svg class="ico"><use href="#i-file"/></svg><div class="grow"><p class="ttl">Ordre du jour de l’AG 2026</p><span class="meta">Déposé le <span class="num">02/05/2026</span> · PDF · <span class="num">180 Ko</span></span></div><span class="btn btn-outline"><svg class="ico"><use href="#i-download"/></svg>Télécharger</span></div>
+          <h3 class="cat">Procès-verbaux</h3>
+          <div class="doc-line"><svg class="ico"><use href="#i-file"/></svg><div class="grow"><p class="ttl">Procès-verbal de l’AG du 14 juin 2025</p><span class="meta">Déposé le <span class="num">30/06/2025</span> · PDF · <span class="num">1,4 Mo</span></span></div><span class="btn btn-outline"><svg class="ico"><use href="#i-download"/></svg>Télécharger</span></div>
+          <h3 class="cat">Statuts</h3>
+          <div class="doc-line"><svg class="ico"><use href="#i-file"/></svg><div class="grow"><p class="ttl">Statuts de l’ASL, version du 12 mars 2019</p><span class="meta">Déposé le <span class="num">10/01/2026</span> · PDF · <span class="num">620 Ko</span></span></div><span class="btn btn-outline"><svg class="ico"><use href="#i-download"/></svg>Télécharger</span></div>
+          <p class="foot">Un document vous manque ? Écrivez au bureau depuis la <a href="#">page Contact</a>.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="state">
+  <p class="state-label">Écran 1 · états 1b, 1c</p>
+  <h2 class="state-title">Aucun document · chargement</h2>
+  <p class="note">1b : rien à combler côté membre, l’action proposée est d’écrire au bureau. 1c : trois lignes skeleton, aria-busy ; le reste de l’espace n’attend pas.</p>
+  <div class="frames">
+    <div class="frame desktop"><div class="frame-cap">Ordinateur · 1 280 px</div>
+      <div class="ms-body">
+        <div class="card"><h2 class="card-title">Documents de l’association</h2>
+          <div class="line"><svg class="ico"><use href="#i-file"/></svg><span class="grow">Aucun document publié pour l’instant. Les statuts, procès-verbaux et ordres du jour apparaîtront ici dès leur dépôt par le bureau.</span></div>
+          <p class="foot">Vous cherchez un document ? Écrivez au bureau depuis la <a href="#">page Contact</a>.</p></div>
+        <div class="card" aria-busy="true"><h2 class="card-title">Documents de l’association</h2><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>
+      </div>
+    </div>
+    <div class="frame mobile"><div class="frame-cap">Mobile · 390 px</div>
+      <div class="ms-body">
+        <div class="card"><h2 class="card-title">Documents de l’association</h2>
+          <div class="line"><svg class="ico"><use href="#i-file"/></svg><span class="grow">Aucun document publié pour l’instant. Les statuts, procès-verbaux et ordres du jour apparaîtront ici dès leur dépôt par le bureau.</span></div>
+          <p class="foot">Vous cherchez un document ? Écrivez au bureau depuis la <a href="#">page Contact</a>.</p></div>
+        <div class="card" aria-busy="true"><h2 class="card-title">Documents de l’association</h2><div class="skeleton"></div><div class="skeleton"></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== E2 — Bureau : liste ===================== -->
+<section class="state">
+  <p class="state-label">Écran 2 · états 2a, 2d</p>
+  <h2 class="state-title">Bureau — « Documents » (/bureau/documents), après un dépôt</h2>
+  <p class="note">Entrée « Documents » du groupe « Association » de la barre du bureau. Tableau du plus récent au plus ancien, une seule action par ligne : « Retirer ».
+  Le titre de la ligne télécharge le document (même route authentifiée). « Gérer les catégories » mène à l’écran générique des catégories (patron s23, pas de planche).</p>
+  <div class="frames">
+    <div class="frame desktop"><div class="frame-cap">Ordinateur · 1 280 px</div>
+      <div class="bo"><div class="bo-side"><div class="item">Propriétaires</div><div class="item active">Documents</div><div class="item">Questions</div></div>
+        <div class="bo-main"><div class="bo-col">
+          <h1 class="h1">Documents</h1>
+          <p class="meta" style="margin:0">Les documents partagés avec tous les membres de l’association, dans leur espace.</p>
+          <div class="alert alert-status" role="status"><svg class="ico"><use href="#i-check"/></svg><div><p class="t">Document déposé.</p><p>« Ordre du jour de l’AG 2026 » est visible dès maintenant dans l’espace des membres, carte « Documents de l’association ».</p></div></div>
+          <div class="toolbar"><a href="#">Gérer les catégories</a><span class="btn btn-default"><svg class="ico"><use href="#i-upload"/></svg>Déposer un document</span></div>
+          <div class="card" style="padding:0">
+            <table class="table-d">
+              <thead><tr><th>Titre</th><th>Catégorie</th><th>Déposé le</th><th>Poids</th><th></th></tr></thead>
+              <tbody>
+                <tr><td><a href="#">Ordre du jour de l’AG 2026</a></td><td>Ordres du jour</td><td class="num">02/05/2026</td><td class="num">180 Ko</td><td><span class="btn btn-outline">Retirer</span></td></tr>
+                <tr><td><a href="#">Statuts de l’ASL, version du 12 mars 2019</a></td><td>Statuts</td><td class="num">10/01/2026</td><td class="num">620 Ko</td><td><span class="btn btn-outline">Retirer</span></td></tr>
+                <tr><td><a href="#">Procès-verbal de l’AG du 14 juin 2025</a></td><td>Procès-verbaux</td><td class="num">30/06/2025</td><td class="num">1,4 Mo</td><td><span class="btn btn-outline">Retirer</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div></div></div>
+    </div>
+    <div class="frame mobile"><div class="frame-cap">Mobile · 390 px</div>
+      <div class="bo"><div class="bo-main"><div class="bo-col">
+        <div class="bo-top" style="display:flex;margin:-24px -16px 0"><svg class="ico"><use href="#i-menu"/></svg><span>Documents</span></div>
+        <h1 class="h1">Documents</h1>
+        <div class="alert alert-status" role="status"><svg class="ico"><use href="#i-check"/></svg><div><p class="t">Document déposé.</p><p>« Ordre du jour de l’AG 2026 » est visible dès maintenant dans l’espace des membres.</p></div></div>
+        <div class="toolbar"><span class="btn btn-default"><svg class="ico"><use href="#i-upload"/></svg>Déposer un document</span><a href="#">Gérer les catégories</a></div>
+        <div class="cards-m">
+          <div class="pcard"><p class="row-title"><a href="#">Ordre du jour de l’AG 2026</a></p>
+            <dl><dt>Catégorie</dt><dd>Ordres du jour</dd><dt>Déposé le</dt><dd class="num">02/05/2026</dd><dt>Poids</dt><dd class="num">180 Ko</dd></dl>
+            <span class="btn btn-outline">Retirer</span></div>
+          <div class="pcard"><p class="row-title"><a href="#">Statuts de l’ASL, version du 12 mars 2019</a></p>
+            <dl><dt>Catégorie</dt><dd>Statuts</dd><dt>Déposé le</dt><dd class="num">10/01/2026</dd><dt>Poids</dt><dd class="num">620 Ko</dd></dl>
+            <span class="btn btn-outline">Retirer</span></div>
+        </div>
+      </div></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="state">
+  <p class="state-label">Écran 2 · états 2b, 2c</p>
+  <h2 class="state-title">Aucun document · confirmation du retrait</h2>
+  <p class="note">2b : vide du bureau, avec l’action qui le comble. 2c : alert-dialog (irréversible), le bouton nomme l’acte ; ancré en bas sous 640 px.
+  Après retrait : alert neutre « Document retiré. Il n’apparaît plus dans l’espace des membres et son adresse ne sert plus le fichier. »</p>
+  <div class="frames">
+    <div class="frame desktop"><div class="frame-cap">Ordinateur · 1 280 px</div>
+      <div class="bo"><div class="bo-side"><div class="item active">Documents</div></div>
+        <div class="bo-main"><div class="bo-col">
+          <h1 class="h1">Documents</h1>
+          <div class="card"><div class="line"><svg class="ico"><use href="#i-file"/></svg><span class="grow">Aucun document partagé. Déposez les statuts, un procès-verbal ou un ordre du jour : tous les membres le verront dans leur espace.</span></div>
+            <div class="actions"><span class="btn btn-default"><svg class="ico"><use href="#i-upload"/></svg>Déposer un document</span></div></div>
+          <div class="overlay"><div class="dialog" role="alertdialog">
+            <h3>Retirer « Procès-verbal de l’AG du 14 juin 2025 » ?</h3>
+            <p>Il disparaît de l’espace des membres et son adresse cesse de servir le fichier. Le fichier est effacé : pour le remettre, il faudra le déposer à nouveau.</p>
+            <div class="actions"><span class="btn btn-outline">Annuler</span><span class="btn btn-destructive">Retirer le document</span></div>
+          </div></div>
+        </div></div></div>
+    </div>
+    <div class="frame mobile"><div class="frame-cap">Mobile · 390 px</div>
+      <div class="bo"><div class="bo-main"><div class="bo-col">
+        <div class="card"><div class="line"><svg class="ico"><use href="#i-file"/></svg><span class="grow">Aucun document partagé. Déposez les statuts, un procès-verbal ou un ordre du jour : tous les membres le verront dans leur espace.</span></div>
+          <div class="actions"><span class="btn btn-default"><svg class="ico"><use href="#i-upload"/></svg>Déposer un document</span></div></div>
+        <div class="overlay" style="margin:0 -16px"><div class="dialog" role="alertdialog">
+          <h3>Retirer « Procès-verbal de l’AG du 14 juin 2025 » ?</h3>
+          <p>Il disparaît de l’espace des membres et son adresse cesse de servir le fichier. Le fichier est effacé : pour le remettre, il faudra le déposer à nouveau.</p>
+          <div class="actions"><span class="btn btn-outline">Annuler</span><span class="btn btn-destructive">Retirer le document</span></div>
+        </div></div>
+      </div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== E3 — Bureau : dépôt ===================== -->
+<section class="state">
+  <p class="state-label">Écran 3 · états 3a, 3b</p>
+  <h2 class="state-title">Bureau — « Déposer un document » (/bureau/documents/nouveau)</h2>
+  <p class="note">Trois champs : une page, pas un dialog (§3.11). Titre écrit par le bureau, jamais le nom du fichier (§4). Catégorie : les catégories actives du domaine « document ».
+  Fichier : file-upload, types et poids annoncés avant l’échec, pas de zone de dépôt au tactile. 3b : résumé ancré destructive 2 px + message sous chaque champ.</p>
+  <div class="frames">
+    <div class="frame desktop"><div class="frame-cap">Ordinateur · 1 280 px</div>
+      <div class="bo"><div class="bo-side"><div class="item active">Documents</div></div>
+        <div class="bo-main"><div class="bo-col">
+          <p class="crumb">Documents › Déposer un document</p>
+          <h1 class="h1">Déposer un document</h1>
+          <div class="card">
+            <div class="field" style="margin-bottom:24px"><label>Titre</label><div class="input focus">Ordre du jour de l’AG 2026</div><p class="help">Le titre que lisent les membres, par exemple « Procès-verbal de l’AG du 14 juin 2025 ».</p></div>
+            <div class="field" style="margin-bottom:24px"><label>Catégorie</label><div class="input select">Ordres du jour <span class="meta">▾</span></div></div>
+            <div class="field"><label>Fichier</label>
+              <div class="upload"><span>Glissez le fichier ici, ou</span><span class="btn btn-outline">Choisir un fichier</span><span class="help" style="margin:0">PDF uniquement, 10 Mo au plus.</span></div></div>
+            <div class="actions"><span class="btn btn-default">Déposer le document</span><span class="btn btn-outline">Annuler</span></div>
+          </div>
+        </div></div></div>
+    </div>
+    <div class="frame mobile"><div class="frame-cap">Mobile · 390 px</div>
+      <div class="bo"><div class="bo-main"><div class="bo-col">
+        <p class="crumb">Documents › Déposer</p>
+        <h1 class="h1">Déposer un document</h1>
+        <div class="alert err-summary" role="alert"><svg class="ico"><use href="#i-warn"/></svg><div><p class="t">Le document n’a pas été déposé. Rien n’est perdu.</p><p><a href="#">Titre : saisissez un titre.</a><br><a href="#">Fichier : ce fichier n’est pas un PDF.</a></p></div></div>
+        <div class="card">
+          <div class="field" style="margin-bottom:24px"><label>Titre</label><div class="input err"></div><p class="field-error">Saisissez un titre, par exemple « Statuts de l’ASL ».</p></div>
+          <div class="field" style="margin-bottom:24px"><label>Catégorie</label><div class="input select">Statuts <span class="meta">▾</span></div></div>
+          <div class="field"><label>Fichier</label>
+            <div class="upload"><span class="btn btn-outline btn-block">Choisir un fichier</span><span class="help" style="margin:0">PDF uniquement, 10 Mo au plus.</span></div>
+            <p class="field-error">Ce fichier n’est pas un PDF. Enregistrez le document en PDF puis déposez-le à nouveau.</p></div>
+          <div class="actions"><span class="btn btn-default">Déposer le document</span><span class="btn btn-outline">Annuler</span></div>
+        </div>
+      </div></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="state">
+  <p class="state-label">Écran 3 · états 3c, 3d</p>
+  <h2 class="state-title">Aucune catégorie · dépôt en cours</h2>
+  <p class="note">3c : sans catégorie active, le formulaire n’est pas proposé ; l’alerte dit pourquoi et mène à l’écran des catégories.
+  3d : progress indéterminée + nom du fichier (§2.1), bouton désactivé, libellé remplacé, largeur conservée.</p>
+  <div class="frames">
+    <div class="frame desktop"><div class="frame-cap">Ordinateur · 1 280 px</div>
+      <div class="bo"><div class="bo-side"><div class="item active">Documents</div></div>
+        <div class="bo-main"><div class="bo-col">
+          <h1 class="h1">Déposer un document</h1>
+          <div class="alert alert-neutral-info"><svg class="ico"><use href="#i-info"/></svg><div><p class="t">Aucune catégorie de document.</p><p>Un document se range dans une catégorie. Créez-en une d’abord, par exemple « Statuts ». <a href="#">Gérer les catégories</a></p></div></div>
+          <div class="card">
+            <div class="field"><label>Fichier</label>
+              <div class="upload"><span>Envoi de ordre-du-jour-ag-2026.pdf</span><div class="skeleton" style="height:8px;width:100%;margin:0;background:var(--secondary)"></div></div></div>
+            <div class="actions"><span class="btn btn-default" style="opacity:.6">Dépôt en cours…</span></div>
+          </div>
+        </div></div></div>
+    </div>
+    <div class="frame mobile"><div class="frame-cap">Mobile · 390 px</div>
+      <div class="bo"><div class="bo-main"><div class="bo-col">
+        <div class="alert alert-neutral-info"><svg class="ico"><use href="#i-info"/></svg><div><p class="t">Aucune catégorie de document.</p><p>Créez-en une d’abord, par exemple « Statuts ». <a href="#">Gérer les catégories</a></p></div></div>
+        <div class="card">
+          <div class="upload"><span>Envoi de ordre-du-jour-ag-2026.pdf</span><div class="skeleton" style="height:8px;width:100%;margin:0;background:var(--secondary)"></div></div>
+          <div class="actions"><span class="btn btn-default" style="opacity:.6">Dépôt en cours…</span></div>
+        </div>
+      </div></div></div>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>
