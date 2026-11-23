@@ -1602,6 +1602,7 @@ test.describe('Campagnes — nature des envois (s27b)', () => {
         'Relance manuelle',
         'Facture disponible',
         'Convocation à l’AG',
+        'Relance automatique',
       ])
       expect(await unsubscribeOf(natureFicheIds.subscribed)).toBe(0)
     } finally {

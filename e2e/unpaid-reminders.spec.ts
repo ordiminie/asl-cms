@@ -1,6 +1,6 @@
 /* eslint-disable no-restricted-properties -- une spec e2e tourne hors de
    l'application : le fichier env.ts typé n'y est pas chargé. */
-import {execFileSync} from 'node:child_process'
+import {spawnSync} from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 
@@ -154,12 +154,104 @@ const techCorpId = async (): Promise<string> => {
   return techCorp
 }
 
-const runScheduler = (): string =>
-  execFileSync('pnpm', ['tsx', SCHEDULER_SCRIPT], {
+/**
+ * Un passage du script ne prend que 20 tâches par association, les plus
+ * anciennes d'abord (`SCHEDULED_JOBS_BATCH_SIZE`) : des tâches de TechCorp
+ * laissées dues par les specs précédents peuvent passer avant celle de
+ * l'essai, enfilée la dernière. Les passages sont répétés, bornés, jusqu'à la
+ * clôture.
+ */
+const MAX_SCHEDULER_PASSES = 6
+
+type SchedulerPass = {status: number | null; output: string[]}
+
+const runSchedulerPass = (): SchedulerPass => {
+  const result = spawnSync('pnpm', ['tsx', SCHEDULER_SCRIPT], {
     env: {...process.env, DATABASE_URL: databaseUrl()},
     encoding: 'utf8',
     timeout: 90_000,
   })
+  return {
+    status: result.status,
+    output:
+      `${result.stdout ?? ''}${result.stderr ?? ''}${result.error ? String(result.error) : ''}`
+        .trim()
+        .split('\n')
+        .slice(-20),
+  }
+}
+
+type ReminderJobState = {
+  id: string
+  idempotency_key: string
+  attempts: number
+  run_after: Date
+  locked_at: Date | null
+  completed_at: Date | null
+  failed_at: Date | null
+}
+
+const reminderJobsOf = (jobIds: readonly string[]) =>
+  inTenantScope(async (client) => {
+    const result = await client.query<ReminderJobState>(
+      `select id, idempotency_key, attempts, run_after, locked_at, completed_at, failed_at
+         from scheduled_job
+        where id = any($1::uuid[]) and kind = $2
+        order by run_after`,
+      [[...jobIds], JOB_KIND]
+    )
+    return result.rows
+  })
+
+/** Les tâches de TechCorp dues et ouvertes, par type : ce qui passe avant. */
+const dueJobsByKind = () =>
+  inTenantScope(async (client) => {
+    const result = await client.query<{
+      kind: string
+      count: number
+      oldest: Date
+    }>(
+      `select kind, count(*)::int as count, min(run_after) as oldest
+         from scheduled_job
+        where completed_at is null and failed_at is null and run_after <= now()
+        group by kind order by kind`
+    )
+    return result.rows
+  })
+
+const isStillDue = (job: ReminderJobState) =>
+  job.completed_at === null &&
+  job.failed_at === null &&
+  new Date(job.run_after).getTime() <= Date.now()
+
+/**
+ * Passe le planificateur jusqu'à la clôture des tâches données, au plus
+ * `MAX_SCHEDULER_PASSES` fois, et prouve qu'elles sont closes. Rend le
+ * diagnostic (tâches dues avant, état des tâches, sortie des passages) : de
+ * quoi lire un échec en CI sans relancer.
+ */
+const runSchedulerUntilClosed = async (
+  jobIds: readonly string[]
+): Promise<string> => {
+  const dueBefore = await dueJobsByKind()
+  const passes: SchedulerPass[] = []
+  let jobs = await reminderJobsOf(jobIds)
+  const diagnosis = () => JSON.stringify({dueBefore, jobs, passes}, null, 2)
+
+  while (passes.length < MAX_SCHEDULER_PASSES && jobs.some(isStillDue)) {
+    const pass = runSchedulerPass()
+    passes.push(pass)
+    expect(pass.status, diagnosis()).toBe(0)
+    jobs = await reminderJobsOf(jobIds)
+  }
+
+  expect(jobs, diagnosis()).toHaveLength(jobIds.length)
+  expect(
+    jobs.every((job) => job.completed_at !== null),
+    diagnosis()
+  ).toBe(true)
+  return diagnosis()
+}
 
 const login = async (page: Page, email: string) => {
   await page.goto(`${TENANT_A}/login/prestataire`)
@@ -186,6 +278,8 @@ const ficheIds: Record<FicheKey, string> = {
   withoutEmail: '',
 }
 let originalSettings: {key: string; value: string}[] = []
+/** La tâche du jour enfilée par l'activation de l'essai (critère 1). */
+let todayJobId = ''
 
 /** Les rangs de l'échéance de l'essai, et leur campagne. */
 const remindersOfRun = () =>
@@ -281,21 +375,40 @@ test.describe('Relances des impayés — activation, passage, suivi (s29)', () =
   test.afterAll(async () => {
     const a = await techCorpId()
     const reminders = await remindersOfRun()
+    const campaignIds = reminders.map((reminder) => reminder.campaign_id)
+    // Ordre imposé par les clés étrangères en `restrict` : factures et
+    // propriétés avant les fiches et les parcelles qu'elles référencent. Les
+    // lignes de la campagne, son courrier et son rang suivent la campagne en
+    // cascade ; les adresses, la fiche.
+    const ficheIdsOfRun = `select id from member_profile
+      where organization_id = $1 and name like $2`
     await withAppRoleClient((client) =>
       inTransaction(client, ['app.bypass_rls', 'on'], async () => {
         await client.query(`delete from campaign where id = any($1::uuid[])`, [
-          reminders.map((reminder) => reminder.campaign_id),
+          campaignIds,
         ])
         await client.query(
-          `delete from scheduled_job where organization_id = $1 and kind = $2`,
-          [a, JOB_KIND]
+          `delete from scheduled_job
+            where organization_id = $1
+              and (kind = $2 or payload->>'campaignId' = any($3::text[]))`,
+          [a, JOB_KIND, campaignIds]
         )
-        await client.query(`delete from member_profile where name like $1`, [
-          `%${MARKER}%`,
-        ])
-        await client.query(`delete from parcel where number like $1`, [
-          `R29-${RUN}-%`,
-        ])
+        await client.query(
+          `delete from member_invoice where member_profile_id in (${ficheIdsOfRun})`,
+          [a, `%${MARKER}%`]
+        )
+        await client.query(
+          `delete from parcel_ownership where member_profile_id in (${ficheIdsOfRun})`,
+          [a, `%${MARKER}%`]
+        )
+        await client.query(
+          `delete from member_profile where organization_id = $1 and name like $2`,
+          [a, `%${MARKER}%`]
+        )
+        await client.query(
+          `delete from parcel where organization_id = $1 and number like $2`,
+          [a, `R29-${RUN}-%`]
+        )
         await client.query(
           `delete from organization_setting
             where organization_id = $1 and key = any($2::text[])`,
@@ -348,6 +461,20 @@ test.describe('Relances des impayés — activation, passage, suivi (s29)', () =
         )
       )
       expect(jobs.rowCount).toBeGreaterThan(0)
+
+      // La tâche du jour est enfilée due tout de suite ; celle du lendemain
+      // ne l'est qu'à 02:00 (heure de Paris) le lendemain : deux heures plus
+      // loin au plus tôt.
+      const today = await inTenantScope((client) =>
+        client.query<{id: string}>(
+          `select id from scheduled_job
+            where kind = $1 and completed_at is null
+              and run_after < now() + interval '1 hour'`,
+          [JOB_KIND]
+        )
+      )
+      expect(today.rowCount).toBe(1)
+      todayJobId = today.rows[0].id
     } finally {
       await page.context().close()
     }
@@ -356,10 +483,15 @@ test.describe('Relances des impayés — activation, passage, suivi (s29)', () =
   test('critères 7 et 10 — un passage crée R1 : les seuls impayés, la fiche sans email au courrier', async ({
     browser,
   }) => {
-    runScheduler()
+    test.setTimeout(240_000)
+    expect(todayJobId, 'le critère 1 enfile la tâche du jour').toBeTruthy()
+    const diagnosis = await runSchedulerUntilClosed([todayJobId])
 
     const reminders = await remindersOfRun()
-    expect(reminders.map((reminder) => reminder.rank)).toEqual([1])
+    expect(
+      reminders.map((reminder) => reminder.rank),
+      diagnosis
+    ).toEqual([1])
     const campaignId = reminders[0].campaign_id
 
     const {recipients, letters, campaign} = await inTenantScope(
@@ -403,22 +535,30 @@ test.describe('Relances des impayés — activation, passage, suivi (s29)', () =
   })
 
   test('critère 4 — un passage rejoué ne crée pas de seconde R1', async () => {
+    test.setTimeout(240_000)
     const a = await techCorpId()
-    await inTenantScope((client) =>
-      client.query(
+    const replayed = await inTenantScope((client) =>
+      client.query<{id: string}>(
         `update scheduled_job
             set run_after = now() - interval '1 minute', locked_at = null,
                 completed_at = null
           where organization_id = $1 and kind = $2
-            and run_after <= now() + interval '1 day'`,
+            and run_after <= now() + interval '1 day'
+        returning id`,
         [a, JOB_KIND]
       )
     )
+    expect(replayed.rows.map((row) => row.id)).toContain(todayJobId)
 
-    runScheduler()
+    const diagnosis = await runSchedulerUntilClosed(
+      replayed.rows.map((row) => row.id)
+    )
 
     const reminders = await remindersOfRun()
-    expect(reminders.map((reminder) => reminder.rank)).toEqual([1])
+    expect(
+      reminders.map((reminder) => reminder.rank),
+      diagnosis
+    ).toEqual([1])
     const campaigns = await inTenantScope((client) =>
       client.query(
         `select c.id from campaign c

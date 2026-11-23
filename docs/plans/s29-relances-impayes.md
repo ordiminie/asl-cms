@@ -216,6 +216,25 @@ Décisions du plan (ADR 070) :
       est à vérifier et neutraliser dans les specs concernées, pas en revenant à la transition seule.
     - Les autres mineurs restent dans `docs/reviews/s29-relances-impayes.md` pour le tour final.
 
+13. [x] **Correctifs de la CI de la PR 82** (e2e, run du 23/11/2026, logs `docs/logs/logs_122335477492.zip`).
+    - `e2e/campaigns.spec.ts:1601` (s27b, critère 5) : la page de désinscription liste désormais aussi
+      « Relance automatique » parmi les envois statutaires (voulu, ADR 070 Consequences). Mettre à jour
+      la liste attendue, sans affaiblir l'assertion d'ordre.
+    - `e2e/unpaid-reminders.spec.ts:362` : le passage du planificateur ne crée aucune R1 (`[]`), à
+      chaque essai. Diagnostiquer la cause par le code avant de corriger. Piste prioritaire : le
+      planificateur ne prend que `SCHEDULED_JOBS_BATCH_SIZE` (20) tâches par association et par passage,
+      les plus anciennes d'abord : des tâches de TechCorp laissées dues par les specs précédentes passent
+      avant la relance. Autres pistes à écarter explicitement : réglages de relance incomplets au moment
+      du passage, fournisseur de factures, cible, calendrier. Correctif côté spec (passages bornés jusqu'à
+      ce que la tâche du jour de l'essai soit close, ou équivalent déterministe), et afficher la sortie du
+      script en cas d'échec. Si la cause est dans le code produit, la corriger en TDD.
+    - `e2e/unpaid-reminders.spec.ts:293` (`afterAll`) : la suppression de `member_profile` viole la FK
+      `parcel_ownership_member_profile_id_member_profile_id_fk` ; la transaction entière est annulée et
+      les réglages de TechCorp ne sont pas rétablis. Supprimer d'abord ce qui référence les fiches
+      (`parcel_ownership`, et toute autre table sans cascade), dans le bon ordre.
+    - Hors story : le test instable `campaigns.spec.ts:622` (« Unexpected end of JSON input », lecture
+      d'un fichier d'outbox à moitié écrit) existait déjà le 20/11, avant s29. Non traité ici.
+
 ## Files touched
 
 - **Nouveaux** :
