@@ -192,7 +192,8 @@ export type CampaignDTO = {
   preheader: string | null
   /** Corps tel qu'ecrit : variables non remplacees. */
   bodyMarkdown: string
-  templateId: CampaignTemplateId | null
+  /** Un modele du composeur, ou la relance automatique (s29, ADR 070). */
+  templateId: CampaignSendKind | null
   /** Nature figee a l'envoi (s27b, ADR 064). */
   nature: CampaignNature
   targetKind: CampaignTargetKind

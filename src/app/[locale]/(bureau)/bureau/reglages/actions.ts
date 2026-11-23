@@ -94,20 +94,22 @@ const schedulePennylaneSync = async (organizationId: string): Promise<void> => {
 }
 
 /**
- * La relance automatique **passe** a activee (s29) : le formulaire renvoie
- * aussi la valeur deja enregistree, qui n'est pas une activation.
+ * La relance automatique est activee **apres** l'enregistrement (s29) : la
+ * valeur envoyee si le formulaire la porte, sinon celle deja enregistree.
  */
-const enablesUnpaidReminders = (
+const unpaidRemindersEnabledAfterSave = (
   changes: Record<string, string>,
   before: ResolvedAssociationSettings
 ): boolean =>
-  changes[BILLING_REMINDER_ENABLED_SETTING_KEY] === 'true' &&
-  before[BILLING_REMINDER_ENABLED_SETTING_KEY]?.value !== true
+  BILLING_REMINDER_ENABLED_SETTING_KEY in changes
+    ? changes[BILLING_REMINDER_ENABLED_SETTING_KEY] === 'true'
+    : before[BILLING_REMINDER_ENABLED_SETTING_KEY]?.value === true
 
 /**
- * Garantit la tache quotidienne des relances apres leur activation (s29,
- * ADR 070 §4). L'enregistrement a deja eu lieu : un echec ici ne le defait
- * pas, il est journalise.
+ * Garantit la tache quotidienne des relances a chaque enregistrement qui les
+ * laisse activees (s29, ADR 070 §4) : l'enfilage est idempotent (cle = le
+ * jour), comme pour la synchronisation Pennylane. L'enregistrement a deja eu
+ * lieu : un echec ici ne le defait pas, il est journalise.
  */
 const scheduleUnpaidReminders = async (
   organizationId: string
@@ -163,7 +165,7 @@ export async function updateAssociationSettingsAction(
     if (changes[BILLING_PROVIDER_SETTING_KEY] === BILLING_PROVIDER_PENNYLANE) {
       await schedulePennylaneSync(tenant.id)
     }
-    if (enablesUnpaidReminders(changes, before)) {
+    if (unpaidRemindersEnabledAfterSave(changes, before)) {
       await scheduleUnpaidReminders(tenant.id)
     }
     return {

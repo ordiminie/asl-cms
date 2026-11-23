@@ -203,6 +203,19 @@ Décisions du plan (ADR 070) :
 
     Lint, typecheck et `pnpm test --run` verts.
 
+12. [x] **Correctifs de la revue 1** (arbitrage du 23/11/2026 : « Corriger avant la PR »).
+    - **Majeur 1** : ajouter `"unpaid_reminder": "Relance automatique"` sous
+      `CampaignsBureau.templateNames` (`messages/fr.json`). Test de la liste (`campaign-list`) **et** du
+      détail (`campaign-detail`) avec `templateId: 'unpaid_reminder'`, qui vérifie le libellé.
+    - **Mineur 2** : dans `src/app/[locale]/(bureau)/bureau/reglages/actions.ts`, garantir la tâche
+      quotidienne à **chaque** enregistrement où `billing.reminder.enabled` vaut vrai après sauvegarde, plus
+      seulement au passage désactivé → activé (l'enfilage est idempotent, clé = le jour ; même forme que
+      `schedulePennylaneSync`). Tests : réenregistrement d'un réglage déjà activé → tâche garantie ;
+      désactivé → rien.
+      Le risque e2e (autres specs qui enregistrent les réglages de TechCorp puis lancent le planificateur)
+      est à vérifier et neutraliser dans les specs concernées, pas en revenant à la transition seule.
+    - Les autres mineurs restent dans `docs/reviews/s29-relances-impayes.md` pour le tour final.
+
 ## Files touched
 
 - **Nouveaux** :

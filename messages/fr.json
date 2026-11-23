@@ -4496,7 +4496,8 @@
       "reminder": "Relance manuelle",
       "invoice": "Facture disponible",
       "general_assembly": "Convocation à l’AG",
-      "post_assembly_documents": "Documents après l’AG"
+      "post_assembly_documents": "Documents après l’AG",
+      "unpaid_reminder": "Relance automatique"
     },
     "templateUsages": {
       "free": "Vous écrivez le message en entier.",

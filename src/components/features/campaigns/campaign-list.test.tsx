@@ -112,6 +112,24 @@ describe('CampaignList — écran 1 du design s25', () => {
     expect(screen.queryByText(/ — Objet a/)).toBeNull()
   })
 
+  it('une relance automatique (s29) est nommée « Relance automatique », en ligne et en carte', () => {
+    render(
+      <CampaignList
+        list={campaignListOf([
+          campaignOf('a', {templateId: 'unpaid_reminder'}),
+        ])}
+      />
+    )
+
+    const [first] = tableRows()
+    expect(within(first).getAllByRole('cell')[3]).toHaveTextContent(
+      'Relance automatique'
+    )
+    expect(screen.getByTestId('campaign-card')).toHaveTextContent(
+      'Relance automatique'
+    )
+  })
+
   it('rend aussi des cartes empilées pour le mobile', () => {
     render(<CampaignList list={campaignListOf([campaignOf('a')])} />)
 

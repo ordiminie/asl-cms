@@ -322,6 +322,20 @@ describe('CampaignDetail — écran 2 de s26, campagne étalée', () => {
     expect(summary).toHaveTextContent('Convocation à l’AG')
   })
 
+  it('Résumé : une relance automatique (s29) nomme son modèle « Relance automatique »', () => {
+    render(
+      <CampaignDetail
+        campaign={campaignOf('a', {templateId: 'unpaid_reminder'})}
+        recipients={recipientsPageOf([recipientOf('r1')])}
+        associationName="ASL Les Pins"
+        dailySendCap={100}
+        justSent={false}
+      />
+    )
+
+    expect(card('Résumé')).toHaveTextContent('ModèleRelance automatique')
+  })
+
   it.each([
     [{targetKind: 'all_members' as const}, 'CibleTous les membres'],
     [{targetKind: 'unpaid_members' as const}, 'CibleMembres en impayé'],

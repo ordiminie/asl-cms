@@ -382,7 +382,7 @@ describe('updateAssociationSettingsAction — activation de la relance (s29, ADR
     )
   })
 
-  it('déjà activée et renvoyée telle quelle par le formulaire : aucune tâche de plus', async () => {
+  it('déjà activée et renvoyée telle quelle par le formulaire : la tâche est garantie à nouveau', async () => {
     vi.mocked(getAssociationSettingsDal).mockResolvedValue(
       resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, [
         {key: 'billing.reminder.enabled', value: 'true'},
@@ -392,6 +392,42 @@ describe('updateAssociationSettingsAction — activation de la relance (s29, ADR
     await updateAssociationSettingsAction(
       undefined,
       settingsForm({'billing.reminder.enabled': 'true'})
+    )
+
+    expect(scheduleUnpaidRemindersService).toHaveBeenCalledWith(
+      TENANT_ID,
+      expect.any(Date)
+    )
+  })
+
+  it('déjà activée, un autre réglage enregistré : la tâche est garantie à nouveau', async () => {
+    vi.mocked(getAssociationSettingsDal).mockResolvedValue(
+      resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, [
+        {key: 'billing.reminder.enabled', value: 'true'},
+      ])
+    )
+
+    await updateAssociationSettingsAction(
+      undefined,
+      settingsForm({[CONTACT_EMAIL_SETTING_KEY]: 'contact@asl.test'})
+    )
+
+    expect(scheduleUnpaidRemindersService).toHaveBeenCalledWith(
+      TENANT_ID,
+      expect.any(Date)
+    )
+  })
+
+  it('activée puis désactivée par l’enregistrement : aucune tâche', async () => {
+    vi.mocked(getAssociationSettingsDal).mockResolvedValue(
+      resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, [
+        {key: 'billing.reminder.enabled', value: 'true'},
+      ])
+    )
+
+    await updateAssociationSettingsAction(
+      undefined,
+      settingsForm({'billing.reminder.enabled': 'false'})
     )
 
     expect(scheduleUnpaidRemindersService).not.toHaveBeenCalled()

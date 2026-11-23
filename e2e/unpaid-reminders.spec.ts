@@ -204,6 +204,18 @@ const saveSettings = async (page: Page) => {
 
 test.describe('Relances des impayés — activation, passage, suivi (s29)', () => {
   test.beforeAll(async () => {
+    // Tout enregistrement des réglages de TechCorp, relance activée par le
+    // seed, garantit la tâche du jour : une tâche laissée par un autre spec,
+    // déjà close par un passage, rendrait sans effet l'activation de l'essai.
+    const tenant = await techCorpId()
+    await withAppRoleClient((client) =>
+      inTransaction(client, ['app.bypass_rls', 'on'], () =>
+        client.query(
+          `delete from scheduled_job where organization_id = $1 and kind = $2`,
+          [tenant, JOB_KIND]
+        )
+      )
+    )
     await inTenantScope(async (client) => {
       const a = await techCorpId()
       const stored = await client.query<{key: string; value: string}>(
