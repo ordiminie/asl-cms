@@ -213,6 +213,7 @@ describe('CampaignDetail — écran 2 de s26, campagne étalée', () => {
           toVerify: 2,
           failed: 0,
           unsubscribed: 0,
+          settled: 0,
         },
       })
     )
@@ -243,6 +244,7 @@ describe('CampaignDetail — écran 2 de s26, campagne étalée', () => {
           toVerify: 0,
           failed: 196,
           unsubscribed: 0,
+          settled: 0,
         },
         parts: [
           partOf(1, '2026-11-12', 100),
@@ -283,6 +285,7 @@ describe('CampaignDetail — écran 2 de s26, campagne étalée', () => {
           toVerify: 0,
           failed: 0,
           unsubscribed: 0,
+          settled: 0,
         },
         parts: [
           partOf(1, '2026-11-12', 100, {
@@ -430,6 +433,25 @@ describe('CampaignDetail — carte Destinataires', () => {
     expect(badgeIn(cells[4])).toHaveClass('text-muted-foreground')
   })
 
+  it('une ligne d’une relance réglée avant l’envoi dit « Réglée avant l’envoi » (s29, ADR 070 §3)', () => {
+    renderDetail(spreadCampaignOf('a'), {
+      recipients: recipientsPageOf([
+        recipientOf('r1', {
+          name: 'Anne Aubry',
+          status: 'settled',
+          sentAt: null,
+        }),
+      ]),
+    })
+
+    const [row] = within(table()).getAllByRole('row').slice(1)
+    const cell = within(row).getAllByRole('cell')[2]
+    expect(cell).toHaveTextContent('Réglée avant l’envoi')
+    expect(cell.querySelector('[data-slot="badge"]')).toHaveClass(
+      'text-muted-foreground'
+    )
+  })
+
   it('une fiche supprimée apparaît avec un libellé de repli, parcelles en données', () => {
     renderDetail(spreadCampaignOf('a'), {recipients: page})
 
@@ -541,6 +563,7 @@ describe('CampaignDetail — part reportée faute de budget d’envoi (s52, écr
         toVerify: 0,
         failed: 0,
         unsubscribed: 0,
+        settled: 0,
       },
       parts: [
         partOf(1, '2026-11-13', 100),

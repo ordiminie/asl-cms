@@ -8,7 +8,7 @@ import {useActionState, useId} from 'react'
 import {Alert, AlertDescription, AlertTitle} from '@/components/ui/alert'
 import {Button} from '@/components/ui/button'
 import type {
-  CampaignTemplateId,
+  CampaignSendKind,
   ConfirmUnsubscribeActionResult,
 } from '@/services/types/domain/campaign-types'
 
@@ -25,7 +25,7 @@ type UnsubscribePanelProps = {
    * Les types d'envoi statutaires de l'association (s27b), lus avec l'etat ;
    * `null` s'ils n'ont pas pu l'etre : la page ne promet alors rien.
    */
-  statutoryTemplateIds: CampaignTemplateId[] | null
+  statutoryTemplateIds: CampaignSendKind[] | null
   confirmAction: (
     state: ConfirmUnsubscribeActionResult | undefined,
     formData: FormData
@@ -152,7 +152,7 @@ function StatutoryNotice({
   templateIds,
 }: {
   associationName: string
-  templateIds: CampaignTemplateId[] | null
+  templateIds: CampaignSendKind[] | null
 }) {
   const t = useTranslations('UnsubscribePage')
   const tNature = useTranslations('AssociationSettings.campaignNature')

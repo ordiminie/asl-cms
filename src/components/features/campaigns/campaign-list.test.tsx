@@ -67,6 +67,7 @@ describe('CampaignList — écran 1 du design s25', () => {
               toVerify: 2,
               failed: 0,
               unsubscribed: 0,
+              settled: 0,
             },
           }),
           campaignOf('d', {
@@ -79,6 +80,7 @@ describe('CampaignList — écran 1 du design s25', () => {
               toVerify: 0,
               failed: 196,
               unsubscribed: 0,
+              settled: 0,
             },
           }),
         ])}

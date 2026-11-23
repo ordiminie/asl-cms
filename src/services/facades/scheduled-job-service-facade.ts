@@ -5,6 +5,7 @@ import {
   RunDueScheduledJobsResult,
   ScheduledJobHandlers,
 } from '../types/domain/scheduled-job-types'
+import {unpaidReminderScheduledJobHandlers} from '../unpaid-reminder-service'
 import scheduledJobServiceInterceptor from './interceptors/scheduled-job-service-logger-interceptor'
 
 /**
@@ -16,6 +17,7 @@ const scheduledJobHandlers: ScheduledJobHandlers = {
   ...campaignScheduledJobHandlers,
   ...emailScheduledJobHandlers,
   ...pennylaneSyncScheduledJobHandlers,
+  ...unpaidReminderScheduledJobHandlers,
 }
 
 /** Un passage : toutes les associations, ou une seule. */

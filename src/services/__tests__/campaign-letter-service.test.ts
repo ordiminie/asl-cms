@@ -18,6 +18,12 @@ vi.mock('@/db/repositories/campaign-repository', () => ({
   getCampaignLetterProfileIdsDao: vi.fn(),
   getCampaignTargetRowsDao: vi.fn(),
 }))
+vi.mock('@/db/repositories/unpaid-reminder-repository', () => ({
+  listUnpaidRemindersDao: vi.fn(),
+}))
+vi.mock('../billing/resolve-member-billing-provider', () => ({
+  resolveMemberBillingProvider: vi.fn(),
+}))
 vi.mock('@/db/repositories/organization-repository', () => ({
   getOrganizationByIdDao: vi.fn(),
 }))
@@ -45,6 +51,7 @@ import {
   getCampaignTargetRowsDao,
 } from '@/db/repositories/campaign-repository'
 import {getOrganizationByIdDao} from '@/db/repositories/organization-repository'
+import {listUnpaidRemindersDao} from '@/db/repositories/unpaid-reminder-repository'
 import {withTenant} from '@/db/tenant-scope'
 import {letterAddressFitsWindow} from '@/lib/letters/letter-address-measure.server'
 import {renderCalibrationPdf} from '@/lib/letters/render-calibration-pdf'
@@ -52,6 +59,7 @@ import {renderLettersPdf} from '@/lib/letters/render-letters-pdf'
 import {logger} from '@/lib/logger'
 
 import {getAssociationSettingsService} from '../association-settings-service'
+import {resolveMemberBillingProvider} from '../billing/resolve-member-billing-provider'
 import {
   generateCampaignLettersService,
   getCampaignLetterContextService,
@@ -503,5 +511,99 @@ describe('[SUPER_ADMIN] courrier postal', () => {
       generateCampaignLettersService(...contextInput, 'per_land')
     ).resolves.toMatchObject({status: 'ready'})
     await expect(getLetterCalibrationPdfService(ORG_ID)).resolves.toBeTruthy()
+  })
+})
+
+describe('[BUREAU] courrier d’une relance d’impayé (s29, ADR 070 §9)', () => {
+  const DUE = '2026-03-31'
+  const listInvoicesOf = vi.fn()
+  const invoice = (
+    memberProfileId: string,
+    status: string,
+    parcel: string
+  ) => ({
+    id: `inv-${memberProfileId.slice(0, 4)}`,
+    memberProfileId,
+    parcelId: null,
+    parcelNumber: parcel,
+    meterNumber: null,
+    source: 'site' as const,
+    year: 2026,
+    issuedOn: '2026-02-15',
+    dueOn: DUE,
+    amountCents: 32000,
+    status,
+    hasPdf: false,
+    paymentUrl: null,
+  })
+
+  beforeEach(async () => {
+    await setupAuthUserMocked(board)
+    vi.mocked(getAssociationSettingsService).mockResolvedValue({
+      'billing.unpaid_statuses': {value: 'En attente'},
+      'billing.settled_statuses': {value: 'Payée'},
+      'billing.invoice_subject': {value: 'Facture {année}'},
+    } as never)
+    vi.mocked(getCampaignByIdDao).mockResolvedValue(
+      campaignRow({
+        templateId: 'unpaid_reminder',
+        bodyMarkdown: 'Bonjour {nom},\n\n{factures}',
+      }) as never
+    )
+    vi.mocked(listUnpaidRemindersDao).mockResolvedValue([
+      {
+        dueOn: DUE,
+        rank: 1,
+        campaignId: CAMPAIGN_ID,
+        campaignStatus: 'sent',
+        lastSentOn: null,
+      },
+    ])
+    vi.mocked(resolveMemberBillingProvider).mockReturnValue({
+      id: 'manual',
+      canWrite: true,
+      listInvoicesOf,
+    })
+    listInvoicesOf.mockResolvedValue([
+      invoice(P12, 'En attente', '14'),
+      invoice(ROY, 'En attente', '3'),
+      invoice(NOBODY, 'Payée', '8'),
+    ])
+  })
+
+  it('chaque lettre porte sa liste de factures ; une fiche sans impayé est retirée du PDF et du décompte', async () => {
+    const result = await generateCampaignLettersService(...contextInput, null)
+
+    expect(result).toMatchObject({status: 'ready', letterCount: 2})
+    const {letters} = vi.mocked(renderLettersPdf).mock.calls[0][0]
+    expect(letters.map((letter) => letter.memberProfileIds)).toEqual([
+      [ROY],
+      [P12],
+    ])
+    expect(letters[0].bodyMarkdown).toContain('"parcelNumber":"3"')
+    expect(letters[0].bodyMarkdown).not.toContain('{factures}')
+    expect(letters[1].bodyMarkdown).toContain('"parcelNumber":"14"')
+    expect(letters[1].bodyMarkdown).not.toContain('"parcelNumber":"3"')
+    expect(listInvoicesOf).toHaveBeenCalledWith(ORG_ID, [P12, P27, ROY, NOBODY])
+  })
+
+  it('la carte compte les seules fiches encore en impayé', async () => {
+    const result = await getCampaignLetterContextService(...contextInput)
+
+    expect(result.status === 'ready' && result.context.withoutEmailCount).toBe(
+      2
+    )
+  })
+
+  it('une campagne manuelle ne relit aucune facture', async () => {
+    vi.mocked(getCampaignByIdDao).mockResolvedValue(campaignRow() as never)
+
+    await generateCampaignLettersService(...contextInput, 'per_land')
+
+    expect(listInvoicesOf).not.toHaveBeenCalled()
+    const {letters} = vi.mocked(renderLettersPdf).mock.calls[0][0]
+    expect(letters.every((letter) => letter.bodyMarkdown === undefined)).toBe(
+      true
+    )
   })
 })

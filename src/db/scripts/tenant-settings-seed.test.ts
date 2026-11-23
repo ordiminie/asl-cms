@@ -14,6 +14,7 @@ import {
   getDefaultLandAddress,
   getMemberEmailConfirmationDays,
   getStatutoryTemplateIds,
+  getUnpaidReminderSettings,
   MEMBER_EMAIL_CONFIRMATION_DAYS_SETTING_KEY,
   resolveSettings,
   validateSettingsChanges,
@@ -135,6 +136,7 @@ describe('TEST_TENANT_SETTINGS — nature des envois (s27b, ADR 064)', () => {
       'reminder',
       'invoice',
       'general_assembly',
+      'unpaid_reminder',
     ])
     expect(getCampaignNature(settings, 'free')).toBe('facultative')
     expect(getCampaignNature(settings, 'post_assembly_documents')).toBe(
@@ -160,5 +162,24 @@ describe('TEST_TENANT_SETTINGS — nature des envois (s27b, ADR 064)', () => {
 
   it('l’autre tenant ne déclare aucune nature : tout y est facultatif', () => {
     expect(getStatutoryTemplateIds(settingsOf('marketing-pro'))).toEqual([])
+  })
+})
+
+describe('TEST_TENANT_SETTINGS — relances des impayés (s29, ADR 070 §7)', () => {
+  it('le premier tenant active la relance, 3 / 2 / 1 semaines, avec un objet et un texte fictifs, et la relance statutaire', () => {
+    const settings = settingsOf('techcorp-solutions')
+    const reminder = getUnpaidReminderSettings(settings)
+
+    expect(reminder).toMatchObject({enabled: true, delaysWeeks: [3, 2, 1]})
+    expect(reminder.enabled && reminder.subject).toEqual(expect.any(String))
+    expect(reminder.enabled && reminder.body).toContain('{factures}')
+    expect(getCampaignNature(settings, 'unpaid_reminder')).toBe('statutaire')
+  })
+
+  it('l’autre tenant ne déclare rien : relance désactivée', () => {
+    expect(getUnpaidReminderSettings(settingsOf('marketing-pro'))).toEqual({
+      enabled: false,
+      delaysWeeks: null,
+    })
   })
 })

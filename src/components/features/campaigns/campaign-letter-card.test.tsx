@@ -7,6 +7,10 @@ import type {
 } from '@/services/types/domain/campaign-types'
 
 import {CampaignLetterCard} from './campaign-letter-card'
+import {
+  CAMPAIGN_LETTERS_ANCHOR,
+  campaignLettersCardPathOf,
+} from './campaign-paths'
 
 const CAMPAIGN_ID = '33333333-3333-4333-8333-333333333333'
 
@@ -39,6 +43,15 @@ const card = () =>
     .closest('[data-slot="card"]') as HTMLElement
 
 describe('CampaignLetterCard — la carte « Courrier postal » (s28)', () => {
+  it('porte l’ancre que la page des relances vise (s29)', () => {
+    renderCard({status: 'ready', context: contextOf()})
+
+    expect(card()).toHaveAttribute('id', CAMPAIGN_LETTERS_ANCHOR)
+    expect(campaignLettersCardPathOf(CAMPAIGN_ID)).toBe(
+      `/bureau/campagnes/${CAMPAIGN_ID}#${CAMPAIGN_LETTERS_ANCHOR}`
+    )
+  })
+
   it('vide (critère 5) : « aucun courrier à produire », sans bouton ni compteur', () => {
     renderCard({status: 'none'})
 

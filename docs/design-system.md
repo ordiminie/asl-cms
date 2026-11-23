@@ -880,6 +880,26 @@ s26. Aucun ne crée de token ni de composant : ils composent l'existant.
   « Campagne », « Notification au bureau » ; s29 ajoutera « Relance », s42 « Invitation ». Libellé en
   texte simple dans sa colonne, jamais un badge (le badge est réservé à l'état).
 
+**Versés par s29** (relances des impayés, gaps 1 à 3 de `docs/designs/s29-relances-impayes.md`,
+ADR 070) :
+
+- **« Non programmée »** — état d'un rang futur quand la relance automatique est désactivée :
+  `outline` texte `muted-foreground` (la forme « terminé » des états d'un envoi), sans nouveau badge.
+  À ne pas confondre avec « À venir » (`secondary`), rang futur d'une relance activée.
+- **Calendrier des relances** — le « plan écrit » ci-dessus, une carte par **échéance** (`h2` serif
+  20 px « Échéance du `jj/mm/aaaa` »), une ligne par rang « Relance 1 — `jj/mm/aaaa` » à filet gauche
+  2 px, suivie du badge d'état. Un rang créé reprend l'état de sa campagne (« Envoyée », « En cours
+  d'envoi »…) et, en `meta` `data`, « 212 adresses · 4 courriers » ou, reporté par le budget, « 100
+  reçues · 112 reportées au 22/04 » (« Part entamée ») ; le prochain rang dit « Programmée pour le
+  `jj/mm` », les suivants « À venir ». Ni calendrier ni frise.
+- **Publipostage par rang** — le courrier d'une relance se génère depuis la carte « Courrier postal »
+  de la campagne du rang (lien « Courrier postal (n) » de la ligne, ancre `#courrier` du détail),
+  jamais par ligne du tableau : une lettre porte le contenu d'une relance. Une fiche « Courrier » est
+  donc présente et marquée (badge `outline` « Courrier »), sans action par ligne.
+- **Nature « Relance automatique »** — le type d'envoi `unpaid_reminder` a sa ligne dans la carte
+  « Nature des envois » (réservée au SuperAdmin) et sur la page de désinscription quand il est
+  statutaire. Ce n'est pas un modèle du composeur.
+
 ### 3.14 Formes retenues par s27 — la cible d'une campagne et les groupes
 
 Écarts de la maquette `docs/designs/s27-groupes-destinataires.md` (gaps 1 à 3), arbitrés le 18/11/2026
@@ -1169,6 +1189,14 @@ Variables : `{prénom} {nom}` · `{parcelle}` · `{montant}` · `{échéance}` �
 `{lien_magique}` · `{nom_association}`. Chaque modèle déclare sa liste **et un jeu de valeurs de
 repli : un email dont une variable manque ne partira pas.**
 
+**`{factures}` — la variable de liste de la relance automatique (s29, ADR 070 §9)**. Reconnue dans le
+**texte** de la relance seulement (refusée dans son objet, dans le composeur et partout ailleurs). Elle
+rend une **liste à puces** Markdown, une puce par facture impayée de l'échéance des fiches du
+destinataire : « Facture 2026, parcelle 12 : 320,00 €, à régler avant le 31/03/2026 » (objet de la
+facture selon le modèle du tenant, montant en euros, date `jj/mm/aaaa` ; sans parcelle, la mention est
+omise). Elle est relue à l'envoi et à la génération d'une lettre, et se place seule sur sa ligne.
+Aucun lien de paiement dans la liste.
+
 **Les objets — la moitié du travail** : toujours préfixés « ASL La Fourche — » (une boîte
 encombrée doit trier au premier mot) · 60 caractères maximum, l'information d'abord
 (« Convocation à l'AG du 10 octobre », pas « Information importante ») · **jamais de majuscules,
@@ -1391,6 +1419,8 @@ des composants à improviser. À traiter en `/ks-design` ou `/ks-research` de la
 | Barre     | **`<ImpersonationBar />` en mobile** — titre sur deux lignes, détail, puis bouton pleine largeur 56 px, icône retirée (≈ 170 px, sous le quart de 844 px)                                                                                                                                                                                                                                                       | s48, s41      |
 | Barre     | **Compte à rebours** — emplacement non spécifié au §2.6 ; en s48 il remplace la ligne de détail, annoncé en `aria-live="polite"`                                                                                                                                                                                                                                                                                | s48, s41      |
 | Bouton    | **Bouton qui est un lien** (s48, boîte « autre domaine ») — style `default` appliqué à un `<a>` (`Button asChild`), non décrit                                                                                                                                                                                                                                                                                  | s48           |
+| Relances  | **Booléen des réglages en `switch`** (s29, écran 2) — la maquette dessinait un `switch` pour « Relancer automatiquement les impayés » ; le §3.1 réserve le `switch` aux réglages à effet immédiat et prescrit `checkbox` + libellé explicite pour un booléen enregistré avec le formulaire. Implémenté en `checkbox`, comme le §3.1 le veut                                                                     | s29           |
+| Relances  | **Historique d'une échéance au-delà de sa série** (s29) — la page de suivi montre les trois rangs de la série en cours ; aucune forme pour les séries closes des années passées, ni pour une relance manuelle d'une seule fiche                                                                                                                                                                                 | s29           |
 | Documents | **Document retiré entre-temps** (s31, manque 2) — la route rend un 404 nu, le navigateur affiche sa page d'erreur. Aucune forme pour « ce document n'est plus disponible » hors de la page ; acceptable en V1, la page se recharge après un retrait                                                                                                                                                             | s31           |
 | Technique | **Échelle de `z-index`** — seules deux valeurs sont posées (`PreviewBar` 50, `ImpersonationBar` 60). Avec trois bandes persistantes, les dialogues, les popovers, les tiroirs et les toasts, une échelle explicite évite les conflits au cas par cas                                                                                                                                                            | s04, s07, s41 |
 

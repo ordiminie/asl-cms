@@ -22,6 +22,9 @@ vi.mock('@/services/facades/pennylane-sync-service-facade', () => ({
   requestPennylaneSyncService: vi.fn(),
   schedulePennylaneSyncService: vi.fn(),
 }))
+vi.mock('@/services/facades/unpaid-reminder-service-facade', () => ({
+  scheduleUnpaidRemindersService: vi.fn(),
+}))
 
 import {revalidatePath, updateTag} from 'next/cache'
 
@@ -34,6 +37,7 @@ import {
   requestPennylaneSyncService,
   schedulePennylaneSyncService,
 } from '@/services/facades/pennylane-sync-service-facade'
+import {scheduleUnpaidRemindersService} from '@/services/facades/unpaid-reminder-service-facade'
 import {
   ACCENT_HUE_SETTING_KEY,
   ASSOCIATION_SETTINGS_REGISTRY,
@@ -361,5 +365,79 @@ describe('requestPennylaneSyncAction — « Mettre à jour maintenant » (s20)',
       status: 'error',
       message: 'pennylaneSync.errors.unavailable',
     })
+  })
+})
+
+describe('updateAssociationSettingsAction — activation de la relance (s29, ADR 070 §4)', () => {
+  it('garantit la tâche quotidienne quand la relance est activée', async () => {
+    const state = await updateAssociationSettingsAction(
+      undefined,
+      settingsForm({'billing.reminder.enabled': 'true'})
+    )
+
+    expect(state.success).toBe(true)
+    expect(scheduleUnpaidRemindersService).toHaveBeenCalledWith(
+      TENANT_ID,
+      expect.any(Date)
+    )
+  })
+
+  it('déjà activée et renvoyée telle quelle par le formulaire : aucune tâche de plus', async () => {
+    vi.mocked(getAssociationSettingsDal).mockResolvedValue(
+      resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, [
+        {key: 'billing.reminder.enabled', value: 'true'},
+      ])
+    )
+
+    await updateAssociationSettingsAction(
+      undefined,
+      settingsForm({'billing.reminder.enabled': 'true'})
+    )
+
+    expect(scheduleUnpaidRemindersService).not.toHaveBeenCalled()
+  })
+
+  it('désactivée, ou un autre réglage : aucune tâche', async () => {
+    await updateAssociationSettingsAction(
+      undefined,
+      settingsForm({'billing.reminder.enabled': 'false'})
+    )
+    await updateAssociationSettingsAction(
+      undefined,
+      settingsForm({[CONTACT_EMAIL_SETTING_KEY]: 'contact@asl.test'})
+    )
+
+    expect(scheduleUnpaidRemindersService).not.toHaveBeenCalled()
+  })
+
+  it('un refus d’enregistrement ne programme rien', async () => {
+    vi.mocked(updateAssociationSettingsService).mockResolvedValue({
+      status: 'rejected',
+      errors: {'billing.reminder.body': {code: 'requiredToEnable'}},
+    })
+
+    const state = await updateAssociationSettingsAction(
+      undefined,
+      settingsForm({'billing.reminder.enabled': 'true'})
+    )
+
+    expect(state).toEqual({
+      success: false,
+      fieldErrors: {'billing.reminder.body': {code: 'requiredToEnable'}},
+    })
+    expect(scheduleUnpaidRemindersService).not.toHaveBeenCalled()
+  })
+
+  it('une programmation impossible ne défait pas l’enregistrement', async () => {
+    vi.mocked(scheduleUnpaidRemindersService).mockRejectedValue(
+      new Error('base')
+    )
+
+    const state = await updateAssociationSettingsAction(
+      undefined,
+      settingsForm({'billing.reminder.enabled': 'true'})
+    )
+
+    expect(state.success).toBe(true)
   })
 })

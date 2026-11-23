@@ -14,7 +14,7 @@ import {Skeleton} from '@/components/ui/skeleton'
 import {getIdentityVersionFromKey} from '@/services/types/domain/association-identity-types'
 import {CONTACT_EMAIL_SETTING_KEY} from '@/services/types/domain/association-settings-types'
 import type {
-  CampaignTemplateId,
+  CampaignSendKind,
   UnsubscribePageState,
 } from '@/services/types/domain/campaign-types'
 
@@ -57,12 +57,12 @@ const contactEmailOf = (value: unknown): string | null =>
 /** Les types statutaires lus avec l'etat (s27b) ; aucun pour un lien invalide. */
 const statutoryTemplateIdsOf = (
   read: UnsubscribePageState
-): CampaignTemplateId[] | null =>
+): CampaignSendKind[] | null =>
   read.status === 'invalid' ? null : read.statutoryTemplateIds
 
 type ReadState = {
   state: UnsubscribeScreenState
-  statutoryTemplateIds: CampaignTemplateId[] | null
+  statutoryTemplateIds: CampaignSendKind[] | null
 }
 
 async function UnsubscribeSection({token}: {token: string}) {

@@ -909,3 +909,81 @@ describe('AssociationSettingsForm — carte « Nature des envois » (s27b, ADR 0
     expect(formData.has('campaign.nature.free')).toBe(false)
   })
 })
+
+describe('AssociationSettingsForm — carte « Relances des impayés » (s29, écran 2)', () => {
+  const reminderCard = () =>
+    screen
+      .getByRole('heading', {level: 3, name: 'Relances des impayés'})
+      .closest('[data-slot="card"]') as HTMLElement
+
+  it('2a · six réglages, juste après la carte « Factures », ancrée pour le lien de la page de suivi', () => {
+    productionForm()
+
+    const billing = screen
+      .getByRole('heading', {level: 3, name: 'Factures'})
+      .closest('[data-slot="card"]') as HTMLElement
+    expect(billing.nextElementSibling).toBe(reminderCard())
+    expect(reminderCard()).toHaveAttribute('id', 'reglages-reminder')
+    const card = within(reminderCard())
+    expect(
+      card.getByRole('checkbox', {
+        name: /Relancer automatiquement les impayés/,
+      })
+    ).not.toBeChecked()
+    expect(card.getByLabelText(/Première relance/)).toBeInTheDocument()
+    expect(card.getByText('semaines après l’échéance')).toBeInTheDocument()
+    expect(card.getByText('semaines après la première')).toBeInTheDocument()
+    expect(card.getByText('semaines après la deuxième')).toBeInTheDocument()
+    expect(card.getByLabelText(/Objet de la relance/)).toBeInTheDocument()
+    expect(card.getByLabelText(/Texte de la relance/)).toBeInTheDocument()
+    expect(
+      card.getByText(
+        'Variables : {nom}, {parcelle}, {date}, {factures}. {factures} écrit la liste des factures impayées du membre.'
+      )
+    ).toBeInTheDocument()
+  })
+
+  it('2b · activation refusée : résumé et message sous le champ vide, rien n’est envoyé', async () => {
+    const saveAction = saved()
+    productionForm(saveAction)
+
+    await userEvent.click(
+      within(reminderCard()).getByRole('checkbox', {
+        name: /Relancer automatiquement les impayés/,
+      })
+    )
+    await submit()
+
+    expect(
+      await within(reminderCard()).findByText(
+        'Écrivez le texte de la relance avant de l’activer.'
+      )
+    ).toBeInTheDocument()
+    expect(
+      within(reminderCard()).getByText(
+        'Écrivez l’objet de la relance avant de l’activer.'
+      )
+    ).toBeInTheDocument()
+    expect(saveAction).not.toHaveBeenCalled()
+  })
+
+  it('2b · le refus rendu par le serveur s’affiche sous son champ', async () => {
+    const saveAction = vi.fn(
+      async (): Promise<AssociationSettingsFormState> => ({
+        success: false,
+        fieldErrors: {'billing.reminder.body': {code: 'unknownVariable'}},
+      })
+    )
+    productionForm(saveAction)
+
+    await userEvent.type(
+      within(reminderCard()).getByLabelText(/Texte de la relance/),
+      'Bonjour'
+    )
+    await submit()
+
+    expect(
+      await within(reminderCard()).findByText(/variable inconnue/)
+    ).toBeInTheDocument()
+  })
+})

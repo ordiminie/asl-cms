@@ -66,6 +66,7 @@ const NAV_GROUPS: {labelKey: string; items: NavItem[]}[] = [
         labelKey: 'campaigns',
         matchesSubroutes: true,
       },
+      {href: '/bureau/relances', labelKey: 'unpaidReminders'},
       {href: '/bureau/envois', labelKey: 'sends'},
       {href: '/bureau/identite', labelKey: 'identity'},
       {href: '/bureau/reglages', labelKey: 'settings'},

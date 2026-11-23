@@ -17,6 +17,11 @@ vi.mock('../pennylane-sync-service', () => ({
     'billing.sync_pennylane': vi.fn(),
   },
 }))
+vi.mock('../unpaid-reminder-service', () => ({
+  unpaidReminderScheduledJobHandlers: {
+    'billing.unpaid_reminders': vi.fn(),
+  },
+}))
 vi.mock('../campaign-service', () => ({
   deliverCampaignPartService: vi.fn(),
   campaignScheduledJobHandlers: {
@@ -29,6 +34,7 @@ import {emailScheduledJobHandlers} from '../email-service'
 import * as scheduledJobFacade from '../facades/scheduled-job-service-facade'
 import {pennylaneSyncScheduledJobHandlers} from '../pennylane-sync-service'
 import {runDueScheduledJobsService} from '../scheduled-job-service'
+import {unpaidReminderScheduledJobHandlers} from '../unpaid-reminder-service'
 
 const ORG_ID = '11111111-1111-4111-8111-111111111111'
 const NOW = new Date('2026-11-12T13:32:00.000Z')
@@ -64,6 +70,19 @@ describe('façade du planificateur (s26, ADR 052)', () => {
         handlers: expect.objectContaining({
           'email.deliver_deferred':
             emailScheduledJobHandlers['email.deliver_deferred'],
+        }),
+      })
+    )
+  })
+
+  it('enregistre la relance des impayés : sans elle, la tâche quotidienne ne serait jamais prise (s29)', async () => {
+    await scheduledJobFacade.runDueScheduledJobsService(NOW)
+
+    expect(runDueScheduledJobsService).toHaveBeenCalledWith(
+      expect.objectContaining({
+        handlers: expect.objectContaining({
+          'billing.unpaid_reminders':
+            unpaidReminderScheduledJobHandlers['billing.unpaid_reminders'],
         }),
       })
     )

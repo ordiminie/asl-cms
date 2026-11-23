@@ -16,11 +16,13 @@ import {
   requestPennylaneSyncService,
   schedulePennylaneSyncService,
 } from '@/services/facades/pennylane-sync-service-facade'
+import {scheduleUnpaidRemindersService} from '@/services/facades/unpaid-reminder-service-facade'
 import {
   ASSOCIATION_SETTINGS_REGISTRY,
   AssociationSettingError,
   BILLING_PROVIDER_PENNYLANE,
   BILLING_PROVIDER_SETTING_KEY,
+  BILLING_REMINDER_ENABLED_SETTING_KEY,
   getSettingsForPage,
   parseSettingValue,
   ResolvedAssociationSettings,
@@ -92,6 +94,35 @@ const schedulePennylaneSync = async (organizationId: string): Promise<void> => {
 }
 
 /**
+ * La relance automatique **passe** a activee (s29) : le formulaire renvoie
+ * aussi la valeur deja enregistree, qui n'est pas une activation.
+ */
+const enablesUnpaidReminders = (
+  changes: Record<string, string>,
+  before: ResolvedAssociationSettings
+): boolean =>
+  changes[BILLING_REMINDER_ENABLED_SETTING_KEY] === 'true' &&
+  before[BILLING_REMINDER_ENABLED_SETTING_KEY]?.value !== true
+
+/**
+ * Garantit la tache quotidienne des relances apres leur activation (s29,
+ * ADR 070 §4). L'enregistrement a deja eu lieu : un echec ici ne le defait
+ * pas, il est journalise.
+ */
+const scheduleUnpaidReminders = async (
+  organizationId: string
+): Promise<void> => {
+  try {
+    await scheduleUnpaidRemindersService(organizationId, new Date())
+  } catch (error) {
+    logger.error('[SETTINGS] Relances des impayes non programmees', {
+      organizationId,
+      error: error instanceof Error ? error.name : 'unknown',
+    })
+  }
+}
+
+/**
  * Modifie les reglages de l'association du domaine appele (s02).
  *
  * Le controle d'acces est porte par le service (bureau de cette association ou
@@ -131,6 +162,9 @@ export async function updateAssociationSettingsAction(
     updateTag(associationSettingsTag(tenant.id))
     if (changes[BILLING_PROVIDER_SETTING_KEY] === BILLING_PROVIDER_PENNYLANE) {
       await schedulePennylaneSync(tenant.id)
+    }
+    if (enablesUnpaidReminders(changes, before)) {
+      await scheduleUnpaidReminders(tenant.id)
     }
     return {
       success: true,

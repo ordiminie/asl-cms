@@ -29,6 +29,7 @@ import {memberProfileEmail} from '@/db/models/member-profile-email-model'
 import {memberProfile} from '@/db/models/member-profile-model'
 import {parcel, parcelOwnership} from '@/db/models/parcel-model'
 import {scheduledJob} from '@/db/models/scheduled-job-model'
+import {insertUnpaidReminderTxnDao} from '@/db/repositories/unpaid-reminder-repository'
 import {getDb} from '@/db/tenant-scope'
 import {CAMPAIGN_DELIVER_PART_JOB_KIND} from '@/services/types/domain/scheduled-job-types'
 
@@ -101,6 +102,12 @@ export type PendingRecipientRowModel = {
    * celles que la campagne visait (s27, ADR 061).
    */
   addressProfileCount: number
+  /**
+   * Les fiches que la ligne represente : ciblees, figees et encore actives a
+   * cette adresse (ADR 061) ; sa fiche seule a defaut. Une relance d'impaye
+   * relit leurs factures avant l'envoi (s29, ADR 070 §3).
+   */
+  memberProfileIds: string[]
 }
 
 /** Une part telle que sa livraison la lit. */
@@ -268,12 +275,16 @@ const assignRecipientsToParts = (
   )
 }
 
+/** Le rang d'une relance d'impaye que porte la campagne (s29, ADR 070 §6). */
+export type UnpaidReminderRankInput = {dueOn: string; rank: number}
+
 /**
  * Cree la campagne, ses parts et **toutes** ses lignes de destinataire dans la
  * transaction du scope (ADR 051, ADR 052), puis fige ses fiches sans adresse
  * email pour le courrier (s28, ADR 065). Une soumission deja vue (double
  * clic, rejeu) ne cree rien : la campagne existante est relue, sans part ni
- * ligne de plus.
+ * ligne de plus. Une relance d'impaye (s29) ecrit son rang juste apres la
+ * campagne, dans la meme transaction ; elle peut n'avoir que du courrier.
  */
 export const createCampaignWithRecipientsTxnDao = async (
   input: Omit<
@@ -282,7 +293,8 @@ export const createCampaignWithRecipientsTxnDao = async (
   >,
   plan: readonly CampaignPartInput[],
   recipients: CampaignRecipientInput[],
-  letterProfileIds: readonly string[]
+  letterProfileIds: readonly string[],
+  unpaidReminder?: UnpaidReminderRankInput
 ): Promise<CreatedCampaign | undefined> => {
   const [created] = await getDb()
     .insert(campaign)
@@ -307,7 +319,22 @@ export const createCampaignWithRecipientsTxnDao = async (
       : undefined
   }
 
-  if (plan.length === 0) return {campaign: created, created: true, parts: []}
+  if (unpaidReminder) {
+    await insertUnpaidReminderTxnDao({
+      organizationId: input.organizationId,
+      dueOn: unpaidReminder.dueOn,
+      rank: unpaidReminder.rank,
+      campaignId: created.id,
+    })
+  }
+  if (plan.length === 0) {
+    await insertLetterProfilesTxnDao(
+      input.organizationId,
+      created.id,
+      letterProfileIds
+    )
+    return {campaign: created, created: true, parts: []}
+  }
 
   const parts = await getDb()
     .insert(campaignPart)
@@ -578,6 +605,12 @@ export const getPendingPartRecipientsDao = async (
           : []
       ).flatMap((id) => numbers[id] ?? []),
       addressProfileCount: Math.max(1, profileIds.length),
+      memberProfileIds:
+        profileIds.length > 0
+          ? profileIds
+          : row.memberProfileId
+            ? [row.memberProfileId]
+            : [],
     }
   })
 }
@@ -913,6 +946,27 @@ export const markRecipientSentTxnDao = async (
       )
     )
     .returning({campaignId: campaign.id, sentCount: campaign.sentCount})
+  return row
+}
+
+/**
+ * Relance d'impaye (s29, ADR 070 §3) : relue juste avant l'envoi, la ligne
+ * n'a plus de facture impayee de l'echeance. Rien ne part ; seule une ligne
+ * encore en attente passe `settled`.
+ */
+export const markRecipientSettledTxnDao = async (
+  recipientId: string
+): Promise<{id: string} | undefined> => {
+  const [row] = await getDb()
+    .update(campaignRecipient)
+    .set({status: 'settled'})
+    .where(
+      and(
+        eq(campaignRecipient.id, recipientId),
+        eq(campaignRecipient.status, 'pending')
+      )
+    )
+    .returning({id: campaignRecipient.id})
   return row
 }
 

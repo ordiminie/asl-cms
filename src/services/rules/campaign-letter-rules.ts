@@ -209,6 +209,11 @@ export type CampaignLetter = {
   address: LetterAddress
   /** La valeur de `{parcelle}` : les parcelles actuelles, en ordre numerique. */
   parcelle: string
+  /**
+   * Le corps propre a cette lettre, `{factures}` deja remplacee (relance
+   * d'impaye, s29) ; absent : le corps de la campagne.
+   */
+  bodyMarkdown?: string
 }
 
 const byNumber = (a: string, b: string): number =>

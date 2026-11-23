@@ -34,6 +34,7 @@ import * as recipientGroup from './recipient-group-model'
 import * as scheduledJob from './scheduled-job-model'
 import * as sharedDocument from './shared-document-model'
 import * as subscription from './subscription-model'
+import * as unpaidReminder from './unpaid-reminder-model'
 import * as user from './user-model'
 import * as userSubmission from './user-submission-model'
 import * as waterAnalysis from './water-analysis-model'
@@ -81,6 +82,7 @@ const db = drizzle(pool, {
     ...billingSyncState,
     ...recipientGroup,
     ...campaign,
+    ...unpaidReminder,
     ...scheduledJob,
     ...emailSendBudget,
     ...deferredEmail,

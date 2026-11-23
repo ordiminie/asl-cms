@@ -15,6 +15,7 @@ import type {
 import {memberProfilePathOf} from '../member-profile/member-profile-paths'
 import {dayLabelOf} from './campaign-format'
 import {CampaignLetterDownload} from './campaign-letter-download'
+import {CAMPAIGN_LETTERS_ANCHOR} from './campaign-paths'
 
 type CampaignLetterCardProps = {
   campaignId: string
@@ -38,7 +39,10 @@ export function CampaignLetterCard({
   if (result.status === 'not_found') return null
 
   return (
-    <Card className="gap-4 px-4 py-6 shadow-none sm:px-6">
+    <Card
+      id={CAMPAIGN_LETTERS_ANCHOR}
+      className="scroll-mt-6 gap-4 px-4 py-6 shadow-none sm:px-6"
+    >
       <h2 className="font-serif text-[24px] leading-snug font-semibold">
         {t('title')}
       </h2>

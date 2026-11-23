@@ -10,6 +10,7 @@ import {getActingContext, getAuthUser} from './authentication/auth-service'
 import {canPerformAction} from './authorization/action-registry-authorization'
 import {AuthorizationError} from './errors/authorization-error'
 import {ValidationParsedZodError} from './errors/validation-error'
+import {findUnknownVariables} from './rules/campaign-rules'
 import {
   findStatusesInBothLists,
   getInvoiceStatusClassification,
@@ -19,6 +20,8 @@ import {
   ASSOCIATION_SETTINGS_REGISTRY,
   AssociationSettingError,
   AssociationSettingRow,
+  BILLING_REMINDER_BODY_SETTING_KEY,
+  BILLING_REMINDER_SUBJECT_SETTING_KEY,
   BILLING_SETTLED_STATUSES_SETTING_KEY,
   BILLING_UNPAID_STATUSES_SETTING_KEY,
   isSuperAdminOnlySetting,
@@ -27,6 +30,7 @@ import {
   validateSettingsChanges,
 } from './types/domain/association-settings-types'
 import {RoleConst} from './types/domain/auth-types'
+import {UNPAID_REMINDER_INVOICES_VARIABLE} from './types/domain/campaign-types'
 import {
   associationSettingsOrganizationIdSchema,
   updateAssociationSettingsServiceSchema,
@@ -119,6 +123,10 @@ export const updateAssociationSettingsService = async (
     if (Object.keys(statusErrors).length > 0) {
       return {status: 'rejected', errors: statusErrors}
     }
+    const variableErrors = reminderVariablesErrors(validation.upserts)
+    if (Object.keys(variableErrors).length > 0) {
+      return {status: 'rejected', errors: variableErrors}
+    }
 
     await saveOrganizationSettingsTxnDao({
       organizationId: tenantId,
@@ -182,3 +190,28 @@ const invoiceStatusListsErrors = (
   }
   return {}
 }
+
+/**
+ * Les variables reconnues par l'objet et le texte de la relance automatique
+ * (s29, ADR 070 §9) : celles des campagnes, plus `{factures}` dans le texte
+ * seul. Une relance part sans relecture du bureau : une variable inconnue est
+ * refusee a l'enregistrement.
+ */
+const REMINDER_ALLOWED_VARIABLES: Record<string, readonly string[]> = {
+  [BILLING_REMINDER_SUBJECT_SETTING_KEY]: [],
+  [BILLING_REMINDER_BODY_SETTING_KEY]: [UNPAID_REMINDER_INVOICES_VARIABLE],
+}
+
+const reminderVariablesErrors = (
+  upserts: readonly AssociationSettingRow[]
+): Record<string, AssociationSettingError> =>
+  Object.fromEntries(
+    upserts
+      .filter(
+        ({key, value}) =>
+          key in REMINDER_ALLOWED_VARIABLES &&
+          findUnknownVariables(value, REMINDER_ALLOWED_VARIABLES[key]).length >
+            0
+      )
+      .map(({key}) => [key, {code: 'unknownVariable'} as const])
+  )

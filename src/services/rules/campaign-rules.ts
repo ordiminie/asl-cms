@@ -33,12 +33,19 @@ const isKnownVariable = (name: string): name is CampaignVariable =>
 /**
  * Les variables inconnues d'un ecrit brut (objet, texte d'apercu, corps),
  * chacune une fois, dans l'ordre d'apparition. Des accolades sans mot ne sont
- * pas une variable.
+ * pas une variable. `allowed` ajoute des variables propres a un type d'envoi
+ * (`{factures}` de la relance automatique, s29) : le composeur n'en passe
+ * aucune.
  */
-export const findUnknownVariables = (text: string): string[] => {
+export const findUnknownVariables = (
+  text: string,
+  allowed: readonly string[] = []
+): string[] => {
   const unknown = new Set<string>()
   for (const match of text.matchAll(VARIABLE_PATTERN)) {
-    if (!isKnownVariable(match[1])) unknown.add(match[1])
+    if (!isKnownVariable(match[1]) && !allowed.includes(match[1])) {
+      unknown.add(match[1])
+    }
   }
   return [...unknown]
 }
@@ -325,6 +332,7 @@ const COUNT_KEY_OF: Record<
   to_verify: 'toVerify',
   failed: 'failed',
   unsubscribed: 'unsubscribed',
+  settled: 'settled',
 }
 
 /** Les decomptes par statut d'un ensemble de lignes. */
@@ -338,6 +346,7 @@ export const recipientCountsOf = (
     toVerify: 0,
     failed: 0,
     unsubscribed: 0,
+    settled: 0,
   }
   for (const row of rows) counts[COUNT_KEY_OF[row.status]] += row.total
   return counts

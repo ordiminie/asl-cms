@@ -15,6 +15,9 @@
  * tenant (arbitrage du 18/09/2026, a confirmer par le conseil RGPD) :
  * relance, facture et convocation statutaires ; message libre et documents
  * apres l'AG facultatifs. Marketing Pro n'en declare aucune.
+ * La relance automatique des impayes (s29, ADR 070 §7) est activee chez
+ * TechCorp en valeurs de seed : intervalles 3, 2 puis 1 semaines (CDCT §8.3),
+ * objet et texte fictifs, nature statutaire. Marketing Pro ne l'active pas.
  */
 export type TestTenantSetting = {
   organizationSlug: string
@@ -77,6 +80,42 @@ export const TEST_TENANT_SETTINGS: readonly TestTenantSetting[] = [
     organizationSlug: 'techcorp-solutions',
     key: 'campaign.nature.post_assembly_documents',
     value: 'facultative',
+  },
+  {
+    organizationSlug: 'techcorp-solutions',
+    key: 'campaign.nature.unpaid_reminder',
+    value: 'statutaire',
+  },
+  {
+    organizationSlug: 'techcorp-solutions',
+    key: 'billing.reminder.enabled',
+    value: 'true',
+  },
+  {
+    organizationSlug: 'techcorp-solutions',
+    key: 'billing.reminder.delay_weeks.1',
+    value: '3',
+  },
+  {
+    organizationSlug: 'techcorp-solutions',
+    key: 'billing.reminder.delay_weeks.2',
+    value: '2',
+  },
+  {
+    organizationSlug: 'techcorp-solutions',
+    key: 'billing.reminder.delay_weeks.3',
+    value: '1',
+  },
+  {
+    organizationSlug: 'techcorp-solutions',
+    key: 'billing.reminder.subject',
+    value: 'Facture en attente de règlement',
+  },
+  {
+    organizationSlug: 'techcorp-solutions',
+    key: 'billing.reminder.body',
+    value:
+      'Bonjour {nom},\n\nSauf erreur de notre part, les factures suivantes restent à régler :\n\n{factures}\n\nSi vous avez déjà réglé, merci de ne pas tenir compte de ce message.\n\nLe bureau de TechCorp Solutions',
   },
   {
     organizationSlug: 'marketing-pro',

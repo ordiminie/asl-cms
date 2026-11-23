@@ -89,6 +89,7 @@ beforeEach(() => {
       invoice: 'facultative',
       general_assembly: 'facultative',
       post_assembly_documents: 'facultative',
+      unpaid_reminder: 'facultative',
     },
   })
 })

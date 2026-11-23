@@ -68,6 +68,7 @@ describe('enums de campagne (ADR 051)', () => {
       'sending',
       'to_verify',
       'unsubscribed',
+      'settled',
     ])
   })
 

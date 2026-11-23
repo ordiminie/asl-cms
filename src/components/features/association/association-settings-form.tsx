@@ -41,6 +41,7 @@ import {
   toSettingError,
   toSettingFieldName,
 } from './association-settings-form-validation'
+import {settingsSectionAnchorOf} from './association-settings-paths'
 
 export type AssociationSettingsSaveAction = (
   prevState: AssociationSettingsFormState | undefined,
@@ -385,7 +386,12 @@ export function AssociationSettingsForm({
 
       {settingsCardsOf(definitions).map((card) => (
         <Fragment key={card.section ?? 'notifications'}>
-          <Card className="gap-4 px-4 py-4 shadow-none sm:px-6 sm:py-6">
+          <Card
+            id={
+              card.section ? settingsSectionAnchorOf(card.section) : undefined
+            }
+            className="scroll-mt-6 gap-4 px-4 py-4 shadow-none sm:px-6 sm:py-6"
+          >
             <CardHeader className="px-0">
               <CardTitle>
                 <h3 className="text-xl leading-snug font-semibold">

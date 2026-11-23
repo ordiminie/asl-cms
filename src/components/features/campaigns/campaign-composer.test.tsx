@@ -77,6 +77,7 @@ const contextOf = (
     invoice: 'statutaire',
     general_assembly: 'statutaire',
     post_assembly_documents: 'facultative',
+    unpaid_reminder: 'statutaire',
   },
   ...overrides,
 })
@@ -225,6 +226,15 @@ describe('CampaignComposer — écran 2 (composer)', () => {
     expect(subjectField()).toHaveValue('')
     expect(bodyField()).toHaveValue('')
     expect(screen.queryByText('Texte provisoire.')).toBeNull()
+  })
+
+  it('ne propose pas la relance automatique (s29) : elle n’est pas un modèle', () => {
+    renderComposer()
+
+    expect(
+      screen.queryByRole('radio', {name: /Relance automatique/})
+    ).toBeNull()
+    expect(screen.queryByText(/Relance automatique/)).toBeNull()
   })
 
   it('montre la phrase d’usage de chaque modèle', () => {
