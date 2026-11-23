@@ -1,112 +1,85 @@
-# Review s29-relances-impayes — round 2
+# Review s29-relances-impayes — round 5 (short round on `01b7f4bc`)
 
-> Branche `feature/s29-relances-impayes` : commit de story `ca17486d` + commit de correctif `e13f9b7f`.
-> Subagent `reviewer`, contexte neuf, lecture seule. Le correctif est relu comme du code neuf
-> (`git show e13f9b7f`) puis recontrôlé sur le diff entier `git diff main...feature/s29-relances-impayes`.
+> Branche `feature/s29-relances-impayes`, HEAD `01b7f4bc` (correctif revue 4, tâche 15). Subagent
+> `reviewer`, contexte neuf, lecture seule. Tour court décidé par arbitrage (23/11/2026, « Corriger puis
+> CI ») : relecture de ce commit comme du code neuf, plus `e2e/unpaid-reminders.spec.ts` en entier ; la CI
+> tranche ensuite par une vraie exécution.
 
-The story can ship. Both items the user asked to fix are fixed, and the new tests pin them (each fix was
-broken on purpose and the new tests failed). The fix brings no critical or major issue; it adds two new
-minors, and the five open minors from round 1 stay open for the final round, as agreed.
+**Verdict:** `01b7f4bc` fixes the round-4 CRITICAL 1 and MINORS 13, 14, 15. No new finding. Nothing validated in
+rounds 3 and 4 regressed. Only the minors kept for the final round remain. CI still has to confirm the e2e run.
 
-## Round 1, and what was fixed
+## History
 
-Round 1 (commit `ca17486d`) ended `Max severity: major`, `Ship allowed: yes`. Arbitration of 23/11/2026:
-« Corriger avant la PR » — fix MAJOR 1 and MINOR 2, the other minors go to the final round (plan task 12).
+- **Round 1** (`ca17486d`): max major (missing `templateNames.unpaid_reminder`). Fixed in `e13f9b7f`.
+- **Round 2** (`e13f9b7f`): max minor, Ship allowed yes; minors 7, 8. PR 82 opened.
+- **PR 82 CI, 23/11**: `unpaid-reminders.spec.ts:362` (`[]`, then FK error in `afterAll`), `campaigns.spec.ts:1601`
+  (intended new list item); `campaigns.spec.ts:622` flaky, unrelated to s29 (already seen 20/11).
+- **Round 3** (`90f4713b`): CRITICAL — status lists written by SQL, overwritten by the form's cached copy. Minors 9–12.
+- **Round 4** (`2c6f9ea0`): CRITICAL — stored body comes back CRLF, assertion expected LF. Minors 13–15.
+- **Round 5** (`01b7f4bc`): this report.
 
-| Round 1 | Decision | Status after `e13f9b7f` |
-| --- | --- | --- |
-| MAJOR 1: raw key `CampaignsBureau.templateNames.unpaid_reminder` in the campaign list and detail | fix | **Fixed** |
-| MINOR 2: daily job enqueued only when the setting goes from off to on | fix | **Fixed** |
-| MINOR 1, 3, 4, 5, 6 | final round | **Still open** (below, not blocking) |
+## Findings
 
-### MAJOR 1 — verified fixed
+None.
 
-- `messages/fr.json`: `CampaignsBureau.templateNames.unpaid_reminder = "Relance automatique"`, next to the
-  other five keys. Read by `campaign-list.tsx:142` (row), `:171` (mobile card), `campaign-detail.tsx:617`.
-- Tests: `campaign-list.test.tsx` checks the « Modèle » cell and the `campaign-card`;
-  `campaign-detail.test.tsx` checks « Modèle » + « Relance automatique » in « Résumé ».
-- Mutation check: with the key removed, both tests fail (`2 failed | 43 passed`).
+## Status of round-4 findings
 
-### MINOR 2 — verified fixed
+### CRITICAL 1 — fixed
 
-`unpaidRemindersEnabledAfterSave` (`src/app/[locale]/(bureau)/bureau/reglages/actions.ts:100-106`) uses the
-submitted value when the key is in the form, otherwise the stored value. Checked against every save path:
+`normalizeLineEndings` (`unpaid-reminders.spec.ts:332`) and `normalizedSettings` (`:334-340`) apply to the values
+`storedTouchedSettings` reads (`:350`); the expected body is normalized too (`:627`). Holds whether the server stores
+CRLF or LF. No other multiline comparison in the spec; the multiline seed status lists only appear in the `afterAll`
+comparison, normalized on both sides.
 
-- partial forms (`association-settings-form.tsx:189-207`, `changesToSend`): untouched checkbox → stored value;
-- disable: `'false'` or `''` → no enqueue; `parseBoolean` accepts only `'true'`/`'false'`;
-- rejected save returns before the check; thrown save is caught → no enqueue;
-- `scheduleUnpaidRemindersService` (`unpaid-reminder-service.ts:281-293`) re-reads the settings and returns
-  when off — second safety net;
-- idempotence: `enqueueScheduledJobTxnDao` (`scheduled-job-repository.ts:45-60`) `onConflictDoNothing` on
-  `(organizationId, kind, idempotencyKey)`, key = the day; a broken chain resumes the next day;
-- scheduling errors are logged without the message, the save still succeeds (tested);
-- `campaign.manage` and `association.settings.update` share `defaultRoles` `['owner','board']`: no
-  authorization noise on the new path.
-- Mutation check: with the old off→on logic restored, 2 of the new action tests fail (`2 failed | 27 passed`).
+### MINOR 13 — fixed
 
-### Unplanned change — `CampaignDTO.templateId` widened to `CampaignSendKind | null`
+Against `src/components/features/unpaid-reminder/unpaid-reminders-overview.tsx`: 5 `TableHead` (Membre, Parcelle,
+Facture, Relances, Envoi — `messages/fr.json:4896-4902`), « Envoi » at index 4; 5 `TableCell` per row, same order;
+mobile cards are a `ul` outside the `table` (`sm:hidden`), CI projects desktop only; single `table` on the page;
+`Channel` renders `<span>Email</span>` or a `Badge` « Courrier » (`fr.json:4906-4909`), exact `toHaveText`; headers
+read after the table is awaited. Fiche renamed `Brunet ${MARKER}`.
 
-Needed for the new tests to typecheck, and matches runtime (`toCampaignDto` already returned
-`unpaid_reminder`). Every consumer checked: the composer and campaign actions use their own
-`CampaignTemplateId`; validation is still `z.enum(CAMPAIGN_TEMPLATE_IDS)` (`campaign-validation.ts:40,100`), so
-the composer still cannot accept `unpaid_reminder`. The only DTO readers are the three `templateNames`
-lookups. No `switch`/`Record` keyed by the DTO field. `tsc --noEmit` exits 0. Justified, type-only drift from
-task 12.
+### MINOR 14 — fixed
 
-### e2e changes
+`originalSettings` is `Record | null`, set only in `beforeAll` (`:522`); no restore when `null` (`:577-584`),
+`deleteRunData` still in `finally`. DB check after restore against `normalizedSettings(original)`.
+`deleteSettingsAbsentFrom` (`:391-401`) only deletes `TOUCHED_KEYS` absent from the snapshot, scoped to TechCorp under
+`inTenantScope`, no-op in CI (seed `'true'`). Known limit documented: the cache may hold `'false'` for a boolean deleted
+by SQL — harmless (default), not reached with the seed.
 
-- Only `campaigns.spec.ts` and `unpaid-reminders.spec.ts` run the scheduler script; the in-app immediate
-  pass (`runImmediatePass`, `campaign-service.ts:951`) only claims `campaign.deliver_part`.
-- Specs saving TechCorp settings (`association-settings`, `contact`, `email-budget`, `fonts-hebergees`,
-  `incident-report`, `pennylane-invoices`, `rate-limit`, `seo`, `campaigns`, `unpaid-reminders`) now leave a
-  reminder job; both scheduler specs delete them first (`campaigns.spec.ts` `runScheduler()` async, three
-  call sites awaited at `:1092`, `:1101`, `:1145`; `unpaid-reminders.spec.ts` `beforeAll`).
-- Deletion scoped to TechCorp + `kind = 'billing.unpaid_reminders'`, through the usual e2e maintenance
-  pattern (`set_config('app.bypass_rls','on', true)` in a transaction, as in `campaign-letters`,
-  `email-budget`, `pennylane-invoices:255`) — not a new `withRlsBypass` in application code.
-- `backup-restore` compares snapshots; `scheduled_job` counts filter by kind or count under RLS. No other
-  spec found at risk with CI `workers: 1`. Not run (CI only).
+### MINOR 15 — fixed
 
-### Round 1 verified list — no regression
+The scheduler script has no kind filter (`run-scheduled-jobs.ts`): the filter is only in the spec's wait condition
+(`jobsOf(ids, kind)`), consistent with tests 2 and 4. `payload->>'campaignId'` matches the enqueue code
+(`campaign-service.ts:724-729`); kind `campaign.deliver_part` (`scheduled-job-types.ts:71`). Open jobs made due cover
+the 00:00–02:00 Paris case (`campaign-schedule-rules.ts:103`). `toEqual(['sent'])` correct (« 1 sur 3 » counts
+reminders whose campaign has a `sent` recipient, `unpaid-reminder-repository.ts:58,107`). Residual risks surfaced by
+the diagnosis, not hidden: client email off (`released`), daily cap reached (`deferred`, unlikely: `email-budget.spec.ts`
+restores the counter), outbox unaffected (only `water-analysis.spec.ts` runs after). Precedent:
+`campaigns.spec.ts:890-950`. Test 9 timeout `SCHEDULER_TEST_TIMEOUT_MS` (330 s).
 
-The fix touches only its 10 files; `campaign-rules.ts` is a type-only cast. Idempotence, « une à la fois »,
-the delivery re-check, the shared `createCampaignInTenant`, migrations and RLS, authorization, ADR 010 and
-the budget paths are unchanged.
+## Rounds 3–4 regressions and tests 1–6 consistency
 
-## New findings
+Test 1 unchanged apart from normalization; tests 2 and 4 `jobsOf(ids, JOB_KIND)` = former `reminderJobsOf`; test 9
+gains delivery and exact cell checks; tests 3 and 6 unchanged; cleanup order (restore, absent keys, SQL in `finally`)
+consistent with the FK order validated in round 3. Task 15 fully implemented, nothing outside it.
 
-### MINOR 7 — comments out of date for « garantie à chaque enregistrement »
+## Open minors carried over (final round)
 
-`src/services/unpaid-reminder-service.ts:276-280` still says « appele apres le passage de
-`billing.reminder.enabled` a vrai »; ADR 070 §4 says « garantie quand le réglage passe à "activé" ». The new
-behaviour is a superset, not a contradiction. Fix: update the doc comment; mention the wider rule in the PR
-(ADRs are immutable).
+- MINOR 1 — « Relance automatique » label missing in `EmailSendingBureau.pending`.
+- MINOR 3 — subject cap ignores the association prefix (`association-settings-types.ts:737`).
+- MINOR 4 — disabled with empty delays: `[0,0,0]`, each rank shows the due date (`unpaid-reminder-service.ts:499-500`).
+- MINOR 5 — « Email » channel shown for a fiche whose only addresses are unsubscribed (`membersOf`).
+- MINOR 6 — avoidable queries (`readRankCampaigns`, `readReminderInvoices`).
+- MINOR 7 — doc comment `unpaid-reminder-service.ts:275-280` out of date.
+- MINOR 8 — scheduler-spec cleanup racy under parallel local e2e.
+- MINOR 11 — the replay test passes without proving the `submissionId` uniqueness (covered by unit tests).
 
-### MINOR 8 — e2e cleanup racy under parallel e2e runs
+## Checks run
 
-`e2e/campaigns.spec.ts`, `dropUnpaidReminderJobs` then `runSchedulerProcess`: with `fullyParallel` and several
-workers (local default; CI uses 1), a concurrent settings save could bring the job back before the scheduler
-runs. No effect in CI today. Fix if local parallel runs matter: serial project for scheduler specs, or a
-`kinds` filter on the scheduler script.
-
-## Open minors carried over from round 1 (final round)
-
-- **MINOR 1** — « Relance automatique » label missing in `EmailSendingBureau.pending` (`/bureau/envois`).
-- **MINOR 3** — reminder subject cap ignores the association prefix (`association-settings-types.ts:737`).
-- **MINOR 4** — disabled with empty delays: `[0,0,0]`, each rank shows the due date
-  (`unpaid-reminder-service.ts:499-500`).
-- **MINOR 5** — « Email » channel shown for a member whose only addresses are unsubscribed, nature
-  `facultative` (`membersOf`, `unpaid-reminder-service.ts:445`).
-- **MINOR 6** — avoidable queries (`readRankCampaigns`, `readReminderInvoices`).
-
-## Test results (reviewer, local-disk copy, HEAD `e13f9b7f`)
-
-- `pnpm test --run`: `Test Files  446 passed (446)`, `Tests  6101 passed | 4 skipped (6105)`, 270.96 s,
-  0 « timed out ». Round 1's `pages-list` flake did not come back.
-- Mutation checks restored afterwards; the three touched test files give `Tests 74 passed (74)`.
-- `pnpm exec tsc --noEmit`: exit 0.
-- `pnpm lint`: 0 errors; 2 warnings in untracked local files outside the diff.
-- `pnpm build` and e2e not run (CI only).
+- `pnpm exec tsc --noEmit`: exit 0. `pnpm lint`: 0 errors (2 warnings in untracked files outside the diff).
+- Unit tests not rerun: no product code changed since round 2 (`Tests 6101 passed | 4 skipped (6105)`, local-disk copy).
+- No build, no e2e (CI only).
 
 Max severity: minor
 Ship allowed: yes
