@@ -228,12 +228,32 @@ Décisions du plan (ADR 070) :
       du passage, fournisseur de factures, cible, calendrier. Correctif côté spec (passages bornés jusqu'à
       ce que la tâche du jour de l'essai soit close, ou équivalent déterministe), et afficher la sortie du
       script en cas d'échec. Si la cause est dans le code produit, la corriger en TDD.
+      **Cause rectifiée (revue 3)** : ce n'était pas le lot de 20 tâches. Les listes de statuts posées en
+      SQL par `beforeAll` étaient réécrites par l'enregistrement du test 1, qui renvoie la copie en cache
+      des réglages (seed) ; au passage, les factures de l'essai n'étaient plus impayées. Les passages
+      bornés restent, comme garde-fou et diagnostic. Voir la tâche 14.
     - `e2e/unpaid-reminders.spec.ts:293` (`afterAll`) : la suppression de `member_profile` viole la FK
       `parcel_ownership_member_profile_id_member_profile_id_fk` ; la transaction entière est annulée et
       les réglages de TechCorp ne sont pas rétablis. Supprimer d'abord ce qui référence les fiches
       (`parcel_ownership`, et toute autre table sans cascade), dans le bon ordre.
     - Hors story : le test instable `campaigns.spec.ts:622` (« Unexpected end of JSON input », lecture
       d'un fichier d'outbox à moitié écrit) existait déjà le 20/11, avant s29. Non traité ici.
+
+14. [x] **Correctifs de la revue 3** (CRITICAL 1, MINORS 9, 10, 12 ; la cause donnée en tâche 13 était
+        fausse).
+    - **Vraie cause** : `beforeAll` écrit `billing.unpaid_statuses` / `billing.settled_statuses` en SQL ; le
+      serveur sert les réglages depuis son cache (`getAssociationSettingsDal`, `'use cache'`) ; le formulaire
+      renvoie toutes les clés stockées (`changesToSend`), donc l'enregistrement du test 1 réécrit les listes
+      du seed. Au passage, les factures de l'essai ne sont plus impayées : rien n'est créé.
+    - **CRITICAL 1** : poser les listes de statuts de l'essai **par l'application** (dans le même
+      enregistrement du formulaire que la relance, au test 1), comme `association-settings.spec.ts` ; puis
+      vérifier en base, juste après le test 1, que `organization_setting` porte bien les statuts de l'essai.
+    - **MINOR 9** : rétablir les réglages d'origine **par l'application** dans `afterAll` (forme
+      `restoreTenantASeed`), pas en SQL.
+    - **MINOR 10** : le nettoyage supprime aussi les rangs `unpaid_reminder` de TechCorp et leurs campagnes
+      créés depuis le début de l'essai, pas seulement ceux de `DUE_ON`.
+    - **MINOR 12** : borner les passages pour que leur durée cumulée reste sous `test.setTimeout`.
+    - MINOR 11 reste au tour final. Pas de changement de code produit.
 
 ## Files touched
 
