@@ -255,6 +255,17 @@ Décisions du plan (ADR 070) :
     - **MINOR 12** : borner les passages pour que leur durée cumulée reste sous `test.setTimeout`.
     - MINOR 11 reste au tour final. Pas de changement de code produit.
 
+15. [x] **Correctifs de la revue 4** (arbitrage du 23/11/2026 : « Corriger puis CI » — corriger, tour de
+    revue court sur ce seul commit, puis pousser pour que la CI tranche). Spec seulement.
+    - **CRITICAL 1** : `storedTouchedSettings` normalise `\r\n` en `\n` avant comparaison (le corps
+      multipart du formulaire convertit les LF en CRLF) ; garder le texte multiligne.
+    - **MINOR 13** : l'assertion « Courrier » vise la cellule « Envoi », et la fiche sans email ne porte plus
+      « Courrier » dans son nom.
+    - **MINOR 14** : `afterAll` ne restaure que si l'instantané d'origine a été pris ; après restauration,
+      comparer en base à l'original (fins de ligne normalisées) ; une clé absente au départ reste absente.
+    - **MINOR 15** : avant le test de la page de suivi, rendre la part de R1 due et lancer un passage
+      explicite, pour que « 1 sur 3 » ne dépende ni de l'heure (00:00–02:00 Paris) ni du test précédent.
+
 ## Files touched
 
 - **Nouveaux** :

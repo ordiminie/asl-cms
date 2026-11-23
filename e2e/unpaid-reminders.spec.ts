@@ -44,6 +44,7 @@ const REMINDERS_ROUTE = '/bureau/relances'
 const DENIED_TITLE = 'Cette page ne vous est pas accessible'
 const SCHEDULER_SCRIPT = 'src/db/scripts/run-scheduled-jobs.ts'
 const JOB_KIND = 'billing.unpaid_reminders'
+const DELIVER_PART_JOB_KIND = 'campaign.deliver_part'
 
 const RUN = `${Date.now().toString(36)}${Math.floor(Math.random() * 1000)}`
 const MARKER = `s29-${RUN}`
@@ -71,7 +72,7 @@ const FICHES = {
     status: SETTLED_STATUS,
   },
   withoutEmail: {
-    name: `Courrier ${MARKER}`,
+    name: `Brunet ${MARKER}`,
     email: null,
     parcel: `R29-${RUN}-3`,
     status: UNPAID_STATUS,
@@ -189,7 +190,7 @@ const runSchedulerPass = (): SchedulerPass => {
   }
 }
 
-type ReminderJobState = {
+type JobState = {
   id: string
   idempotency_key: string
   attempts: number
@@ -199,14 +200,14 @@ type ReminderJobState = {
   failed_at: Date | null
 }
 
-const reminderJobsOf = (jobIds: readonly string[]) =>
+const jobsOf = (jobIds: readonly string[], kind: string) =>
   inTenantScope(async (client) => {
-    const result = await client.query<ReminderJobState>(
+    const result = await client.query<JobState>(
       `select id, idempotency_key, attempts, run_after, locked_at, completed_at, failed_at
          from scheduled_job
         where id = any($1::uuid[]) and kind = $2
         order by run_after`,
-      [[...jobIds], JOB_KIND]
+      [[...jobIds], kind]
     )
     return result.rows
   })
@@ -227,7 +228,7 @@ const dueJobsByKind = () =>
     return result.rows
   })
 
-const isStillDue = (job: ReminderJobState) =>
+const isStillDue = (job: JobState) =>
   job.completed_at === null &&
   job.failed_at === null &&
   new Date(job.run_after).getTime() <= Date.now()
@@ -239,18 +240,19 @@ const isStillDue = (job: ReminderJobState) =>
  * quoi lire un échec en CI sans relancer.
  */
 const runSchedulerUntilClosed = async (
-  jobIds: readonly string[]
+  jobIds: readonly string[],
+  kind: string = JOB_KIND
 ): Promise<string> => {
   const dueBefore = await dueJobsByKind()
   const passes: SchedulerPass[] = []
-  let jobs = await reminderJobsOf(jobIds)
+  let jobs = await jobsOf(jobIds, kind)
   const diagnosis = () => JSON.stringify({dueBefore, jobs, passes}, null, 2)
 
   while (passes.length < MAX_SCHEDULER_PASSES && jobs.some(isStillDue)) {
     const pass = runSchedulerPass()
     passes.push(pass)
     expect(pass.status, diagnosis()).toBe(0)
-    jobs = await reminderJobsOf(jobIds)
+    jobs = await jobsOf(jobIds, kind)
   }
 
   expect(jobs, diagnosis()).toHaveLength(jobIds.length)
@@ -285,7 +287,8 @@ const ficheIds: Record<FicheKey, string> = {
   settled: '',
   withoutEmail: '',
 }
-let originalSettings: {key: string; value: string}[] = []
+/** Instantané des réglages touchés ; `null` tant qu'il n'est pas pris. */
+let originalSettings: Record<string, string> | null = null
 /** La tâche du jour enfilée par l'activation de l'essai (critère 1). */
 let todayJobId = ''
 /** Horloge de la base au début de l'essai : borne du nettoyage des rangs. */
@@ -321,6 +324,21 @@ const TEXT_FIELDS = {
     page.getByLabel(/Texte de la relance/),
 } as const
 
+/**
+ * Le corps `multipart/form-data` de l'enregistrement convertit les fins de
+ * ligne LF en CRLF, et le serveur ne fait que rogner : un texte multiligne
+ * est stocké en CRLF. Les comparaisons se font fins de ligne normalisées.
+ */
+const normalizeLineEndings = (value: string) => value.replace(/\r\n/g, '\n')
+
+const normalizedSettings = (settings: Record<string, string>) =>
+  Object.fromEntries(
+    Object.entries(settings).map(([key, value]) => [
+      key,
+      normalizeLineEndings(value),
+    ])
+  )
+
 /** Les réglages touchés tels qu'enregistrés en base pour TechCorp. */
 const storedTouchedSettings = () =>
   inTenantScope(async (client) => {
@@ -329,20 +347,22 @@ const storedTouchedSettings = () =>
         where organization_id = $1 and key = any($2::text[])`,
       [await techCorpId(), [...TOUCHED_KEYS]]
     )
-    return Object.fromEntries(result.rows.map((row) => [row.key, row.value]))
+    return normalizedSettings(
+      Object.fromEntries(result.rows.map((row) => [row.key, row.value]))
+    )
   })
 
 /**
  * Remet les réglages touchés à leur valeur d'origine **par l'application** :
  * l'action du bureau invalide le cache des réglages (`updateTag`). Une
  * écriture SQL laisserait le serveur servir les valeurs de l'essai aux specs
- * suivantes, et le premier enregistrement venu les réécrirait. Une clé sans
- * valeur d'origine est vidée, donc supprimée.
+ * suivantes, et le premier enregistrement venu les réécrirait. Un texte sans
+ * valeur d'origine est vidé, donc supprimé par l'action.
  */
-const restoreOriginalSettings = async (browser: Browser) => {
-  const original = Object.fromEntries(
-    originalSettings.map(({key, value}) => [key, value])
-  )
+const restoreOriginalSettings = async (
+  browser: Browser,
+  original: Record<string, string>
+) => {
   const page = await newSession(browser, OWNER_A)
   try {
     await page.goto(`${TENANT_A}${SETTINGS_ROUTE}`, {waitUntil: 'load'})
@@ -359,6 +379,25 @@ const restoreOriginalSettings = async (browser: Browser) => {
   } finally {
     await page.context().close()
   }
+}
+
+/**
+ * Une case décochée s'enregistre `'false'` : l'application ne sait pas
+ * supprimer un booléen. Une clé absente au départ et encore présente après la
+ * restauration (seule `billing.reminder.enabled` peut l'être) est supprimée
+ * en SQL. Le cache du serveur peut encore la porter à `'false'`, la valeur
+ * par défaut : la valeur résolue reste celle d'origine.
+ */
+const deleteSettingsAbsentFrom = async (original: Record<string, string>) => {
+  const absent = TOUCHED_KEYS.filter((key) => !(key in original))
+  if (absent.length === 0) return
+  await inTenantScope(async (client) =>
+    client.query(
+      `delete from organization_setting
+        where organization_id = $1 and key = any($2::text[])`,
+      [await techCorpId(), absent]
+    )
+  )
 }
 
 /**
@@ -412,6 +451,51 @@ const deleteRunData = async () => {
   )
 }
 
+/**
+ * Livre la R1 de l'essai avant la page de suivi : « 1 sur 3 » exige une ligne
+ * `sent`. La part est programmée à 02:00 (heure de Paris) si la R1 naît
+ * entre minuit et 02:00 (`partRunAfter`) : ses tâches ouvertes sont rendues
+ * dues, puis un passage borné les clôt. La page ne dépend ainsi ni de
+ * l'heure ni de ce qu'a livré le passage du test précédent.
+ */
+const deliverRunReminder = async () => {
+  const reminders = await remindersOfRun()
+  expect(
+    reminders.map((reminder) => reminder.rank),
+    'le critère 7 crée R1'
+  ).toEqual([1])
+  const campaignId = reminders[0].campaign_id
+  const partJobIds = await inTenantScope(async (client) => {
+    const jobs = await client.query<{id: string}>(
+      `select id from scheduled_job
+        where kind = $1 and payload->>'campaignId' = $2`,
+      [DELIVER_PART_JOB_KIND, campaignId]
+    )
+    await client.query(
+      `update scheduled_job
+          set run_after = now() - interval '1 minute', locked_at = null
+        where kind = $1 and payload->>'campaignId' = $2
+          and completed_at is null and failed_at is null`,
+      [DELIVER_PART_JOB_KIND, campaignId]
+    )
+    return jobs.rows.map((job) => job.id)
+  })
+  expect(partJobIds.length, 'la R1 a au moins une part').toBeGreaterThan(0)
+
+  const diagnosis = await runSchedulerUntilClosed(
+    partJobIds,
+    DELIVER_PART_JOB_KIND
+  )
+  const statuses = await inTenantScope(async (client) => {
+    const result = await client.query<{status: string}>(
+      `select status from campaign_recipient where campaign_id = $1`,
+      [campaignId]
+    )
+    return result.rows.map((row) => row.status)
+  })
+  expect(statuses, diagnosis).toEqual(['sent'])
+}
+
 test.describe('Relances des impayés — activation, passage, suivi (s29)', () => {
   test.beforeAll(async () => {
     // Tout enregistrement des réglages de TechCorp, relance activée par le
@@ -435,7 +519,9 @@ test.describe('Relances des impayés — activation, passage, suivi (s29)', () =
           where organization_id = $1 and key = any($2::text[])`,
         [a, [...TOUCHED_KEYS]]
       )
-      originalSettings = stored.rows
+      originalSettings = Object.fromEntries(
+        stored.rows.map((row) => [row.key, row.value])
+      )
       for (const key of Object.keys(FICHES) as FicheKey[]) {
         const fiche = FICHES[key]
         const profile = await client.query<{id: string}>(
@@ -484,9 +570,18 @@ test.describe('Relances des impayés — activation, passage, suivi (s29)', () =
     // par défaut d'un hook sur un runner lent.
     test.setTimeout(90_000)
     try {
+      // Sans instantané (`beforeAll` tombé avant), rien à rétablir : une
+      // restauration à vide effacerait les listes et le texte de TechCorp.
       // Avant le nettoyage SQL : l'enregistrement, relance activée, enfile la
       // tâche du jour, que le nettoyage efface avec celles de l'essai.
-      await restoreOriginalSettings(browser)
+      const original = originalSettings
+      if (original) {
+        await restoreOriginalSettings(browser, original)
+        await deleteSettingsAbsentFrom(original)
+        expect(await storedTouchedSettings()).toEqual(
+          normalizedSettings(original)
+        )
+      }
     } finally {
       await deleteRunData()
     }
@@ -529,7 +624,7 @@ test.describe('Relances des impayés — activation, passage, suivi (s29)', () =
         'billing.unpaid_statuses': UNPAID_STATUS,
         'billing.settled_statuses': SETTLED_STATUS,
         'billing.reminder.enabled': 'true',
-        'billing.reminder.body': reminderBody,
+        'billing.reminder.body': normalizeLineEndings(reminderBody),
       })
 
       const jobs = await inTenantScope((client) =>
@@ -651,6 +746,9 @@ test.describe('Relances des impayés — activation, passage, suivi (s29)', () =
   test('critère 9 — la page de suivi : nom, parcelle, date de facture, relances ; « Courrier » marqué', async ({
     browser,
   }) => {
+    test.setTimeout(SCHEDULER_TEST_TIMEOUT_MS)
+    await deliverRunReminder()
+
     const page = await newSession(browser, OWNER_A)
     try {
       await page.goto(`${TENANT_A}${REMINDERS_ROUTE}`)
@@ -671,10 +769,20 @@ test.describe('Relances des impayés — activation, passage, suivi (s29)', () =
       await expect(unpaid).toContainText(FICHES.unpaid.parcel)
       await expect(unpaid).toContainText(frenchDayOf(ISSUED_ON))
       await expect(unpaid).toContainText('1 sur 3')
+      const headers = await table.getByRole('columnheader').allTextContents()
+      const channelColumn = headers.findIndex(
+        (header) => header.trim() === 'Envoi'
+      )
+      expect(channelColumn, JSON.stringify(headers)).toBeGreaterThan(-1)
+      await expect(unpaid.getByRole('cell').nth(channelColumn)).toHaveText(
+        'Email'
+      )
       const letter = table
         .getByRole('row')
         .filter({hasText: FICHES.withoutEmail.name})
-      await expect(letter).toContainText('Courrier')
+      await expect(letter.getByRole('cell').nth(channelColumn)).toHaveText(
+        'Courrier'
+      )
       await expect(
         table.getByRole('row').filter({hasText: FICHES.settled.name})
       ).toHaveCount(0)
