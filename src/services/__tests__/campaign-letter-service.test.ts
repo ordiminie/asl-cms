@@ -580,10 +580,12 @@ describe('[BUREAU] courrier d’une relance d’impayé (s29, ADR 070 §9)', () 
       [ROY],
       [P12],
     ])
-    expect(letters[0].bodyMarkdown).toContain('"parcelNumber":"3"')
+    expect(letters[0].bodyMarkdown).toContain(
+      '- Facture 2026, parcelle 3 : 320,00 €, à régler avant le 31/03/2026'
+    )
     expect(letters[0].bodyMarkdown).not.toContain('{factures}')
-    expect(letters[1].bodyMarkdown).toContain('"parcelNumber":"14"')
-    expect(letters[1].bodyMarkdown).not.toContain('"parcelNumber":"3"')
+    expect(letters[1].bodyMarkdown).toContain('parcelle 14 :')
+    expect(letters[1].bodyMarkdown).not.toContain('parcelle 3 :')
     expect(listInvoicesOf).toHaveBeenCalledWith(ORG_ID, [P12, P27, ROY, NOBODY])
   })
 

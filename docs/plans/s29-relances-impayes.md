@@ -266,6 +266,23 @@ Décisions du plan (ADR 070) :
     - **MINOR 15** : avant le test de la page de suivi, rendre la part de R1 due et lancer un passage
       explicite, pour que « 1 sur 3 » ne dépende ni de l'heure (00:00–02:00 Paris) ni du test précédent.
 
+16. [x] **Correctif de la CI du 23/11 (run 120112870061)** : défaut **produit**, révélé par la tâche 15.
+    - **Symptôme** : 329 passed, 1 failed (`unpaid-reminders.spec.ts:746`, page de suivi). La part de R1 n'est
+      jamais close : le script `run-scheduled-jobs.ts` journalise
+      `[CAMPAIGN] Factures de la relance illisibles` (`error: "Error"`), tentative comptée, `run_after` +1 h.
+    - **Cause** : `readReminderInvoices` (`src/services/unpaid-reminder-invoices.ts:80`) traduit les lignes de
+      `{factures}` avec `getTranslations` de `next-intl/server`, qui lève hors d'une requête Next. Le
+      planificateur tourne en script (minuterie `asl-cms-planificateur`, ADR 052) : **en production, aucune
+      relance ne partirait**. Le pied des campagnes a déjà rencontré ce piège
+      (`src/lib/emails/campaign-email.tsx:73-91`, `createTranslator` + `messages/fr.json`).
+    - **Correctif (TDD)** : traduire par `createTranslator` (`next-intl`) sur les messages de
+      `PRODUCT_LOCALE`, sur le modèle de `getCampaignFooterTexts`, sans requête. Le test unitaire de la
+      livraison (`src/services/__tests__/unpaid-reminder-delivery.test.ts`) ne doit plus mocker
+      `next-intl/server` pour ce chemin : il prouve qu'une livraison hors requête rend la liste réelle, texte
+      de `UnpaidReminders.invoiceList` compris. Vérifier qu'aucun autre code joint par le planificateur
+      (`billing.unpaid_reminders`, `campaign.deliver_part`) n'appelle `next-intl/server`.
+    - Spec e2e inchangée : elle a fait son travail. `campaigns.spec.ts:622` (instable, hors story) non traité.
+
 ## Files touched
 
 - **Nouveaux** :

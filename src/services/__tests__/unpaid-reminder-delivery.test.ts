@@ -71,7 +71,6 @@ vi.mock('@/lib/emails/campaign-email', () => ({
   })),
 }))
 
-import {createTranslator} from 'next-intl'
 import {getTranslations} from 'next-intl/server'
 
 import {
@@ -89,7 +88,6 @@ import {
 import {getOrganizationByIdDao} from '@/db/repositories/organization-repository'
 import {listUnpaidRemindersDao} from '@/db/repositories/unpaid-reminder-repository'
 
-import fr from '../../../messages/fr.json'
 import {getAssociationSettingsService} from '../association-settings-service'
 import {resolveMemberBillingProvider} from '../billing/resolve-member-billing-provider'
 import {deliverCampaignPartService} from '../campaign-service'
@@ -179,14 +177,9 @@ const pending = (
 
 beforeEach(() => {
   vi.clearAllMocks()
-  vi.mocked(getTranslations).mockImplementation((async (options: {
-    namespace: string
-  }) =>
-    createTranslator({
-      locale: 'fr',
-      messages: fr,
-      namespace: options.namespace as never,
-    })) as never)
+  vi.mocked(getTranslations).mockRejectedValue(
+    new Error('next-intl/server : hors d’une requête Next')
+  )
   vi.mocked(isClientEmailEnabledService).mockResolvedValue(true)
   vi.mocked(getAssociationSettingsService).mockResolvedValue(settings)
   vi.mocked(getOrganizationByIdDao).mockResolvedValue({
@@ -287,6 +280,24 @@ describe('livraison d’une relance d’impayé (s29, ADR 070 §3, §9)', () => 
     )
     expect(payload.text).not.toContain('{factures}')
     expect(markRecipientSentTxnDao).toHaveBeenCalledWith('r1')
+  })
+
+  it('hors requête (planificateur) : la ligne sans parcelle est traduite depuis messages/fr.json', async () => {
+    vi.mocked(getPendingPartRecipientsDao).mockResolvedValue([
+      pending('r1', [PROFILE_A]),
+    ])
+    provider.listInvoicesOf.mockResolvedValue([
+      invoice(PROFILE_A, {parcelNumber: null, amountCents: 32000}),
+    ])
+
+    const outcome = await deliverCampaignPartService(job, NOW)
+
+    const [payload] = sentPayloads()
+    expect(payload.text).toContain(
+      '- Facture 2026 : 320,00 €, à régler avant le 31/03/2026'
+    )
+    expect(markRecipientSentTxnDao).toHaveBeenCalledWith('r1')
+    expect(outcome).toEqual({status: 'completed'})
   })
 
   it('reportée faute de budget : la ligne est rendue en attente, jamais perdue (critère 5)', async () => {

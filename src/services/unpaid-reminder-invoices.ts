@@ -1,11 +1,12 @@
 import 'server-only'
 
-import {getTranslations} from 'next-intl/server'
+import {createTranslator} from 'next-intl'
 
 import {listUnpaidRemindersDao} from '@/db/repositories/unpaid-reminder-repository'
 import {withTenant} from '@/db/tenant-scope'
-import {PRODUCT_LOCALE} from '@/lib/helper/locale-helper'
+import {PRODUCT_LOCALE, type SupportedLocale} from '@/lib/helper/locale-helper'
 
+import fr from '../../messages/fr.json'
 import {resolveMemberBillingProvider} from './billing/resolve-member-billing-provider'
 import {
   composeInvoiceSubject,
@@ -29,6 +30,9 @@ import {UNPAID_REMINDER_SEND_KIND} from './types/domain/campaign-types'
 
 const LIST_NAMESPACE = 'UnpaidReminders.invoiceList'
 
+/** Les messages de chaque locale du produit (ADR 008 : `fr` seule). */
+const MESSAGES: Record<SupportedLocale, typeof fr> = {fr}
+
 /**
  * La valeur de `{factures}` pour des fiches donnees : la liste Markdown de
  * leurs factures impayees de l'echeance, ou `null` si elles n'en ont plus
@@ -51,7 +55,9 @@ const reminderDueOnOf = async (
  * Relit les factures des fiches d'une campagne de relance, par le
  * fournisseur actif. Rend `null` pour une campagne qui n'est pas une
  * relance. Une erreur de lecture remonte : rien ne part sur des factures
- * illisibles.
+ * illisibles. Les lignes sont traduites par `createTranslator`, sans
+ * requete : le planificateur (script de la minuterie, ADR 052) livre les
+ * relances hors de Next, ou `next-intl/server` leve.
  */
 export const readReminderInvoices = async (
   organizationId: string,
@@ -77,8 +83,9 @@ export const readReminderInvoices = async (
       )
     : []
   const subjectTemplate = getInvoiceSubjectTemplate(settings)
-  const t = await getTranslations({
+  const t = createTranslator({
     locale: PRODUCT_LOCALE,
+    messages: MESSAGES[PRODUCT_LOCALE],
     namespace: LIST_NAMESPACE,
   })
   const lineOf = ({parcelNumber, ...values}: UnpaidInvoiceLineValues) =>
