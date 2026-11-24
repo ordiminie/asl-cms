@@ -43,6 +43,8 @@ import {
   getEmailDailySendLimit,
   getEmailLoginReserve,
   getGoogleVerificationCode,
+  getInvitationLinkDays,
+  getInvitationText,
   getLetterAddressOffset,
   getMagicLinkDailyRequestLimit,
   getMemberEmailConfirmationDays,
@@ -51,6 +53,8 @@ import {
   getUnpaidReminderSettings,
   GOOGLE_VERIFICATION_SETTING_KEY,
   hasSettingReferenceCycle,
+  INVITATION_LINK_DAYS_SETTING_KEY,
+  INVITATION_TEXT_SETTING_KEY,
   isSuperAdminOnlySetting,
   LETTER_ADDRESS_OFFSET_X_SETTING_KEY,
   LETTER_ADDRESS_OFFSET_Y_SETTING_KEY,
@@ -268,6 +272,18 @@ describe('registre de production', () => {
       },
       {
         key: LETTER_ADDRESS_OFFSET_Y_SETTING_KEY,
+        type: 'number',
+        required: false,
+        page: 'settings',
+      },
+      {
+        key: INVITATION_TEXT_SETTING_KEY,
+        type: 'text',
+        required: false,
+        page: 'settings',
+      },
+      {
+        key: INVITATION_LINK_DAYS_SETTING_KEY,
         type: 'number',
         required: false,
         page: 'settings',
@@ -902,6 +918,8 @@ describe('registre de production', () => {
       BILLING_REMINDER_BODY_SETTING_KEY,
       LETTER_ADDRESS_OFFSET_X_SETTING_KEY,
       LETTER_ADDRESS_OFFSET_Y_SETTING_KEY,
+      INVITATION_TEXT_SETTING_KEY,
+      INVITATION_LINK_DAYS_SETTING_KEY,
     ])
     expect(
       getSettingsForPage(ASSOCIATION_SETTINGS_REGISTRY, 'identity').map(
@@ -1290,6 +1308,8 @@ describe('registre — carte « Referencement » (s11)', () => {
       BILLING_REMINDER_BODY_SETTING_KEY,
       LETTER_ADDRESS_OFFSET_X_SETTING_KEY,
       LETTER_ADDRESS_OFFSET_Y_SETTING_KEY,
+      INVITATION_TEXT_SETTING_KEY,
+      INVITATION_LINK_DAYS_SETTING_KEY,
     ])
   })
 
@@ -1991,5 +2011,99 @@ describe('relances des impayés — réglages (s29, ADR 070 §7)', () => {
         )
       )
     ).toEqual({enabled: false, delaysWeeks: [3, 2, 1]})
+  })
+})
+
+describe('invitation des membres — réglages (s42a)', () => {
+  const text = definitionOf(
+    ASSOCIATION_SETTINGS_REGISTRY,
+    INVITATION_TEXT_SETTING_KEY
+  )
+  const days = definitionOf(
+    ASSOCIATION_SETTINGS_REGISTRY,
+    INVITATION_LINK_DAYS_SETTING_KEY
+  )
+
+  it('le texte de l’invitation est un texte long facultatif, sans défaut, carte « Invitation »', () => {
+    expect(INVITATION_TEXT_SETTING_KEY).toBe('invitation.text')
+    expect(text).toMatchObject({
+      type: 'text',
+      required: false,
+      multiline: true,
+      maxLength: 2000,
+      page: 'settings',
+      section: 'invitation',
+      whenEmptyKey: 'fields.invitationText.whenEmpty',
+    })
+    expect(text.default).toBeUndefined()
+    expect(parseSettingValue(text, 'x'.repeat(2001))).toMatchObject({
+      valid: false,
+      error: {code: 'tooLong'},
+    })
+    expect(parseSettingValue(text, 'Bonjour,\n\nBienvenue.')).toMatchObject({
+      valid: true,
+    })
+  })
+
+  it('la durée du lien d’invitation est un entier de 1 à 30 jours, 7 par défaut', () => {
+    expect(INVITATION_LINK_DAYS_SETTING_KEY).toBe('invitation.link_days')
+    expect(days).toMatchObject({
+      type: 'number',
+      integer: true,
+      min: 1,
+      max: 30,
+      default: {value: '7'},
+      unitKey: 'units.days',
+      page: 'settings',
+      section: 'invitation',
+    })
+    expect(parseSettingValue(days, '0')).toMatchObject({valid: false})
+    expect(parseSettingValue(days, '31')).toMatchObject({valid: false})
+    expect(parseSettingValue(days, '2.5')).toMatchObject({valid: false})
+    expect(parseSettingValue(days, '30')).toMatchObject({valid: true})
+  })
+
+  it('accesseurs : texte absent → null, durée absente → 7 ; valeurs du bureau sinon', () => {
+    const empty = resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, [])
+    expect(getInvitationText(empty)).toBeNull()
+    expect(getInvitationLinkDays(empty)).toBe(7)
+
+    const stored = resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, [
+      {key: INVITATION_TEXT_SETTING_KEY, value: 'Bienvenue sur le site.'},
+      {key: INVITATION_LINK_DAYS_SETTING_KEY, value: '14'},
+    ])
+    expect(getInvitationText(stored)).toBe('Bienvenue sur le site.')
+    expect(getInvitationLinkDays(stored)).toBe(14)
+  })
+
+  it('libellés en français : carte, champs, aides, erreurs et défaut du texte', () => {
+    const fields = fr.AssociationSettings.fields as unknown as Record<
+      string,
+      {
+        label: string
+        help: string
+        whenEmpty?: string
+        errors?: Record<string, string>
+      }
+    >
+    expect(fields.invitationText.label).toEqual(expect.any(String))
+    expect(fields.invitationText.help.length).toBeGreaterThan(20)
+    expect(fields.invitationText.whenEmpty).toContain('Bonjour')
+    expect(fields.invitationLinkDays.label).toEqual(expect.any(String))
+    expect(fields.invitationLinkDays.help).toContain('20 minutes')
+    expect(days.errorMessageKeys).toEqual({
+      invalidNumber: 'fields.invitationLinkDays.errors.outOfRange',
+      belowMin: 'fields.invitationLinkDays.errors.outOfRange',
+      aboveMax: 'fields.invitationLinkDays.errors.outOfRange',
+    })
+    expect(fields.invitationLinkDays.errors?.outOfRange).toBe(
+      'Indiquez un nombre de jours entre 1 et 30.'
+    )
+    const cards = fr.BureauSettingsPage.cards as unknown as Record<
+      string,
+      {title: string; description: string}
+    >
+    expect(cards.invitation.title).toBe('Invitation des membres')
+    expect(cards.invitation.description).toEqual(expect.any(String))
   })
 })

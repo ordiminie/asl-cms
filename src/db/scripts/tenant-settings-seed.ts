@@ -18,6 +18,8 @@
  * La relance automatique des impayes (s29, ADR 070 §7) est activee chez
  * TechCorp en valeurs de seed : intervalles 3, 2 puis 1 semaines (CDCT §8.3),
  * objet et texte fictifs, nature statutaire. Marketing Pro ne l'active pas.
+ * La duree du lien d'invitation (s42a, arbitrage du 24/11/2026) est une
+ * valeur de seed du premier tenant : 7 jours.
  */
 export type TestTenantSetting = {
   organizationSlug: string
@@ -39,6 +41,11 @@ export const TEST_TENANT_SETTINGS: readonly TestTenantSetting[] = [
   {
     organizationSlug: 'techcorp-solutions',
     key: 'member.email_confirmation_days',
+    value: '7',
+  },
+  {
+    organizationSlug: 'techcorp-solutions',
+    key: 'invitation.link_days',
     value: '7',
   },
   {

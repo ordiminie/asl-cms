@@ -27,6 +27,13 @@ afterAll(() => {
 vi.mock('@/db/repositories/user-repository', () => ({
   getUserByIdDao: vi.fn(),
 }))
+/**
+ * Premiere connexion (s42a) : le hook apres creation de session charge ce
+ * service a l'appel ; sa trace se prouve dans `association-session-guard.test.ts`.
+ */
+vi.mock('@/services/member-invitation-service', () => ({
+  recordFirstSignIn: vi.fn(),
+}))
 vi.mock('@/services/facades/organization-service-facade', () => ({
   getOrganizationByDomainService: vi.fn(),
 }))

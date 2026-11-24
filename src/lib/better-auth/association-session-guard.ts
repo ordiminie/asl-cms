@@ -1,8 +1,13 @@
 import type {BetterAuthPlugin} from 'better-auth'
 
 import {getUserByIdDao} from '@/db/repositories/user-repository'
+import {logger} from '@/lib/logger'
 
-import {canOpenSessionOn, organizationOfRequest} from './association-membership'
+import {
+  canOpenSessionOn,
+  isMemberOf,
+  organizationOfRequest,
+} from './association-membership'
 import {requestHostOf} from './association-origin'
 
 export const ASSOCIATION_SESSION_GUARD_ID = 'association-session-guard'
@@ -33,6 +38,46 @@ const openSessionOnRequestDomain = async (
   if (!canOpenSessionOn(user, organization)) return false
 }
 
+/** Ce que le hook lit de la session creee. */
+type CreatedSession = {
+  userId: string
+  createdAt?: Date
+  impersonatedBy?: string | null
+}
+
+/**
+ * Premiere connexion reussie (s42a) : apres la creation de la session, pour un
+ * compte **membre** de l'association du domaine appele, hors session ouverte a
+ * sa place (s48). Le service est charge a l'appel (meme cycle d'imports que
+ * `organizationOfRequest`). Un echec est journalise, sans adresse, et
+ * n'empeche jamais la connexion.
+ */
+const recordFirstSignInOnRequestDomain = async (
+  session: CreatedSession,
+  context: SessionRequestContext
+): Promise<void> => {
+  try {
+    if (session.impersonatedBy) return
+    const headers = context?.headers ?? context?.request?.headers
+    const organization = await organizationOfRequest(requestHostOf(headers))
+    if (!organization) return
+    const user = await getUserByIdDao(session.userId)
+    if (!user || !isMemberOf(user, organization)) return
+
+    const {recordFirstSignIn} =
+      await import('@/services/member-invitation-service')
+    await recordFirstSignIn({
+      organizationId: organization.id,
+      userId: session.userId,
+      at: session.createdAt ?? new Date(),
+    })
+  } catch (error) {
+    logger.error('[SESSION] Premiere connexion non enregistree', {
+      reason: error instanceof Error ? error.message : 'inconnue',
+    })
+  }
+}
+
 /**
  * Plugin local, a placer **en tete** du tableau `plugins` : les hooks des
  * plugins passent dans l'ordre du tableau, et celui du plugin `admin()`
@@ -46,7 +91,10 @@ export const associationSessionGuard = () =>
         options: {
           databaseHooks: {
             session: {
-              create: {before: openSessionOnRequestDomain},
+              create: {
+                before: openSessionOnRequestDomain,
+                after: recordFirstSignInOnRequestDomain,
+              },
             },
           },
         },

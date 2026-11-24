@@ -367,7 +367,7 @@ describe('sendMagicLink', () => {
     await expect(
       sendMagicLink(
         {email, url, token: 'secret-token'},
-        {...requestContext(), context: {adapter: {deleteMany}}}
+        {...requestContext(), context: {adapter: {deleteMany, update: vi.fn()}}}
       )
     ).resolves.toBeUndefined()
 
@@ -473,7 +473,10 @@ describe('sendMagicLink', () => {
 
       await sendMagicLink(
         {email, url: pluginUrl, token: 'secret-token'},
-        {...requestContext('asso-b.test'), context: {adapter: {deleteMany}}}
+        {
+          ...requestContext('asso-b.test'),
+          context: {adapter: {deleteMany, update: vi.fn()}},
+        }
       )
 
       expect(consumeMagicLinkRequestQuotaService).toHaveBeenCalledWith({

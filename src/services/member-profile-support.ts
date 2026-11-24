@@ -1,5 +1,6 @@
 import 'server-only'
 
+import {getInvitationStatesByUserIdsDao} from '@/db/repositories/member-invitation-state-repository'
 import {
   deleteMemberProfileEmailDao,
   getMemberProfileEmailsDao,
@@ -30,6 +31,7 @@ import {
   planReplacementConfirmation,
   visibleEmails,
 } from './rules/member-email-rules'
+import {invitationStateOf} from './rules/member-invitation-rules'
 import {toMemberProfileDto} from './rules/member-profile-rules'
 import {roleCardFor} from './rules/member-role-rules'
 import {orderMyProfiles} from './rules/my-profiles-order-rules'
@@ -47,6 +49,7 @@ import {
 import {
   MemberAccountHolderDTO,
   MemberAccountProfileDTO,
+  MemberInvitationStateDTO,
   MemberProfileAccountDTO,
   MemberProfileDTO,
   MemberProfileEmailDTO,
@@ -224,7 +227,8 @@ const readAccountView = async (
 
 const toEmailDto = (
   row: MemberProfileEmailRow,
-  view: AccountView | undefined
+  view: AccountView | undefined,
+  invitation: MemberInvitationStateDTO | null
 ): MemberProfileEmailDTO => ({
   id: row.id,
   email: row.email,
@@ -236,6 +240,7 @@ const toEmailDto = (
   replacesEmailId: row.replacesEmailId,
   boardRole: view?.boardRole ?? null,
   otherProfiles: view?.otherProfiles ?? [],
+  invitation,
 })
 
 const toAccountDto = (
@@ -250,6 +255,36 @@ const toAccountDto = (
         otherProfiles: view.otherProfiles,
       }
     : {status: 'mail_only'}
+
+/**
+ * L'etat de l'invitation de chaque adresse **active** (s42a), par le compte
+ * qui la porte et sur cette association : une adresse portee par deux fiches
+ * a le meme etat sur chacune. Une adresse en attente n'en a pas.
+ */
+const readInvitationStates = async (
+  organizationId: string,
+  emails: readonly MemberProfileEmailRow[],
+  accounts: readonly LinkedAccountRow[]
+): Promise<Map<string, MemberInvitationStateDTO>> => {
+  const active = emails
+    .filter((email) => email.status === 'active')
+    .map((email) => ({
+      emailId: email.id,
+      userId: accountOfEmail(accounts, email.email)?.userId,
+    }))
+  const userIds = active.flatMap(({userId}) => (userId ? [userId] : []))
+  const traces = new Map(
+    (await getInvitationStatesByUserIdsDao(organizationId, userIds)).map(
+      (row) => [row.userId, row]
+    )
+  )
+  return new Map(
+    active.map(({emailId, userId}) => [
+      emailId,
+      invitationStateOf(userId ? traces.get(userId) : undefined),
+    ])
+  )
+}
 
 /**
  * La fiche, ses adresses avec le compte de chacune, l'etat du compte de la
@@ -280,6 +315,11 @@ export const readProfileView = async (
       )
     )
   }
+  const invitations = await readInvitationStates(
+    organizationId,
+    emails,
+    accounts
+  )
   const holder = emails.find(
     (email) => email.status === 'active' && email.role === 'holder'
   )
@@ -287,7 +327,9 @@ export const readProfileView = async (
   return {
     ...toMemberProfileDto(row),
     pennylaneCustomerId: row.pennylaneCustomerId,
-    emails: emails.map((email) => toEmailDto(email, views.get(email.id))),
+    emails: emails.map((email) =>
+      toEmailDto(email, views.get(email.id), invitations.get(email.id) ?? null)
+    ),
     account: toAccountDto(holderView),
     roleCard: roleCardFor(
       {

@@ -109,6 +109,7 @@ const actions = {
   removeEmailAction: vi.fn(),
   designateHolderAction: vi.fn(),
   updatePennylaneIdAction: vi.fn(),
+  inviteAction: vi.fn(),
 }
 
 /**
@@ -152,6 +153,7 @@ const detailOf = (input: DetailInput = {}) => (
     unsubscribePromise={input.unsubscribePromise ?? NOT_UNSUBSCRIBED}
     invoicesPromise={NO_INVOICES}
     invoiceSaved={false}
+    invitationLinkDays={7}
     {...actions}
   />
 )
@@ -217,6 +219,7 @@ describe('MemberProfileDetail — écran 3 du design s12', () => {
             replacesEmailId: null,
             boardRole: null,
             otherProfiles: [],
+            invitation: {state: 'never', at: null},
           },
         ],
       }),
@@ -1078,5 +1081,179 @@ describe('MemberProfileDetail — carte « Facturation » (s20, critère 4)', ()
       parcels.compareDocumentPosition(billing) &
         Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy()
+  })
+})
+
+describe('MemberProfileDetail — invitation depuis « Accès à l’espace membre » (s42a, écran 2)', () => {
+  const accessCard = () =>
+    screen.getByRole('region', {name: 'Accès à l’espace membre'})
+
+  const activeEmail = (
+    address: string,
+    invitation: MemberProfileDTO['emails'][number]['invitation'] = {
+      state: 'never',
+      at: null,
+    }
+  ): MemberProfileDTO['emails'][number] => ({
+    id: address,
+    email: address,
+    role: address.startsWith('jean') ? 'holder' : 'additional',
+    status: 'active',
+    origin: 'site',
+    addedByName: null,
+    expiresAt: null,
+    replacesEmailId: null,
+    boardRole: null,
+    otherProfiles: [],
+    invitation,
+  })
+
+  const familyProfile = (
+    claireInvitation?: MemberProfileDTO['emails'][number]['invitation']
+  ) =>
+    profile({
+      name: 'Jean Dubois',
+      email: 'jean.dubois@exemple.fr',
+      mailOnly: false,
+      emails: [
+        activeEmail('jean.dubois@exemple.fr'),
+        activeEmail('claire.dubois@exemple.fr', claireInvitation),
+      ],
+      account: {
+        status: 'open',
+        loginEmail: 'jean.dubois@exemple.fr',
+        boardRole: null,
+        accountName: 'Jean Dubois',
+        otherProfiles: [],
+      },
+    })
+
+  const sendButton = (name: RegExp = /invitation/) =>
+    within(accessCard()).getByRole('button', {name})
+
+  it('2a jamais invitée : « Envoyer l’invitation », ce qui va se passer, la durée du lien', () => {
+    renderDetail({profile: familyProfile()})
+
+    expect(sendButton()).toHaveTextContent('Envoyer l’invitation')
+    expect(accessCard()).toHaveTextContent(
+      'Un email part à chacune des 2 adresses actives, avec son propre lien de connexion, valable 7 jours.'
+    )
+  })
+
+  it('2b déjà invitée : « Renvoyer l’invitation », les liens précédents cesseront de fonctionner', () => {
+    renderDetail({
+      profile: familyProfile({
+        state: 'invited',
+        at: '2026-11-24T09:15:00.000Z',
+      }),
+    })
+
+    expect(sendButton()).toHaveTextContent('Renvoyer l’invitation')
+    expect(accessCard()).toHaveTextContent(
+      'Les liens envoyés le 24/11/2026 cesseront de fonctionner. Un email part à chacune des 2 adresses actives.'
+    )
+  })
+
+  it('2c puis 2d : envoie la fiche, montre l’envoi en cours, puis l’alerte ancrée qui nomme les adresses', async () => {
+    let release: (value: unknown) => void = () => {}
+    actions.inviteAction.mockReturnValue(
+      new Promise((resolve) => {
+        release = resolve
+      })
+    )
+    renderDetail({profile: familyProfile()})
+
+    await userEvent.click(sendButton())
+
+    expect(sendButton(/Envoi en cours/)).toBeDisabled()
+    expect(
+      (actions.inviteAction.mock.calls[0][1] as FormData).get('memberProfileId')
+    ).toBe(PROFILE_ID)
+    await act(async () =>
+      release({
+        status: 'sent',
+        sent: ['jean.dubois@exemple.fr', 'claire.dubois@exemple.fr'],
+      })
+    )
+
+    const status = within(accessCard()).getByRole('status')
+    expect(status).toHaveTextContent(
+      'Invitation envoyée à jean.dubois@exemple.fr et claire.dubois@exemple.fr.'
+    )
+    expect(status).toHaveFocus()
+  })
+
+  it('2e reportée : l’invitation partira demain matin, avec un lien neuf', async () => {
+    actions.inviteAction.mockResolvedValue({
+      status: 'deferred',
+      sent: [],
+      deferred: ['jean.dubois@exemple.fr', 'claire.dubois@exemple.fr'],
+    })
+    renderDetail({profile: familyProfile()})
+
+    await userEvent.click(sendButton())
+
+    expect(await within(accessCard()).findByRole('status')).toHaveTextContent(
+      'L’invitation partira demain matin : l’association a atteint sa limite d’envois du jour. Un lien neuf sera créé au moment de l’envoi.'
+    )
+  })
+
+  it('2f courrier uniquement : aucun bouton, la phrase du courrier', () => {
+    renderDetail()
+
+    expect(within(accessCard()).queryByRole('button')).toBeNull()
+    expect(accessCard()).toHaveTextContent(
+      'Pas d’invitation possible : ce membre reçoit tout par courrier.'
+    )
+  })
+
+  it('2f refus rendu par l’action : le membre relève du courrier, jamais une erreur technique', async () => {
+    actions.inviteAction.mockResolvedValue({status: 'mail_only'})
+    renderDetail({profile: familyProfile()})
+
+    await userEvent.click(sendButton())
+
+    expect(await within(accessCard()).findByRole('status')).toHaveTextContent(
+      'Ce membre relève du courrier. Il n’a plus d’adresse email active : ajoutez-en une pour l’inviter.'
+    )
+  })
+
+  it('2g échec : alerte destructive ancrée dans la carte, aucun email parti', async () => {
+    actions.inviteAction.mockResolvedValue({status: 'failed'})
+    renderDetail({profile: familyProfile()})
+
+    await userEvent.click(sendButton())
+
+    expect(await within(accessCard()).findByRole('alert')).toHaveTextContent(
+      'L’invitation n’est pas partie. Aucun email n’a été envoyé ; réessayez dans quelques minutes.'
+    )
+  })
+
+  it('2g partiel : nomme les adresses servies', async () => {
+    actions.inviteAction.mockResolvedValue({
+      status: 'partial',
+      sent: ['jean.dubois@exemple.fr'],
+    })
+    renderDetail({profile: familyProfile()})
+
+    await userEvent.click(sendButton())
+
+    expect(await within(accessCard()).findByRole('alert')).toHaveTextContent(
+      'L’invitation n’est partie qu’à jean.dubois@exemple.fr. Réessayez pour les autres adresses.'
+    )
+  })
+
+  it('refus d’autorisation : le message rendu par l’action', async () => {
+    actions.inviteAction.mockResolvedValue({
+      status: 'error',
+      message: 'Cette action est réservée au bureau de l’association.',
+    })
+    renderDetail({profile: familyProfile()})
+
+    await userEvent.click(sendButton())
+
+    expect(await within(accessCard()).findByRole('alert')).toHaveTextContent(
+      'Cette action est réservée au bureau de l’association.'
+    )
   })
 })

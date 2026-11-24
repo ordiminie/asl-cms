@@ -24,6 +24,9 @@ vi.mock('@/services/facades/recipient-group-service-facade', () => ({
   addMembersToRecipientGroupService: vi.fn(),
   removeMembersFromRecipientGroupService: vi.fn(),
 }))
+vi.mock('@/services/facades/member-invitation-service-facade', () => ({
+  inviteMemberProfileService: vi.fn(),
+}))
 vi.mock('@/services/facades/member-role-service-facade', () => ({
   changeMemberRoleService: vi.fn(),
 }))
@@ -38,6 +41,7 @@ import {requireCurrentTenantDal} from '@/app/dal/tenant-dal'
 import {requireActionAuth} from '@/app/dal/user-dal'
 import {AuthorizationError} from '@/services/errors/authorization-error'
 import {NotFoundError} from '@/services/errors/not-found-error'
+import {inviteMemberProfileService} from '@/services/facades/member-invitation-service-facade'
 import {
   createMemberProfileService,
   getMemberProfilePageService,
@@ -60,6 +64,7 @@ import {
   attachParcelAction,
   changeMemberRoleAction,
   createMemberProfileAction,
+  inviteMemberProfileAction,
   recordSaleAction,
   removeFromRecipientGroupAction,
   searchBuyersAction,
@@ -1021,5 +1026,108 @@ describe('groupes de destinataires depuis la liste (s27, critère 3)', () => {
       message: 'BureauMemberProfilesPage.errors.forbidden',
     })
     expect(addMembersToRecipientGroupService).not.toHaveBeenCalled()
+  })
+})
+
+describe('inviteMemberProfileAction (s42a, écran 2)', () => {
+  const inviteForm = () => formOf({memberProfileId: PROFILE_ID})
+  const SENT = ['jean.dubois@exemple.fr', 'claire.dubois@exemple.fr']
+
+  it('envoie sous l’association du domaine et revalide la fiche (2d)', async () => {
+    vi.mocked(inviteMemberProfileService).mockResolvedValue({
+      status: 'sent',
+      sent: SENT,
+      deferred: [],
+    })
+
+    const result = await inviteMemberProfileAction(undefined, inviteForm())
+
+    expect(requireActionAuth).toHaveBeenCalled()
+    expect(inviteMemberProfileService).toHaveBeenCalledWith({
+      organizationId: TENANT_ID,
+      memberProfileId: PROFILE_ID,
+    })
+    expect(result).toEqual({status: 'sent', sent: SENT})
+    expect(revalidatePath).toHaveBeenCalledWith(ROUTE, 'layout')
+  })
+
+  it('rend le report au lendemain (2e)', async () => {
+    vi.mocked(inviteMemberProfileService).mockResolvedValue({
+      status: 'deferred',
+      sent: [],
+      deferred: SENT,
+    })
+
+    expect(await inviteMemberProfileAction(undefined, inviteForm())).toEqual({
+      status: 'deferred',
+      sent: [],
+      deferred: SENT,
+    })
+  })
+
+  it('rend l’envoi partiel, avec les adresses servies (2g)', async () => {
+    vi.mocked(inviteMemberProfileService).mockResolvedValue({
+      status: 'partial',
+      sent: ['jean.dubois@exemple.fr'],
+      deferred: [],
+    })
+
+    expect(await inviteMemberProfileAction(undefined, inviteForm())).toEqual({
+      status: 'partial',
+      sent: ['jean.dubois@exemple.fr'],
+    })
+    expect(revalidatePath).toHaveBeenCalledWith(ROUTE, 'layout')
+  })
+
+  it('rend le refus « courrier uniquement » sans revalider (2f)', async () => {
+    vi.mocked(inviteMemberProfileService).mockResolvedValue({
+      status: 'mail_only',
+    })
+
+    expect(await inviteMemberProfileAction(undefined, inviteForm())).toEqual({
+      status: 'mail_only',
+    })
+    expect(revalidatePath).not.toHaveBeenCalled()
+  })
+
+  it('un échec de l’envoi est rendu, jamais levé (2g)', async () => {
+    vi.mocked(inviteMemberProfileService).mockRejectedValue(
+      new Error('transport')
+    )
+
+    expect(await inviteMemberProfileAction(undefined, inviteForm())).toEqual({
+      status: 'failed',
+    })
+    expect(revalidatePath).not.toHaveBeenCalled()
+  })
+
+  it('refus d’autorisation : le message du bureau', async () => {
+    vi.mocked(inviteMemberProfileService).mockRejectedValue(
+      new AuthorizationError()
+    )
+
+    expect(await inviteMemberProfileAction(undefined, inviteForm())).toEqual({
+      status: 'error',
+      message: 'BureauMemberProfilesPage.errors.forbidden',
+    })
+  })
+
+  it('sans session : refusé avant tout appel au service', async () => {
+    vi.mocked(requireActionAuth).mockRejectedValueOnce(new AuthorizationError())
+
+    expect(await inviteMemberProfileAction(undefined, inviteForm())).toEqual({
+      status: 'error',
+      message: 'BureauMemberProfilesPage.errors.forbidden',
+    })
+    expect(inviteMemberProfileService).not.toHaveBeenCalled()
+  })
+
+  it('fiche introuvable sous l’association : le message de la fiche', async () => {
+    vi.mocked(inviteMemberProfileService).mockRejectedValue(new NotFoundError())
+
+    expect(await inviteMemberProfileAction(undefined, inviteForm())).toEqual({
+      status: 'error',
+      message: 'BureauMemberProfilesPage.errors.notFound',
+    })
   })
 })

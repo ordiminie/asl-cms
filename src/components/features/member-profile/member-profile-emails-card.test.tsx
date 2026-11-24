@@ -32,6 +32,7 @@ const email = (
   replacesEmailId: null,
   boardRole: null,
   otherProfiles: [],
+  invitation: null,
   ...overrides,
 })
 
@@ -528,5 +529,41 @@ describe('MemberProfileEmailsCard — retirer (4e, 4f)', () => {
         'L’adresse d’un membre du bureau ne se retire pas : modifiez-la.'
       )
     ).toBeVisible()
+  })
+})
+
+describe('MemberProfileEmailsCard — état de l’invitation par adresse (s42a, écran 1)', () => {
+  const invitedJean = email({
+    ...jean,
+    invitation: {state: 'signed_in', at: '2026-11-26T18:40:00.000Z'},
+  })
+  const invitedClaire = email({
+    ...claire,
+    invitation: {state: 'invited', at: '2026-11-23T23:30:00.000Z'},
+  })
+  const neverInvited = email({
+    id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+    email: 'odile@exemple.fr',
+    invitation: {state: 'never', at: null},
+  })
+
+  it('sous « Active » : connectée le, invitée le (jour de Paris), jamais invitée ; rien pour une attente', () => {
+    renderCard([invitedJean, invitedClaire, neverInvited, marc])
+
+    const rows = within(table()).getAllByRole('row').slice(1)
+    expect(within(rows[0]).getByText('Active')).toBeVisible()
+    expect(within(rows[0]).getByText('Connectée le 26/11/2026')).toBeVisible()
+    expect(within(rows[1]).getByText('Invitée le 24/11/2026')).toBeVisible()
+    expect(within(rows[2]).getByText('Jamais invitée')).toBeVisible()
+    expect(rows[3]).not.toHaveTextContent(/invitée|Connectée/)
+  })
+
+  it('les cartes empilées portent la même ligne dans la paire « Statut »', () => {
+    renderCard([invitedClaire])
+
+    const cards = screen.getAllByRole('listitem')
+    expect(
+      within(cards[0]).getByText('Invitée le 24/11/2026')
+    ).toBeInTheDocument()
   })
 })

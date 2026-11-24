@@ -12,9 +12,11 @@ import {
   getCampaignNature,
   getContactMessagesPerHourLimit,
   getDefaultLandAddress,
+  getInvitationLinkDays,
   getMemberEmailConfirmationDays,
   getStatutoryTemplateIds,
   getUnpaidReminderSettings,
+  INVITATION_LINK_DAYS_SETTING_KEY,
   MEMBER_EMAIL_CONFIRMATION_DAYS_SETTING_KEY,
   resolveSettings,
   validateSettingsChanges,
@@ -181,5 +183,17 @@ describe('TEST_TENANT_SETTINGS — relances des impayés (s29, ADR 070 §7)', ()
       enabled: false,
       delaysWeeks: null,
     })
+  })
+})
+
+describe('TEST_TENANT_SETTINGS — invitation des membres (s42a)', () => {
+  it('le premier tenant porte 7 jours de validité du lien d’invitation en valeur de seed', () => {
+    const settings = settingsOf('techcorp-solutions')
+
+    expect(settings[INVITATION_LINK_DAYS_SETTING_KEY]).toMatchObject({
+      value: 7,
+      storedValue: '7',
+    })
+    expect(getInvitationLinkDays(settings)).toBe(7)
   })
 })

@@ -1,12 +1,13 @@
 'use client'
 
 import {zodResolver} from '@hookform/resolvers/zod'
-import {AlertTriangle, CircleCheck, Lock} from 'lucide-react'
+import {AlertTriangle, CircleCheck, Info, Lock, Send} from 'lucide-react'
 import Link from 'next/link'
 import {useTranslations} from 'next-intl'
 import {
   type ReactNode,
   Suspense,
+  useActionState,
   useEffect,
   useLayoutEffect,
   useRef,
@@ -61,6 +62,7 @@ import {
   MemberContactFields,
   MemberFormErrorSummary,
 } from './member-contact-fields'
+import {dayOfInstant} from './member-email-format'
 import {type MemberNoteActions, MemberNotesCard} from './member-notes-card'
 import {IncompleteBadge, MailOnlyBadge} from './member-profile-badges'
 import {DetailCard} from './member-profile-detail-card'
@@ -70,6 +72,8 @@ import {type MemberProfileFormAction} from './member-profile-form'
 import {
   type ChangeMemberRoleFormAction,
   createMemberContactFormSchema,
+  type InviteMemberActionResult,
+  type InviteMemberFormAction,
   MEMBER_CONTACT_FORM_FIELDS,
   type MemberContactFormSchemaType,
   type MemberProfileFormField,
@@ -108,6 +112,10 @@ type MemberProfileDetailProps = MemberNoteActions &
     invoiceSaved: boolean
     /** « Facturation » : l'identifiant client Pennylane de la fiche (s20). */
     updatePennylaneIdAction: MemberBillingFormAction
+    /** « Envoyer l'invitation » (s42a, ecran 2). */
+    inviteAction: InviteMemberFormAction
+    /** Duree du lien d'une invitation, reglage de l'association (s42a). */
+    invitationLinkDays: number
   }
 
 type Notice =
@@ -158,6 +166,8 @@ export function MemberProfileDetail({
   invoicesPromise,
   invoiceSaved,
   updatePennylaneIdAction,
+  inviteAction,
+  invitationLinkDays,
   addEmailAction,
   updateEmailAction,
   removeEmailAction,
@@ -264,7 +274,11 @@ export function MemberProfileDetail({
       />
 
       <DetailCard title={t('detail.access.title')}>
-        <AccessState name={profile.name} account={profile.account} />
+        <MemberInvitation
+          profile={profile}
+          action={inviteAction}
+          linkDays={invitationLinkDays}
+        />
       </DetailCard>
 
       <MemberRoleCard
@@ -472,6 +486,145 @@ function AccessState({
           : t.rich('mailOnly', {strong})}
       </p>
     </div>
+  )
+}
+
+const EMAIL_LIST_FORMAT = new Intl.ListFormat('fr', {
+  style: 'long',
+  type: 'conjunction',
+})
+
+/** La derniere date d'invitation des adresses actives, ou rien (2b). */
+const lastInvitedAtOf = (profile: MemberProfileDTO): string | null =>
+  profile.emails
+    .flatMap((email) =>
+      email.status === 'active' &&
+      email.invitation?.state === 'invited' &&
+      email.invitation.at
+        ? [email.invitation.at]
+        : []
+    )
+    .sort()
+    .at(-1) ?? null
+
+/**
+ * La carte « Acces a l'espace membre » (s12d) avec l'invitation (s42a, ecran
+ * 2) : la phrase du compte, puis l'issue du dernier envoi ancree en tete,
+ * le bouton `outline` et ce qui va se passer. Une fiche sans adresse active
+ * n'a pas de bouton. Aucune confirmation prealable, aucun toast.
+ */
+function MemberInvitation({
+  profile,
+  action,
+  linkDays,
+}: {
+  profile: MemberProfileDTO
+  action: InviteMemberFormAction
+  linkDays: number
+}) {
+  const t = useTranslations('BureauMemberProfilesPage.detail.access.invitation')
+  const [result, formAction, pending] = useActionState(action, undefined)
+  const resultRef = useRef<HTMLDivElement>(null)
+  const count = profile.emails.filter(
+    (email) => email.status === 'active'
+  ).length
+  const lastInvitedAt = lastInvitedAtOf(profile)
+
+  useEffect(() => {
+    if (result) resultRef.current?.focus()
+  }, [result])
+
+  return (
+    <div className="flex flex-col gap-4">
+      {result && <InvitationOutcome ref={resultRef} result={result} />}
+      <AccessState name={profile.name} account={profile.account} />
+      {profile.mailOnly || count === 0 ? (
+        <p className="text-muted-foreground text-[15px]">{t('mailOnlyHint')}</p>
+      ) : (
+        <form action={formAction} className="flex flex-col gap-2">
+          <input type="hidden" name="memberProfileId" value={profile.id} />
+          <div>
+            <Button
+              type="submit"
+              variant="outline"
+              disabled={pending}
+              className="h-14 w-full text-base sm:h-12 sm:w-auto"
+            >
+              <Send aria-hidden="true" className="size-5" strokeWidth={1.75} />
+              {pending ? t('sending') : lastInvitedAt ? t('resend') : t('send')}
+            </Button>
+          </div>
+          <p className="text-muted-foreground text-[15px]">
+            {lastInvitedAt
+              ? t('resendHint', {date: dayOfInstant(lastInvitedAt), count})
+              : t('sendHint', {count, days: linkDays})}
+          </p>
+        </form>
+      )}
+    </div>
+  )
+}
+
+/** L'issue d'un envoi d'invitation, ancree dans la carte (2d a 2g). */
+function InvitationOutcome({
+  ref,
+  result,
+}: {
+  ref: React.Ref<HTMLDivElement>
+  result: InviteMemberActionResult
+}) {
+  const t = useTranslations('BureauMemberProfilesPage.detail.access.invitation')
+
+  if (
+    result.status === 'error' ||
+    result.status === 'failed' ||
+    result.status === 'partial'
+  ) {
+    return (
+      <Alert
+        ref={ref}
+        tabIndex={-1}
+        variant="destructive"
+        className="border-destructive border-2 [&>svg]:size-5"
+      >
+        <AlertTriangle aria-hidden="true" />
+        <AlertDescription className="text-foreground text-base">
+          <p>
+            {result.status === 'error'
+              ? result.message
+              : result.status === 'partial'
+                ? t.rich('partial', {
+                    emails: EMAIL_LIST_FORMAT.format(result.sent),
+                    strong,
+                  })
+                : t.rich('failed', {strong})}
+          </p>
+        </AlertDescription>
+      </Alert>
+    )
+  }
+
+  const sent = result.status === 'sent'
+  return (
+    <Alert ref={ref} tabIndex={-1} role="status" className="[&>svg]:size-5">
+      {sent ? (
+        <CircleCheck aria-hidden="true" className="text-primary" />
+      ) : (
+        <Info aria-hidden="true" className="text-primary" />
+      )}
+      <AlertDescription className="text-foreground text-base">
+        <p>
+          {result.status === 'sent'
+            ? t.rich('sent', {
+                emails: EMAIL_LIST_FORMAT.format(result.sent),
+                strong,
+              })
+            : result.status === 'deferred'
+              ? t.rich('deferred', {strong})
+              : t.rich('mailOnlyRefused', {strong})}
+        </p>
+      </AlertDescription>
+    </Alert>
   )
 }
 

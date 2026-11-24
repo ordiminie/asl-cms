@@ -642,6 +642,7 @@
       "title": "Ce lien ne fonctionne plus",
       "reassurance": "<strong>Vous n'avez rien fait de mal</strong> : il suffit d'en demander un nouveau.",
       "explanation": "Un lien de connexion ne sert qu'une fois et reste valable {minutes} minutes. C'est ce qui protège votre espace, même si quelqu'un d'autre ouvre votre boîte mail.",
+      "invitationExplanation": "Un lien d'invitation ne sert qu'une fois et reste valable {days} jours. C'est ce qui protège votre espace, même si quelqu'un d'autre ouvre votre boîte mail.",
       "action": "Recevoir un nouveau lien",
       "help": "Besoin d'aide ? Appelez le bureau de votre association."
     },
@@ -705,6 +706,18 @@
         "urlIntro": "Ouvrez ce lien pour confirmer cette adresse :",
         "expiry": "Ce lien vaut jusqu’au {date}. Vous ne connaissez pas cette personne ? Ne cliquez pas : sans confirmation, l’adresse ne reçoit rien et ne donne accès à rien.",
         "footer": "{name} · message envoyé à la demande d’un membre."
+      },
+      "invitation": {
+        "subject": "{name} — Votre espace membre vous attend",
+        "preview": "Un espace personnel vous est ouvert sur le site de l’association. Aucun mot de passe à retenir.",
+        "title": "Votre espace sur le site de {name}",
+        "defaultText": "Bonjour,\n\nVotre association a ouvert sur son site un espace personnel pour chaque propriétaire. Vous y retrouverez les informations qui vous concernent.",
+        "action": "Ouvrir mon espace",
+        "urlIntro": "Ou recopiez ce lien dans votre navigateur :",
+        "step1": "Cliquez sur le bouton : votre espace s’ouvre directement.",
+        "step2": "Ce lien vaut jusqu’au {date} et ne sert qu’une fois.",
+        "step3": "Ensuite, pour revenir, saisissez votre adresse sur la page de connexion : un nouveau lien vous est envoyé. Il n’y a <strong>aucun mot de passe</strong> à retenir.",
+        "footer": "Cet email vous est envoyé parce que le bureau de {name} vous a invité à rejoindre l’espace membre de son site."
       },
       "resetPassword": {
         "subject": "Réinitialisation de votre mot de passe",
@@ -2260,6 +2273,18 @@
           "invalidNumber": "Saisissez un nombre entier de millimètres, de -10 à 10.",
           "outOfRange": "Saisissez un nombre entier de millimètres, de -10 à 10."
         }
+      },
+      "invitationText": {
+        "label": "Texte de l’invitation",
+        "help": "Il s’affiche au-dessus du bouton de connexion. Le bouton, le lien et le mode d’emploi sont ajoutés d’office.",
+        "whenEmpty": "Laissé vide, l’email reprend le texte par défaut : « Bonjour, Votre association a ouvert sur son site un espace personnel pour chaque propriétaire. Vous y retrouverez les informations qui vous concernent. »"
+      },
+      "invitationLinkDays": {
+        "label": "Durée de validité du lien d’invitation",
+        "help": "Le lien de connexion demandé depuis la page de connexion garde, lui, 20 minutes.",
+        "errors": {
+          "outOfRange": "Indiquez un nombre de jours entre 1 et 30."
+        }
       }
     },
     "hues": {
@@ -2346,6 +2371,10 @@
       "letter": {
         "title": "Courrier",
         "description": "Le calage de l’adresse sur les lettres envoyées par la poste aux membres sans adresse email. Si l’adresse tombe à côté de la fenêtre de l’enveloppe, corrigez-la ici."
+      },
+      "invitation": {
+        "title": "Invitation des membres",
+        "description": "L’email qui invite un membre à se connecter à son espace, depuis sa fiche."
       }
     },
     "submit": "Enregistrer les réglages",
@@ -3744,6 +3773,11 @@
           "cancel": "Annuler",
           "boardEmailRequired": "L’adresse d’un membre du bureau ne se retire pas : modifiez-la.",
           "sharedReplacement": "Cette adresse est déjà celle d’un autre compte : ajoutez-la d’abord, puis désignez-la titulaire."
+        },
+        "invitation": {
+          "never": "Jamais invitée",
+          "invited": "Invitée le {date}",
+          "signed_in": "Connectée le {date}"
         }
       },
       "access": {
@@ -3752,7 +3786,20 @@
         "mailOnly": "<strong>Joignable par courrier uniquement.</strong> Aucun compte : ajoutez une adresse email pour lui ouvrir son espace.",
         "board": "Membre du bureau : son adresse peut être modifiée, pas supprimée.",
         "owner": "Président(e) : son adresse peut être modifiée, pas supprimée.",
-        "sharedWith": "Ce compte réunit aussi :"
+        "sharedWith": "Ce compte réunit aussi :",
+        "invitation": {
+          "send": "Envoyer l’invitation",
+          "resend": "Renvoyer l’invitation",
+          "sending": "Envoi en cours…",
+          "sendHint": "Un email part {count, plural, one {à l’adresse active} other {à chacune des # adresses actives}}, avec son propre lien de connexion, valable {days} jours.",
+          "resendHint": "Les liens envoyés le {date} cesseront de fonctionner. Un email part {count, plural, one {à l’adresse active} other {à chacune des # adresses actives}}.",
+          "sent": "<strong>Invitation envoyée</strong> à {emails}.",
+          "deferred": "<strong>L’invitation partira demain matin</strong> : l’association a atteint sa limite d’envois du jour. Un lien neuf sera créé au moment de l’envoi.",
+          "mailOnlyHint": "Pas d’invitation possible : ce membre reçoit tout par courrier.",
+          "mailOnlyRefused": "<strong>Ce membre relève du courrier.</strong> Il n’a plus d’adresse email active : ajoutez-en une pour l’inviter.",
+          "failed": "<strong>L’invitation n’est pas partie.</strong> Aucun email n’a été envoyé ; réessayez dans quelques minutes.",
+          "partial": "<strong>L’invitation n’est partie qu’à {emails}.</strong> Réessayez pour les autres adresses."
+        }
       },
       "role": {
         "title": "Rôle dans l’association",
@@ -4965,7 +5012,8 @@
       "natures": {
         "campaign": "Campagne",
         "board_notification": "Notification au bureau",
-        "member_email_confirmation": "Confirmation d’adresse"
+        "member_email_confirmation": "Confirmation d’adresse",
+        "invitation": "Invitation"
       },
       "titles": {
         "campaign": "« {subject} »",

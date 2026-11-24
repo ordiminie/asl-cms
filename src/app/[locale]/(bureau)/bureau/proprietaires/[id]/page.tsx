@@ -3,6 +3,7 @@ import {notFound} from 'next/navigation'
 import {getTranslations, setRequestLocale} from 'next-intl/server'
 import {Suspense} from 'react'
 
+import {getAssociationSettingsDal} from '@/app/dal/association-settings-dal'
 import {getMemberInvoicesForBureauDal} from '@/app/dal/member-invoice-dal'
 import {getMemberNotesForBureauDal} from '@/app/dal/member-note-dal'
 import {
@@ -16,11 +17,13 @@ import {BureauAccessDenied} from '@/components/features/association/bureau-acces
 import {INVOICE_SAVED} from '@/components/features/member-invoice/member-invoice-paths'
 import {MemberProfileDetail} from '@/components/features/member-profile/member-profile-detail'
 import {Skeleton} from '@/components/ui/skeleton'
+import {getInvitationLinkDays} from '@/services/types/domain/association-settings-types'
 import {calendarDayOf} from '@/services/types/domain/water-analysis-types'
 
 import {
   attachParcelAction,
   changeMemberRoleAction,
+  inviteMemberProfileAction,
   updateMemberProfileContactAction,
 } from '../actions'
 import {
@@ -137,7 +140,10 @@ async function MemberProfileSection({
     tenant.id,
     memberProfileId
   )
-  const parcels = await getMemberParcelsForBureauDal(tenant.id, memberProfileId)
+  const [parcels, settings] = await Promise.all([
+    getMemberParcelsForBureauDal(tenant.id, memberProfileId),
+    getAssociationSettingsDal(tenant.id),
+  ])
 
   // Lue apres la session, donc au rendu de la requete : la date proposee au
   // rattachement est le jour calendaire de Paris.
@@ -153,6 +159,8 @@ async function MemberProfileSection({
       updateContactAction={updateMemberProfileContactAction}
       attachParcelAction={attachParcelAction}
       changeRoleAction={changeMemberRoleAction}
+      inviteAction={inviteMemberProfileAction}
+      invitationLinkDays={getInvitationLinkDays(settings)}
       notesPromise={notesPromise}
       unsubscribePromise={unsubscribePromise}
       invoicesPromise={invoicesPromise}
