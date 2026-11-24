@@ -621,3 +621,131 @@ test.describe('s31 — documents partagés : RLS de shared_document (ADR 069)', 
     })
   })
 })
+
+test.describe('s29 — rangs de relance : RLS de unpaid_reminder (ADR 070)', () => {
+  /** Une campagne et son rang par association, écrits sous `bypass` puis retirés. */
+  const created: {a?: string; b?: string; campaigns: string[]} = {
+    campaigns: [],
+  }
+  const DUE_ON = '2020-03-31'
+
+  const inScope = async <T>(
+    client: Client,
+    organizationId: string,
+    read: () => Promise<T>
+  ): Promise<T> => {
+    await client.query('begin')
+    try {
+      await client.query(`select set_config('app.organization_id', $1, true)`, [
+        organizationId,
+      ])
+      return await read()
+    } finally {
+      await client.query('rollback')
+    }
+  }
+
+  const inBypass = async <T>(client: Client, write: () => Promise<T>) => {
+    await client.query('begin')
+    try {
+      await client.query(`select set_config('app.bypass_rls', 'on', true)`)
+      const result = await write()
+      await client.query('commit')
+      return result
+    } catch (error) {
+      await client.query('rollback')
+      throw error
+    }
+  }
+
+  test.beforeAll(async () => {
+    await withAppRoleClient(async (client) => {
+      const {a, b} = await tenantIds(client)
+      await inBypass(client, async () => {
+        for (const [slot, organizationId] of [
+          ['a', a],
+          ['b', b],
+        ] as const) {
+          const campaign = await client.query<{id: string}>(
+            `insert into campaign
+               (organization_id, submission_id, subject, body_markdown, template_id,
+                target_kind, recipient_count, without_email_count, unsubscribed_count,
+                status, send_date)
+             values ($1, gen_random_uuid(), 'RLS s29', 'Bonjour', 'unpaid_reminder',
+                     'unpaid_members', 0, 0, 0, 'sent', current_date)
+             returning id`,
+            [organizationId]
+          )
+          created.campaigns.push(campaign.rows[0].id)
+          const reminder = await client.query<{id: string}>(
+            `insert into unpaid_reminder (organization_id, due_on, rank, campaign_id)
+             values ($1, $2, 1, $3) returning id`,
+            [organizationId, DUE_ON, campaign.rows[0].id]
+          )
+          created[slot] = reminder.rows[0].id
+        }
+      })
+    })
+  })
+
+  test.afterAll(async () => {
+    await withAppRoleClient((client) =>
+      inBypass(client, () =>
+        client.query(`delete from campaign where id = any($1::uuid[])`, [
+          created.campaigns,
+        ])
+      )
+    )
+  })
+
+  test('hors scope de tenant, aucun rang ne sort', async () => {
+    await withAppRoleClient(async (client) => {
+      expect(
+        (await client.query('select id from unpaid_reminder')).rowCount
+      ).toBe(0)
+    })
+  })
+
+  test('dans le scope de A, seuls les rangs de A sortent ; celui de A est invisible depuis B', async () => {
+    await withAppRoleClient(async (client) => {
+      const {a, b} = await tenantIds(client)
+
+      const fromA = await inScope(client, a, () =>
+        client.query<{id: string; organization_id: string}>(
+          'select id, organization_id from unpaid_reminder'
+        )
+      )
+      const forgedFromB = await inScope(client, b, () =>
+        client.query('select id from unpaid_reminder where id = $1', [
+          created.a,
+        ])
+      )
+
+      expect(fromA.rows.map((row) => row.id)).toContain(created.a)
+      expect(fromA.rows.map((row) => row.id)).not.toContain(created.b)
+      for (const row of fromA.rows) expect(row.organization_id).toBe(a)
+      expect(forgedFromB.rowCount).toBe(0)
+    })
+  })
+
+  test('écrire un rang pour une autre association est refusé', async () => {
+    await withAppRoleClient(async (client) => {
+      const {a, b} = await tenantIds(client)
+
+      await client.query('begin')
+      await client.query(`select set_config('app.organization_id', $1, true)`, [
+        a,
+      ])
+
+      await expect(
+        client.query(
+          `insert into unpaid_reminder (organization_id, due_on, rank, campaign_id)
+           values ($1, $2, 2, $3)`,
+          [b, DUE_ON, created.campaigns[1]]
+        )
+      ).rejects.toThrow(/row-level security/i)
+
+      await client.query('rollback')
+    })
+  })
+})

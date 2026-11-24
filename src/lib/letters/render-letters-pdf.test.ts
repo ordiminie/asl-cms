@@ -231,6 +231,32 @@ describe('renderLettersPdf — le lot imprimable (critères 1, 3, 4)', () => {
     expect(find(page, '4 rue des Lilas').fontName).toBe(body)
   })
 
+  it('une lettre de relance porte son propre corps : sa liste de factures (s29, ADR 070 §9)', async () => {
+    const [first, second] = await readPdf(
+      await renderLettersPdf(
+        input({
+          bodyMarkdown: 'Bonjour {nom},\n\n{factures}',
+          letters: [
+            letter({
+              bodyMarkdown:
+                'Bonjour {nom},\n\n- Facture 2026, parcelle 14 : 320,00 €',
+            }),
+            letter({
+              name: 'Anne Roy',
+              bodyMarkdown:
+                'Bonjour {nom},\n\n- Facture 2026, parcelle 30 : 185,00 €',
+            }),
+          ],
+        })
+      )
+    )
+
+    expect(textOf(first)).toContain('Facture 2026, parcelle 14 : 320,00 €')
+    expect(textOf(first)).not.toContain('{factures}')
+    expect(textOf(second)).toContain('Bonjour Anne Roy,')
+    expect(textOf(second)).toContain('Facture 2026, parcelle 30 : 185,00 €')
+  })
+
   it('une valeur `**gras**` substituée reste littérale', async () => {
     const [page] = await readPdf(
       await renderLettersPdf(input({letters: [letter({name: '**gras**'})]}))

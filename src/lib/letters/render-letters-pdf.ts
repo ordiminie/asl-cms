@@ -541,7 +541,11 @@ const drawLetter = (
     doc,
     `${input.texts.subjectLabel} ${subject}`
   )
-  drawBody(doc, letterBodyBlocksOf(input.bodyMarkdown, values), subjectBottom)
+  drawBody(
+    doc,
+    letterBodyBlocksOf(letter.bodyMarkdown ?? input.bodyMarkdown, values),
+    subjectBottom
+  )
   drawContinuationPages(doc, input, letter.name, firstPage)
 }
 

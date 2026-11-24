@@ -1,10 +1,12 @@
 import {z} from 'zod'
 
 import {
+  CAMPAIGN_BODY_MAX,
   CAMPAIGN_NATURES,
-  CAMPAIGN_TEMPLATE_IDS,
+  CAMPAIGN_SEND_KINDS,
+  CAMPAIGN_SUBJECT_MAX_TOTAL,
   CampaignNature,
-  CampaignTemplateId,
+  CampaignSendKind,
   DEFAULT_CAMPAIGN_NATURE,
 } from './campaign-types'
 import {SEO_DESCRIPTION_MAX} from './seo-types'
@@ -29,7 +31,13 @@ export type AssociationSettingPage = 'settings' | 'identity'
  * d'origine, celle des adresses de notification.
  */
 export type AssociationSettingSection =
-  'seo' | 'legal' | 'sending' | 'campaign_nature' | 'billing' | 'letter'
+  | 'seo'
+  | 'legal'
+  | 'sending'
+  | 'campaign_nature'
+  | 'billing'
+  | 'reminder'
+  | 'letter'
 
 /** Defaut constant (valeur brute, comme en base) ou reference a une autre cle. */
 export type AssociationSettingDefault = {value: string} | {fromKey: string}
@@ -58,6 +66,12 @@ type AssociationSettingDefinitionBase = {
    * place de la phrase commune (s27b). Absente : la phrase commune.
    */
   readOnlyHelpKey?: string
+  /**
+   * Controle croise (s29, ADR 070 §7) : tant que le booleen de cette autre
+   * cle vaut vrai, ce reglage ne peut pas rester vide ; le refus
+   * `requiredToEnable` porte sur ce champ-ci.
+   */
+  requiredWhenKey?: string
 }
 
 export type AssociationSettingEditor = 'super_admin'
@@ -133,6 +147,8 @@ export const ASSOCIATION_SETTING_ERROR_CODES = [
   'unknownKey',
   'notBelow',
   'statusInBothLists',
+  'requiredToEnable',
+  'unknownVariable',
 ] as const
 
 export type AssociationSettingErrorCode =
@@ -298,6 +314,24 @@ export const BILLING_INVOICE_SUBJECT_MAX_LENGTH = 120
 /** Plafond d'une liste de statuts de facture. */
 export const BILLING_STATUS_LIST_MAX_LENGTH = 1000
 
+/**
+ * Relance automatique des impayes (s29, ADR 070 §7). Desactivee par defaut ;
+ * intervalles, objet et texte **sans defaut** : les valeurs d'une association
+ * se saisissent dans « Reglages » (seed du premier tenant), jamais dans le
+ * code (ADR 010). L'activation exige les cinq.
+ */
+export const BILLING_REMINDER_ENABLED_SETTING_KEY = 'billing.reminder.enabled'
+/** Intervalles successifs, en semaines : depuis l'echeance, puis le rang precedent. */
+export const BILLING_REMINDER_DELAY_WEEKS_SETTING_KEYS = [
+  'billing.reminder.delay_weeks.1',
+  'billing.reminder.delay_weeks.2',
+  'billing.reminder.delay_weeks.3',
+] as const
+export const BILLING_REMINDER_SUBJECT_SETTING_KEY = 'billing.reminder.subject'
+export const BILLING_REMINDER_BODY_SETTING_KEY = 'billing.reminder.body'
+/** Plafond d'un intervalle de relance, en semaines. */
+const BILLING_REMINDER_DELAY_WEEKS_MAX = 52
+
 /** Plafond de la raison sociale. */
 export const ASSOCIATION_LEGAL_NAME_MAX_LENGTH = 120
 /** Plafond des mentions du pied de page. */
@@ -334,19 +368,20 @@ export const getAccentHueName = (hue: AccentHue): AccentHueName =>
 
 /**
  * Cle de la nature d'un type d'envoi (s27b, ADR 064) : une par valeur de
- * `CAMPAIGN_TEMPLATE_IDS`. s29 et s42 ajouteront les leurs.
+ * `CAMPAIGN_SEND_KINDS` (modeles du composeur, relance automatique de s29).
+ * s42 ajoutera la sienne.
  */
 export const campaignNatureSettingKeyOf = (
-  templateId: CampaignTemplateId
+  templateId: CampaignSendKind
 ): string => `campaign.nature.${templateId}`
 
 /**
- * Les cinq reglages de nature, `facultative` par defaut, reserves au
- * SuperAdmin (arbitrage du 20/11/2026). La classification d'une association
- * est une valeur de reglage, jamais une constante (ADR 010).
+ * Les reglages de nature, un par type d'envoi, `facultative` par defaut,
+ * reserves au SuperAdmin (arbitrage du 20/11/2026). La classification d'une
+ * association est une valeur de reglage, jamais une constante (ADR 010).
  */
 const CAMPAIGN_NATURE_SETTINGS: AssociationSettingDefinition[] =
-  CAMPAIGN_TEMPLATE_IDS.map((templateId) => ({
+  CAMPAIGN_SEND_KINDS.map((templateId) => ({
     key: campaignNatureSettingKeyOf(templateId),
     type: 'choice',
     required: false,
@@ -666,6 +701,65 @@ export const ASSOCIATION_SETTINGS_REGISTRY: AssociationSettingsRegistry = [
     page: 'settings',
     section: 'billing',
   },
+  {
+    key: BILLING_REMINDER_ENABLED_SETTING_KEY,
+    type: 'boolean',
+    required: false,
+    default: {value: 'false'},
+    labelKey: 'fields.reminderEnabled.label',
+    helpKey: 'fields.reminderEnabled.help',
+    page: 'settings',
+    section: 'reminder',
+  },
+  ...BILLING_REMINDER_DELAY_WEEKS_SETTING_KEYS.map(
+    (key, index): NumberSettingDefinition => ({
+      key,
+      type: 'number',
+      required: false,
+      min: 1,
+      max: BILLING_REMINDER_DELAY_WEEKS_MAX,
+      integer: true,
+      unitKey: `units.reminderWeeks${index + 1}`,
+      labelKey: `fields.reminderDelay${index + 1}.label`,
+      helpKey: `fields.reminderDelay${index + 1}.help`,
+      errorMessageKeys: {
+        requiredToEnable: `fields.reminderDelay${index + 1}.errors.requiredToEnable`,
+      },
+      page: 'settings',
+      section: 'reminder',
+      requiredWhenKey: BILLING_REMINDER_ENABLED_SETTING_KEY,
+    })
+  ),
+  {
+    key: BILLING_REMINDER_SUBJECT_SETTING_KEY,
+    type: 'text',
+    required: false,
+    maxLength: CAMPAIGN_SUBJECT_MAX_TOTAL,
+    multiline: false,
+    labelKey: 'fields.reminderSubject.label',
+    helpKey: 'fields.reminderSubject.help',
+    errorMessageKeys: {
+      requiredToEnable: 'fields.reminderSubject.errors.requiredToEnable',
+    },
+    page: 'settings',
+    section: 'reminder',
+    requiredWhenKey: BILLING_REMINDER_ENABLED_SETTING_KEY,
+  },
+  {
+    key: BILLING_REMINDER_BODY_SETTING_KEY,
+    type: 'text',
+    required: false,
+    maxLength: CAMPAIGN_BODY_MAX,
+    multiline: true,
+    labelKey: 'fields.reminderBody.label',
+    helpKey: 'fields.reminderBody.help',
+    errorMessageKeys: {
+      requiredToEnable: 'fields.reminderBody.errors.requiredToEnable',
+    },
+    page: 'settings',
+    section: 'reminder',
+    requiredWhenKey: BILLING_REMINDER_ENABLED_SETTING_KEY,
+  },
   ...(
     [
       [LETTER_ADDRESS_OFFSET_X_SETTING_KEY, 'letterAddressOffsetX'],
@@ -928,7 +1022,11 @@ const crossCheckErrors = (
     ...stored.filter(({key}) => !(key in changes)),
     ...upserts,
   ])
-  const errors: Record<string, AssociationSettingError> = {}
+  const errors: Record<string, AssociationSettingError> = requiredWhenErrors(
+    registry,
+    touched,
+    after
+  )
   for (const definition of registry) {
     if (definition.type !== 'number' || !definition.lessThanKey) continue
     if (!touched.has(definition.key) && !touched.has(definition.lessThanKey)) {
@@ -942,6 +1040,31 @@ const crossCheckErrors = (
       value >= reference
     ) {
       errors[definition.key] = {code: 'notBelow', max: reference}
+    }
+  }
+  return errors
+}
+
+/**
+ * Controle croise d'activation (s29) : une cle `requiredWhenKey` doit etre
+ * renseignee tant que le booleen de reference vaut vrai apres le lot. Ne juge
+ * que les paires touchees ; desactiver passe toujours.
+ */
+const requiredWhenErrors = (
+  registry: AssociationSettingsRegistry,
+  touched: ReadonlySet<string>,
+  after: ResolvedAssociationSettings
+): Record<string, AssociationSettingError> => {
+  const errors: Record<string, AssociationSettingError> = {}
+  for (const definition of registry) {
+    const reference = definition.requiredWhenKey
+    if (!reference) continue
+    if (!touched.has(definition.key) && !touched.has(reference)) continue
+    const value = after[definition.key]?.value
+    const isEmpty =
+      value === null || value === undefined || String(value).trim() === ''
+    if (after[reference]?.value === true && isEmpty) {
+      errors[definition.key] = {code: 'requiredToEnable'}
     }
   }
   return errors
@@ -1114,17 +1237,20 @@ export const getDefaultLandAddress = (
  */
 export const getCampaignNature = (
   settings: ResolvedAssociationSettings,
-  templateId: CampaignTemplateId
+  templateId: CampaignSendKind
 ): CampaignNature =>
   settings[campaignNatureSettingKeyOf(templateId)]?.value === 'statutaire'
     ? 'statutaire'
     : DEFAULT_CAMPAIGN_NATURE
 
-/** Les types d'envoi statutaires de l'association, dans l'ordre des modeles. */
+/**
+ * Les types d'envoi statutaires de l'association, dans l'ordre des modeles,
+ * puis la relance automatique (s29).
+ */
 export const getStatutoryTemplateIds = (
   settings: ResolvedAssociationSettings
-): CampaignTemplateId[] =>
-  CAMPAIGN_TEMPLATE_IDS.filter(
+): CampaignSendKind[] =>
+  CAMPAIGN_SEND_KINDS.filter(
     (templateId) => getCampaignNature(settings, templateId) === 'statutaire'
   )
 
@@ -1138,3 +1264,40 @@ export const getLetterAddressOffset = (
   xMm: numberSettingOf(settings, LETTER_ADDRESS_OFFSET_X_SETTING_KEY),
   yMm: numberSettingOf(settings, LETTER_ADDRESS_OFFSET_Y_SETTING_KEY),
 })
+
+/**
+ * La relance automatique des impayes en vigueur (s29, ADR 070 §7) : activee
+ * seulement si le reglage le dit **et** que les intervalles, l'objet et le
+ * texte sont renseignes ; les intervalles lus sont rendus meme desactivee,
+ * pour l'annonce du calendrier.
+ */
+export type UnpaidReminderSettings =
+  | {enabled: false; delaysWeeks: readonly number[] | null}
+  | {
+      enabled: true
+      delaysWeeks: readonly number[]
+      subject: string
+      body: string
+    }
+
+export const getUnpaidReminderSettings = (
+  settings: ResolvedAssociationSettings
+): UnpaidReminderSettings => {
+  const delays = BILLING_REMINDER_DELAY_WEEKS_SETTING_KEYS.map(
+    (key) => settings[key]?.value
+  )
+  const delaysWeeks = delays.every((value) => typeof value === 'number')
+    ? (delays as number[])
+    : null
+  const subject = textSettingOf(settings, BILLING_REMINDER_SUBJECT_SETTING_KEY)
+  const body = textSettingOf(settings, BILLING_REMINDER_BODY_SETTING_KEY)
+  if (
+    settings[BILLING_REMINDER_ENABLED_SETTING_KEY]?.value !== true ||
+    !delaysWeeks ||
+    !subject ||
+    !body
+  ) {
+    return {enabled: false, delaysWeeks}
+  }
+  return {enabled: true, delaysWeeks, subject, body}
+}

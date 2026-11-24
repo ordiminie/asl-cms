@@ -16,6 +16,20 @@ export const CAMPAIGN_TEMPLATE_IDS = [
 ] as const
 export type CampaignTemplateId = (typeof CAMPAIGN_TEMPLATE_IDS)[number]
 
+/** La relance automatique d'un impaye (s29, ADR 070) : jamais un choix du composeur. */
+export const UNPAID_REMINDER_SEND_KIND = 'unpaid_reminder'
+
+/**
+ * Les types d'envoi qui portent une nature (s27b, ADR 064 ; s29, ADR 070 §8) :
+ * les modeles du composeur, puis la relance automatique. Seuls les modeles se
+ * choisissent en redigeant.
+ */
+export const CAMPAIGN_SEND_KINDS = [
+  ...CAMPAIGN_TEMPLATE_IDS,
+  UNPAID_REMINDER_SEND_KIND,
+] as const
+export type CampaignSendKind = (typeof CAMPAIGN_SEND_KINDS)[number]
+
 /**
  * La nature d'un type d'envoi (s27b, ADR 064) : un envoi `statutaire` atteint
  * aussi les adresses desinscrites, un envoi `facultative` ne les atteint pas.
@@ -30,6 +44,12 @@ export const DEFAULT_CAMPAIGN_NATURE: CampaignNature = 'facultative'
 export const CAMPAIGN_VARIABLES = ['nom', 'parcelle', 'date'] as const
 export type CampaignVariable = (typeof CAMPAIGN_VARIABLES)[number]
 export type CampaignVariableValues = Record<CampaignVariable, string>
+
+/**
+ * La variable de la relance automatique (s29, ADR 070 §9) : la liste des
+ * factures impayees de l'echeance. Reconnue pour ce seul type d'envoi.
+ */
+export const UNPAID_REMINDER_INVOICES_VARIABLE = 'factures'
 
 /**
  * Les cibles possibles (s25, s27, ADR 060 §1) : tous les membres, les membres
@@ -58,6 +78,7 @@ export const CAMPAIGN_RECIPIENT_STATUSES = [
   'to_verify',
   'failed',
   'unsubscribed',
+  'settled',
 ] as const
 export type CampaignRecipientStatus =
   (typeof CAMPAIGN_RECIPIENT_STATUSES)[number]
@@ -128,6 +149,11 @@ export type CampaignRecipientCountsDTO = {
   toVerify: number
   failed: number
   unsubscribed: number
+  /**
+   * Lignes d'une relance d'impaye reglees avant l'envoi (s29, ADR 070 §3) :
+   * rien n'est parti ; ni recues, ni a verifier, ni en echec.
+   */
+  settled: number
 }
 
 /** Une part d'envoi telle que le bureau la lit. */
@@ -166,7 +192,8 @@ export type CampaignDTO = {
   preheader: string | null
   /** Corps tel qu'ecrit : variables non remplacees. */
   bodyMarkdown: string
-  templateId: CampaignTemplateId | null
+  /** Un modele du composeur, ou la relance automatique (s29, ADR 070). */
+  templateId: CampaignSendKind | null
   /** Nature figee a l'envoi (s27b, ADR 064). */
   nature: CampaignNature
   targetKind: CampaignTargetKind
@@ -239,7 +266,7 @@ export type CampaignComposerContextDTO = {
    * La nature de chaque modele, lue dans les reglages (s27b, ADR 064) : le
    * composeur l'ecrit sous chaque choix, sans permettre de la changer.
    */
-  templateNatures: Record<CampaignTemplateId, CampaignNature>
+  templateNatures: Record<CampaignSendKind, CampaignNature>
 }
 
 /** Un groupe propose comme cible : son nom et son nombre de fiches. */
@@ -376,8 +403,8 @@ export type UnsubscribeRequestInput = {organizationId: string; token: string}
  * 5) : ce que le membre continuera de recevoir. Aucune donnee du membre.
  */
 export type UnsubscribePageState =
-  | {status: 'confirm'; statutoryTemplateIds: CampaignTemplateId[]}
-  | {status: 'already'; statutoryTemplateIds: CampaignTemplateId[]}
+  | {status: 'confirm'; statutoryTemplateIds: CampaignSendKind[]}
+  | {status: 'already'; statutoryTemplateIds: CampaignSendKind[]}
   | {status: 'invalid'}
 
 export type ConfirmUnsubscribeResult =

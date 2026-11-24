@@ -1,7 +1,7 @@
 import {describe, expect, it, vi} from 'vitest'
 
 import {render, screen, userEvent} from '@/__tests__/customRender'
-import type {CampaignTemplateId} from '@/services/types/domain/campaign-types'
+import type {CampaignSendKind} from '@/services/types/domain/campaign-types'
 
 import {
   UnsubscribePanel,
@@ -16,7 +16,7 @@ const NOTHING_MORE =
 
 const renderPanel = (
   initialState: UnsubscribeScreenState,
-  statutoryTemplateIds: CampaignTemplateId[] | null = [
+  statutoryTemplateIds: CampaignSendKind[] | null = [
     'reminder',
     'invoice',
     'general_assembly',
@@ -86,6 +86,12 @@ describe('UnsubscribePanel — ce que le membre continuera de recevoir (s27b, cr
       expect(screen.queryByText(CONTINUES)).toBeNull()
     }
   )
+
+  it('annonce la relance automatique quand elle est statutaire (s29)', () => {
+    renderPanel('confirm', ['general_assembly', 'unpaid_reminder'])
+
+    expect(listedTypes()).toEqual(['Convocation à l’AG', 'Relance automatique'])
+  })
 
   it('lien invalide : rien sur ce qui continue', () => {
     renderPanel('invalid')

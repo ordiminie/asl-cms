@@ -15,6 +15,10 @@ import {
   BILLING_ALERT_EMAIL_SETTING_KEY,
   BILLING_INVOICE_SUBJECT_SETTING_KEY,
   BILLING_PROVIDER_SETTING_KEY,
+  BILLING_REMINDER_BODY_SETTING_KEY,
+  BILLING_REMINDER_DELAY_WEEKS_SETTING_KEYS,
+  BILLING_REMINDER_ENABLED_SETTING_KEY,
+  BILLING_REMINDER_SUBJECT_SETTING_KEY,
   BILLING_SETTLED_STATUSES_SETTING_KEY,
   BILLING_STATUS_LABELS_SETTING_KEY,
   BILLING_STATUS_LIST_MAX_LENGTH,
@@ -44,6 +48,7 @@ import {
   getMemberEmailConfirmationDays,
   getSettingsForPage,
   getStatutoryTemplateIds,
+  getUnpaidReminderSettings,
   GOOGLE_VERIFICATION_SETTING_KEY,
   hasSettingReferenceCycle,
   isSuperAdminOnlySetting,
@@ -57,7 +62,12 @@ import {
   resolveSettings,
   validateSettingsChanges,
 } from '../types/domain/association-settings-types'
-import {CAMPAIGN_TEMPLATE_IDS} from '../types/domain/campaign-types'
+import {
+  CAMPAIGN_BODY_MAX,
+  CAMPAIGN_SEND_KINDS,
+  CAMPAIGN_SUBJECT_MAX_TOTAL,
+  CAMPAIGN_TEMPLATE_IDS,
+} from '../types/domain/campaign-types'
 import {TEST_SETTINGS_REGISTRY} from './association-settings-test-registry'
 
 const definitionOf = (
@@ -172,7 +182,7 @@ describe('registre de production', () => {
         required: false,
         page: 'settings',
       },
-      ...CAMPAIGN_TEMPLATE_IDS.map((templateId) => ({
+      ...CAMPAIGN_SEND_KINDS.map((templateId) => ({
         key: `campaign.nature.${templateId}`,
         type: 'choice',
         required: false,
@@ -223,6 +233,30 @@ describe('registre de production', () => {
       {
         key: BILLING_ALERT_EMAIL_SETTING_KEY,
         type: 'email',
+        required: false,
+        page: 'settings',
+      },
+      {
+        key: BILLING_REMINDER_ENABLED_SETTING_KEY,
+        type: 'boolean',
+        required: false,
+        page: 'settings',
+      },
+      ...BILLING_REMINDER_DELAY_WEEKS_SETTING_KEYS.map((key) => ({
+        key,
+        type: 'number',
+        required: false,
+        page: 'settings',
+      })),
+      {
+        key: BILLING_REMINDER_SUBJECT_SETTING_KEY,
+        type: 'text',
+        required: false,
+        page: 'settings',
+      },
+      {
+        key: BILLING_REMINDER_BODY_SETTING_KEY,
+        type: 'text',
         required: false,
         page: 'settings',
       },
@@ -853,6 +887,7 @@ describe('registre de production', () => {
       'campaign.nature.invoice',
       'campaign.nature.general_assembly',
       'campaign.nature.post_assembly_documents',
+      'campaign.nature.unpaid_reminder',
       MEMBER_DEFAULT_LAND_POSTAL_CODE_SETTING_KEY,
       MEMBER_DEFAULT_LAND_CITY_SETTING_KEY,
       BILLING_PROVIDER_SETTING_KEY,
@@ -861,6 +896,10 @@ describe('registre de production', () => {
       BILLING_SETTLED_STATUSES_SETTING_KEY,
       BILLING_STATUS_LABELS_SETTING_KEY,
       BILLING_ALERT_EMAIL_SETTING_KEY,
+      BILLING_REMINDER_ENABLED_SETTING_KEY,
+      ...BILLING_REMINDER_DELAY_WEEKS_SETTING_KEYS,
+      BILLING_REMINDER_SUBJECT_SETTING_KEY,
+      BILLING_REMINDER_BODY_SETTING_KEY,
       LETTER_ADDRESS_OFFSET_X_SETTING_KEY,
       LETTER_ADDRESS_OFFSET_Y_SETTING_KEY,
     ])
@@ -1238,13 +1277,17 @@ describe('registre — carte « Referencement » (s11)', () => {
       CAMPAIGN_DAILY_SEND_CAP_SETTING_KEY,
       CAMPAIGN_SEND_MAX_ATTEMPTS_SETTING_KEY,
       MEMBER_EMAIL_CONFIRMATION_DAYS_SETTING_KEY,
-      ...CAMPAIGN_TEMPLATE_IDS.map(campaignNatureSettingKeyOf),
+      ...CAMPAIGN_SEND_KINDS.map(campaignNatureSettingKeyOf),
       BILLING_PROVIDER_SETTING_KEY,
       BILLING_INVOICE_SUBJECT_SETTING_KEY,
       BILLING_UNPAID_STATUSES_SETTING_KEY,
       BILLING_SETTLED_STATUSES_SETTING_KEY,
       BILLING_STATUS_LABELS_SETTING_KEY,
       BILLING_ALERT_EMAIL_SETTING_KEY,
+      BILLING_REMINDER_ENABLED_SETTING_KEY,
+      ...BILLING_REMINDER_DELAY_WEEKS_SETTING_KEYS,
+      BILLING_REMINDER_SUBJECT_SETTING_KEY,
+      BILLING_REMINDER_BODY_SETTING_KEY,
       LETTER_ADDRESS_OFFSET_X_SETTING_KEY,
       LETTER_ADDRESS_OFFSET_Y_SETTING_KEY,
     ])
@@ -1431,7 +1474,7 @@ describe('limite d’envoi et réserve de connexion (s52, ADR 053)', () => {
     ).toEqual([
       EMAIL_DAILY_SEND_LIMIT_SETTING_KEY,
       EMAIL_LOGIN_RESERVE_SETTING_KEY,
-      ...CAMPAIGN_TEMPLATE_IDS.map(campaignNatureSettingKeyOf),
+      ...CAMPAIGN_SEND_KINDS.map(campaignNatureSettingKeyOf),
       BILLING_PROVIDER_SETTING_KEY,
     ])
   })
@@ -1674,5 +1717,279 @@ describe('nature des envois (s27b, ADR 064)', () => {
       'Facultatif — les désinscrits ne le reçoivent pas',
       'Statutaire — les désinscrits le reçoivent aussi',
     ])
+  })
+})
+
+describe('nature de la relance automatique (s29, ADR 070 §8)', () => {
+  const lookup = (dotted: string) =>
+    dotted
+      .split('.')
+      .reduce<unknown>(
+        (node, part) =>
+          typeof node === 'object' && node !== null
+            ? (node as Record<string, unknown>)[part]
+            : undefined,
+        fr.AssociationSettings
+      )
+
+  it('la relance automatique est un type d’envoi portant une nature, pas un modèle du composeur', () => {
+    expect(CAMPAIGN_SEND_KINDS).toEqual([
+      ...CAMPAIGN_TEMPLATE_IDS,
+      'unpaid_reminder',
+    ])
+    expect(CAMPAIGN_TEMPLATE_IDS as readonly string[]).not.toContain(
+      'unpaid_reminder'
+    )
+  })
+
+  it('le réglage campaign.nature.unpaid_reminder existe, facultatif par défaut, réservé au SuperAdmin', () => {
+    const definition = definitionOf(
+      ASSOCIATION_SETTINGS_REGISTRY,
+      'campaign.nature.unpaid_reminder'
+    )
+    expect(definition).toMatchObject({
+      type: 'choice',
+      required: false,
+      default: {value: 'facultative'},
+      page: 'settings',
+      section: 'campaign_nature',
+    })
+    expect(isSuperAdminOnlySetting(definition)).toBe(true)
+    expect(lookup(definition.labelKey)).toBe('Relance automatique')
+    expect(
+      getCampaignNature(
+        resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, []),
+        'unpaid_reminder'
+      )
+    ).toBe('facultative')
+  })
+
+  it('statutaire, elle figure parmi les envois statutaires, après les modèles', () => {
+    const settings = resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, [
+      {key: 'campaign.nature.unpaid_reminder', value: 'statutaire'},
+      {key: campaignNatureSettingKeyOf('reminder'), value: 'statutaire'},
+    ])
+    expect(getStatutoryTemplateIds(settings)).toEqual([
+      'reminder',
+      'unpaid_reminder',
+    ])
+  })
+})
+
+describe('relances des impayés — réglages (s29, ADR 070 §7)', () => {
+  const lookup = (dotted: string) =>
+    dotted
+      .split('.')
+      .reduce<unknown>(
+        (node, part) =>
+          typeof node === 'object' && node !== null
+            ? (node as Record<string, unknown>)[part]
+            : undefined,
+        fr.AssociationSettings
+      )
+  const [DELAY_1, DELAY_2, DELAY_3] = BILLING_REMINDER_DELAY_WEEKS_SETTING_KEYS
+  const complete = {
+    [BILLING_REMINDER_ENABLED_SETTING_KEY]: 'true',
+    [DELAY_1]: '3',
+    [DELAY_2]: '2',
+    [DELAY_3]: '1',
+    [BILLING_REMINDER_SUBJECT_SETTING_KEY]: 'Facture impayée',
+    [BILLING_REMINDER_BODY_SETTING_KEY]: 'Bonjour {nom},\n\n{factures}',
+  }
+
+  it('déclare l’activation, trois intervalles, un objet et un texte, dans la carte « reminder » qui suit « billing »', () => {
+    expect(BILLING_REMINDER_DELAY_WEEKS_SETTING_KEYS).toEqual([
+      'billing.reminder.delay_weeks.1',
+      'billing.reminder.delay_weeks.2',
+      'billing.reminder.delay_weeks.3',
+    ])
+    expect(
+      definitionOf(
+        ASSOCIATION_SETTINGS_REGISTRY,
+        BILLING_REMINDER_ENABLED_SETTING_KEY
+      )
+    ).toMatchObject({
+      key: 'billing.reminder.enabled',
+      type: 'boolean',
+      required: false,
+      default: {value: 'false'},
+      page: 'settings',
+      section: 'reminder',
+    })
+    for (const key of BILLING_REMINDER_DELAY_WEEKS_SETTING_KEYS) {
+      const definition = definitionOf(ASSOCIATION_SETTINGS_REGISTRY, key)
+      expect(definition, key).toMatchObject({
+        type: 'number',
+        required: false,
+        min: 1,
+        max: 52,
+        integer: true,
+        section: 'reminder',
+      })
+      expect(definition.default, key).toBeUndefined()
+      expect(
+        definition.type === 'number' &&
+          definition.unitKey &&
+          lookup(definition.unitKey),
+        key
+      ).toEqual(expect.stringContaining('semaines'))
+    }
+    expect(
+      definitionOf(
+        ASSOCIATION_SETTINGS_REGISTRY,
+        BILLING_REMINDER_SUBJECT_SETTING_KEY
+      )
+    ).toMatchObject({
+      key: 'billing.reminder.subject',
+      type: 'text',
+      required: false,
+      multiline: false,
+      maxLength: CAMPAIGN_SUBJECT_MAX_TOTAL,
+      section: 'reminder',
+    })
+    expect(
+      definitionOf(
+        ASSOCIATION_SETTINGS_REGISTRY,
+        BILLING_REMINDER_BODY_SETTING_KEY
+      )
+    ).toMatchObject({
+      key: 'billing.reminder.body',
+      type: 'text',
+      required: false,
+      multiline: true,
+      maxLength: CAMPAIGN_BODY_MAX,
+      section: 'reminder',
+    })
+    for (const key of [
+      BILLING_REMINDER_SUBJECT_SETTING_KEY,
+      BILLING_REMINDER_BODY_SETTING_KEY,
+    ]) {
+      expect(
+        definitionOf(ASSOCIATION_SETTINGS_REGISTRY, key).default,
+        key
+      ).toBeUndefined()
+    }
+
+    const sections = getSettingsForPage(
+      ASSOCIATION_SETTINGS_REGISTRY,
+      'settings'
+    ).map((definition) => definition.section)
+    expect(sections.indexOf('reminder')).toBe(
+      sections.lastIndexOf('billing') + 1
+    )
+    expect(
+      (
+        fr.BureauSettingsPage.cards as Record<
+          string,
+          {title: string; description?: string}
+        >
+      ).reminder.title
+    ).toBe('Relances des impayés')
+  })
+
+  it('activer avec les cinq autres réglages renseignés passe', () => {
+    expect(
+      validateSettingsChanges(ASSOCIATION_SETTINGS_REGISTRY, complete)
+    ).toMatchObject({valid: true})
+  })
+
+  it.each([
+    DELAY_1,
+    DELAY_2,
+    DELAY_3,
+    'billing.reminder.subject',
+    'billing.reminder.body',
+  ])(
+    'activer sans %s refuse, sur ce réglage, avec le code dédié',
+    (missing) => {
+      const changes = {...complete, [missing]: ''}
+      expect(
+        validateSettingsChanges(ASSOCIATION_SETTINGS_REGISTRY, changes)
+      ).toEqual({
+        valid: false,
+        errors: {[missing]: {code: 'requiredToEnable'}},
+      })
+    }
+  )
+
+  it('les réglages déjà enregistrés comptent : activer seul passe s’ils sont là', () => {
+    const rest = Object.fromEntries(
+      Object.entries(complete).filter(
+        ([key]) => key !== BILLING_REMINDER_ENABLED_SETTING_KEY
+      )
+    )
+    expect(
+      validateSettingsChanges(
+        ASSOCIATION_SETTINGS_REGISTRY,
+        {[BILLING_REMINDER_ENABLED_SETTING_KEY]: 'true'},
+        Object.entries(rest).map(([key, value]) => ({key, value}))
+      )
+    ).toMatchObject({valid: true})
+    expect(
+      validateSettingsChanges(ASSOCIATION_SETTINGS_REGISTRY, {
+        [BILLING_REMINDER_ENABLED_SETTING_KEY]: 'true',
+      })
+    ).toMatchObject({valid: false})
+  })
+
+  it('vider un réglage alors que la relance reste activée refuse', () => {
+    expect(
+      validateSettingsChanges(
+        ASSOCIATION_SETTINGS_REGISTRY,
+        {[BILLING_REMINDER_BODY_SETTING_KEY]: ''},
+        Object.entries(complete).map(([key, value]) => ({key, value}))
+      )
+    ).toEqual({
+      valid: false,
+      errors: {[BILLING_REMINDER_BODY_SETTING_KEY]: {code: 'requiredToEnable'}},
+    })
+  })
+
+  it('la désactivation passe toujours, même sans aucun autre réglage', () => {
+    expect(
+      validateSettingsChanges(ASSOCIATION_SETTINGS_REGISTRY, {
+        [BILLING_REMINDER_ENABLED_SETTING_KEY]: 'false',
+        [BILLING_REMINDER_BODY_SETTING_KEY]: '',
+      })
+    ).toMatchObject({valid: true})
+  })
+
+  it('le code dédié a son message, et le texte dit « avant de l’activer »', () => {
+    expect(ASSOCIATION_SETTING_ERROR_CODES).toContain('requiredToEnable')
+    expect(lookup('errors.requiredToEnable')).toEqual(expect.any(String))
+    const body = definitionOf(
+      ASSOCIATION_SETTINGS_REGISTRY,
+      BILLING_REMINDER_BODY_SETTING_KEY
+    )
+    expect(lookup(body.errorMessageKeys?.requiredToEnable ?? 'missing')).toBe(
+      'Écrivez le texte de la relance avant de l’activer.'
+    )
+  })
+
+  it('lecteur typé : désactivée par défaut, activée seulement complète', () => {
+    expect(
+      getUnpaidReminderSettings(
+        resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, [])
+      )
+    ).toEqual({enabled: false, delaysWeeks: null})
+    const rows = Object.entries(complete).map(([key, value]) => ({key, value}))
+    expect(
+      getUnpaidReminderSettings(
+        resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, rows)
+      )
+    ).toEqual({
+      enabled: true,
+      delaysWeeks: [3, 2, 1],
+      subject: 'Facture impayée',
+      body: 'Bonjour {nom},\n\n{factures}',
+    })
+    expect(
+      getUnpaidReminderSettings(
+        resolveSettings(
+          ASSOCIATION_SETTINGS_REGISTRY,
+          rows.filter((row) => row.key !== BILLING_REMINDER_BODY_SETTING_KEY)
+        )
+      )
+    ).toEqual({enabled: false, delaysWeeks: [3, 2, 1]})
   })
 })

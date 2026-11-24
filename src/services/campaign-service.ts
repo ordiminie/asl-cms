@@ -28,6 +28,7 @@ import {
   markCampaignPartDeferredTxnDao,
   markRecipientFailedTxnDao,
   markRecipientSentTxnDao,
+  markRecipientSettledTxnDao,
   markRecipientToVerifyTxnDao,
   markRecipientUnsubscribedTxnDao,
   markSendingRecipientsToVerifyTxnDao,
@@ -37,6 +38,7 @@ import {
   releaseRecipientClaimTxnDao,
   saveCampaignStatisticsTxnDao,
   startCampaignPartTxnDao,
+  type UnpaidReminderRankInput,
 } from '@/db/repositories/campaign-repository'
 import {getOrganizationByIdDao} from '@/db/repositories/organization-repository'
 import {
@@ -112,6 +114,7 @@ import {
   getInvoiceStatusClassification,
   unpaidProfileIdsOf,
 } from './rules/member-invoice-rules'
+import {substituteInvoicesList} from './rules/unpaid-reminder-rules'
 import {runDueScheduledJobsService} from './scheduled-job-service'
 import {ActionIdConst} from './types/domain/action-registry-types'
 import {
@@ -127,8 +130,8 @@ import {
 import {
   CAMPAIGN_RECIPIENT_SENDING_STALE_MS,
   CAMPAIGN_RECIPIENTS_PAGE_SIZE,
+  CAMPAIGN_SEND_KINDS,
   CAMPAIGN_SUBJECT_MAX_TOTAL,
-  CAMPAIGN_TEMPLATE_IDS,
   CampaignByIdInput,
   CampaignComposerContextDTO,
   CampaignListPageDTO,
@@ -140,11 +143,11 @@ import {
   CampaignRecipientsReadResult,
   CampaignRecipientStatus,
   CAMPAIGNS_PAGE_SIZE,
+  CampaignSendKind,
   CampaignsPageInput,
   CampaignStatisticsReadResult,
   CampaignTarget,
   CampaignTargetCountsDTO,
-  CampaignTemplateId,
   CampaignVariableValues,
   PreviewCampaignInput,
   PreviewCampaignResult,
@@ -161,6 +164,10 @@ import {
   ScheduledJobOutcome,
 } from './types/domain/scheduled-job-types'
 import {calendarDayOf} from './types/domain/water-analysis-types'
+import {
+  readReminderInvoices,
+  type ReminderInvoicesOf,
+} from './unpaid-reminder-invoices'
 import {
   campaignByIdServiceSchema,
   campaignRecipientsServiceSchema,
@@ -263,11 +270,6 @@ const readAssociationWithSettings = async (
   return {association, settings}
 }
 
-const readAssociation = async (
-  organizationId: string
-): Promise<CampaignAssociation> =>
-  (await readAssociationWithSettings(organizationId)).association
-
 const unknownVariablesOf = (content: {
   subject: string
   preheader: string
@@ -282,16 +284,16 @@ const countsOf = (
   nature: CampaignNature
 ): CampaignTargetCountsDTO => campaignTargetCountsOf(target, nature)
 
-/** La nature de chaque modele, telle que les reglages la donnent (s27b). */
+/** La nature de chaque type d'envoi, telle que les reglages la donnent (s27b). */
 const templateNaturesOf = (
   settings: ResolvedAssociationSettings
-): Record<CampaignTemplateId, CampaignNature> =>
+): Record<CampaignSendKind, CampaignNature> =>
   Object.fromEntries(
-    CAMPAIGN_TEMPLATE_IDS.map((templateId) => [
+    CAMPAIGN_SEND_KINDS.map((templateId) => [
       templateId,
       getCampaignNature(settings, templateId),
     ])
-  ) as Record<CampaignTemplateId, CampaignNature>
+  ) as Record<CampaignSendKind, CampaignNature>
 
 const GROUP_NOT_FOUND = 'Groupe introuvable'
 
@@ -323,7 +325,8 @@ type TargetGroup = {id: string; name: string}
 
 type TargetRow = Awaited<ReturnType<typeof getCampaignTargetRowsDao>>[number]
 
-type ReadTargetResult = {
+/** La cible lue, telle que la creation d'une campagne la consomme. */
+export type CampaignTargetReading = {
   rows: TargetRow[]
   target: ComputedCampaignTarget<TargetRow>
   isTargeted: CampaignTargetPredicate
@@ -343,8 +346,8 @@ const readTarget = async (
   organizationId: string,
   choice: CampaignTarget,
   settings: ResolvedAssociationSettings,
-  templateId: CampaignTemplateId
-): Promise<ReadTargetResult> => {
+  templateId: CampaignSendKind
+): Promise<CampaignTargetReading> => {
   const nature = getCampaignNature(settings, templateId)
   const rows = await getCampaignTargetRowsDao(organizationId)
   let isTargeted: CampaignTargetPredicate = () => true
@@ -443,7 +446,7 @@ const valuesOf = (
 export const getCampaignComposerContextService = async (
   organizationId: string,
   choice: CampaignTarget,
-  templateId: CampaignTemplateId
+  templateId: CampaignSendKind
 ): Promise<CampaignComposerContextDTO> => {
   const orgId = parseOrThrow(z.string().uuid(), organizationId)
   const targetChoice = parseOrThrow(campaignTargetSchema, choice)
@@ -586,40 +589,103 @@ export const sendCampaignService = async (
     return {status: 'unknown_variables', variables: unknown}
 
   const now = new Date()
-  const today = calendarDayOf(now)
-  return withTenant(data.organizationId, async () => {
-    const {rows, target, isTargeted, group, nature} = await readTarget(
-      data.organizationId,
-      data.target,
-      settings,
-      data.templateId
-    )
-    if (target.recipients.length === 0) return {status: 'no_recipient'}
+  const created = await createCampaignInTenant({
+    organizationId: data.organizationId,
+    dailySendCap: association.dailySendCap,
+    now,
+    readTarget: () =>
+      readTarget(data.organizationId, data.target, settings, data.templateId),
+    content: {
+      submissionId: data.submissionId,
+      subject: data.subject,
+      preheader: data.preheader || null,
+      bodyMarkdown: data.bodyMarkdown,
+      templateId: data.templateId,
+      targetKind: data.target.kind,
+      ...author,
+    },
+  })
+  if (created.status !== 'created') return created
+  return {
+    status: 'created',
+    campaignId: created.campaignId,
+    deliver: created.created
+      ? () => runImmediatePass(data.organizationId)
+      : null,
+  }
+}
 
+/** Ce que la creation d'une campagne recoit, hors cible et plan (calcules). */
+export type CampaignCreationContent = {
+  submissionId: string
+  subject: string
+  preheader: string | null
+  bodyMarkdown: string
+  templateId: CampaignSendKind
+  targetKind: string
+  authorUserId: string | null
+  authorName: string | null
+  onBehalfOfUserId: string | null
+  onBehalfOfName: string | null
+}
+
+export type CampaignCreationInput = {
+  organizationId: string
+  dailySendCap: number
+  now: Date
+  /** La cible, lue sous le tenant de la creation. */
+  readTarget: () => Promise<CampaignTargetReading>
+  content: CampaignCreationContent
+  /** Le rang d'une relance d'impaye (s29, ADR 070 §6), ecrit avec elle. */
+  unpaidReminder?: UnpaidReminderRankInput
+  /**
+   * Une campagne dont la cible n'a que des fiches sans adresse (courrier
+   * seul) est creee, et close aussitot (s29, critere 10). Sinon refusee.
+   */
+  acceptsLettersOnly?: boolean
+}
+
+export type CampaignCreationResult =
+  | {status: 'created'; campaignId: string; created: boolean}
+  | {status: 'no_recipient'}
+
+/**
+ * Le coeur de la creation d'une campagne, partage par l'envoi du bureau et
+ * la relance automatique (s29, ADR 070 §1). Sous `withTenant` : cible lue,
+ * canaux (email, courrier), verrou du plan d'envoi, plan des parts, creation
+ * transactionnelle (campagne, parts, lignes, courrier, rang), une tache par
+ * part. N'autorise rien : l'appelant a deja tranche.
+ */
+export const createCampaignInTenant = (
+  input: CampaignCreationInput
+): Promise<CampaignCreationResult> => {
+  const today = calendarDayOf(input.now)
+  return withTenant(input.organizationId, async () => {
+    const {rows, target, isTargeted, group, nature} = await input.readTarget()
     const {letterProfileIds} = campaignChannelsOf(
       rows,
       isTargeted,
       nature,
       target
     )
-    await lockCampaignScheduleTxnDao(data.organizationId)
+    const isEmpty =
+      target.recipients.length === 0 &&
+      (!input.acceptsLettersOnly || letterProfileIds.length === 0)
+    if (isEmpty) return {status: 'no_recipient'}
+
+    await lockCampaignScheduleTxnDao(input.organizationId)
     const plan = planCampaignParts(
       target.recipients.length,
-      association.dailySendCap,
-      await getAllottedRecipientsByDayDao(data.organizationId, today),
+      input.dailySendCap,
+      await getAllottedRecipientsByDayDao(input.organizationId, today),
       today
     )
 
     const result = await createCampaignWithRecipientsTxnDao(
       {
-        organizationId: data.organizationId,
-        submissionId: data.submissionId,
-        subject: data.subject,
-        preheader: data.preheader || null,
-        bodyMarkdown: data.bodyMarkdown,
-        templateId: data.templateId,
+        organizationId: input.organizationId,
+        ...input.content,
         nature,
-        targetKind: data.target.kind,
         targetGroupId: group?.id ?? null,
         targetGroupName: group?.name ?? null,
         recipientCount: target.recipients.length,
@@ -629,7 +695,6 @@ export const sendCampaignService = async (
         status: 'sending',
         sendDate: today,
         statsTracked: true,
-        ...author,
       },
       plan.map((part, index) => ({
         number: index + 1,
@@ -648,27 +713,25 @@ export const sendCampaignService = async (
           ),
         ],
       })),
-      letterProfileIds
+      letterProfileIds,
+      ...(input.unpaidReminder ? [input.unpaidReminder] : [])
     )
     if (!result) throw new NotFoundError(ASSOCIATION_NOT_FOUND)
 
     const campaignId = result.campaign.id
     for (const part of result.parts) {
       await enqueueScheduledJobTxnDao({
-        organizationId: data.organizationId,
+        organizationId: input.organizationId,
         kind: CAMPAIGN_DELIVER_PART_JOB_KIND,
         idempotencyKey: part.id,
-        runAfter: partRunAfter(part.scheduledFor, now),
+        runAfter: partRunAfter(part.scheduledFor, input.now),
         payload: {partId: part.id, campaignId},
       })
     }
-    return {
-      status: 'created',
-      campaignId,
-      deliver: result.created
-        ? () => runImmediatePass(data.organizationId)
-        : null,
+    if (result.created && result.parts.length === 0) {
+      await finishCampaignTxnDao(campaignId, 'sent')
     }
+    return {status: 'created', campaignId, created: result.created}
   })
 }
 
@@ -680,7 +743,7 @@ export const sendCampaignService = async (
 export const previewCampaignPlanService = async (
   organizationId: string,
   choice: CampaignTarget,
-  templateId: CampaignTemplateId
+  templateId: CampaignSendKind
 ): Promise<CampaignPlanDTO> => {
   const orgId = parseOrThrow(z.string().uuid(), organizationId)
   const targetChoice = parseOrThrow(campaignTargetSchema, choice)
@@ -900,6 +963,8 @@ type CampaignContent = {
   bodyMarkdown: string
   /** Nature figee a la creation (s27b, ADR 064), jamais relue des reglages. */
   nature: CampaignNature
+  /** Le type d'envoi : `unpaid_reminder` relit ses factures (s29). */
+  templateId: string | null
 }
 
 type PartToDeliver = {
@@ -934,16 +999,29 @@ type RecipientDelivery = 'done' | 'failed' | 'deferred' | 'skipped'
 const deliverToRecipient = async (
   organizationId: string,
   association: CampaignAssociation,
-  campaign: CampaignContent,
+  sent: CampaignContent,
   part: PartToDeliver,
-  recipient: PendingRecipientRowModel
+  recipient: PendingRecipientRowModel,
+  invoicesOf: ReminderInvoicesOf | null
 ): Promise<RecipientDelivery> => {
   const inTenant = <T>(callback: () => Promise<T>) =>
     withTenant(organizationId, callback)
 
-  if (recipient.unsubscribed && campaign.nature !== 'statutaire') {
+  if (recipient.unsubscribed && sent.nature !== 'statutaire') {
     await inTenant(() => markRecipientUnsubscribedTxnDao(recipient.recipientId))
     return 'done'
+  }
+  let campaign = sent
+  if (invoicesOf) {
+    const list = invoicesOf(recipient.memberProfileIds)
+    if (list === null) {
+      await inTenant(() => markRecipientSettledTxnDao(recipient.recipientId))
+      return 'done'
+    }
+    campaign = {
+      ...sent,
+      bodyMarkdown: substituteInvoicesList(sent.bodyMarkdown, list),
+    }
   }
   const {email, name} = recipient
   if (!email || name === null) {
@@ -1144,7 +1222,8 @@ export const deliverCampaignPartService = async (
   }
   if (!(await isClientEmailEnabledService())) return {status: 'released'}
 
-  const association = await readAssociation(organizationId)
+  const {association, settings} =
+    await readAssociationWithSettings(organizationId)
   const {campaign, recipients} = await withTenant(organizationId, async () => {
     await sweepAbandonedRecipients(job, part.id, now)
     await startCampaignPartTxnDao(part.id)
@@ -1155,13 +1234,31 @@ export const deliverCampaignPartService = async (
   })
   if (!campaign) return {status: 'completed'}
 
+  let invoicesOf: ReminderInvoicesOf | null
+  try {
+    invoicesOf = await readReminderInvoices(
+      organizationId,
+      campaign,
+      settings,
+      recipients.flatMap((recipient) => recipient.memberProfileIds)
+    )
+  } catch (error) {
+    logger.error('[CAMPAIGN] Factures de la relance illisibles', {
+      campaignId: campaign.id,
+      partId: part.id,
+      error: error instanceof Error ? error.name : 'unknown',
+    })
+    return failedAttemptOutcome(job, now, part, association.sendMaxAttempts)
+  }
+
   for (const recipient of recipients) {
     const delivery = await deliverToRecipient(
       organizationId,
       association,
       campaign,
       part,
-      recipient
+      recipient,
+      invoicesOf
     )
     if (delivery === 'failed') {
       return failedAttemptOutcome(job, now, part, association.sendMaxAttempts)

@@ -41,6 +41,7 @@ export const campaignRecipientStatusEnum = pgEnum('campaign_recipient_status', [
   'sending',
   'to_verify',
   'unsubscribed',
+  'settled',
 ])
 
 export const campaignPartStatusEnum = pgEnum('campaign_part_status', [
@@ -190,6 +191,10 @@ export const campaignPart = pgTable(
  * `pending -> sending` **avant** l'envoi, puis `sent` ; un arret ou un echec
  * incertain la laisse `to_verify`, jamais renvoyee. Une fiche desinscrite
  * entre deux parts passe `unsubscribed`.
+ *
+ * s29 (ADR 070 §3) : une ligne d'une relance d'impaye dont les fiches n'ont
+ * plus de facture impayee de l'echeance a l'envoi passe `settled` : rien ne
+ * part, ni recu ni en echec.
  *
  * s54 (ADR 057) : une ligne par **adresse** (`email`, unique sans casse par
  * campagne) ; le refus est porte par l'adresse de fiche

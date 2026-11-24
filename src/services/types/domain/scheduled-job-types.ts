@@ -82,3 +82,10 @@ export const EMAIL_DELIVER_DEFERRED_JOB_KIND = 'email.deliver_deferred'
  * pour la meme heure. Chaque passage programme l'heure suivante.
  */
 export const BILLING_SYNC_PENNYLANE_JOB_KIND = 'billing.sync_pennylane'
+
+/**
+ * La relance quotidienne des impayes (s29, ADR 070 §4). Cle d'idempotence et
+ * `payload.day` : le jour de Paris vise, jamais deux taches pour le meme
+ * jour. Chaque passage active programme le jour suivant.
+ */
+export const BILLING_UNPAID_REMINDERS_JOB_KIND = 'billing.unpaid_reminders'

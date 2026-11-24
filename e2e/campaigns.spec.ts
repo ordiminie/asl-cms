@@ -832,12 +832,35 @@ const SPREAD_FICHES = Array.from({length: 5}, (_, index) => ({
   email: `etale-${index + 1}-${RUN}@example.test`,
 }))
 
-const runScheduler = (): string =>
+/**
+ * Le seed active la relance automatique de TechCorp (s29), et tout
+ * enregistrement des réglages qui la laisse activée garantit la tâche
+ * quotidienne `billing.unpaid_reminders`. Un autre spec a pu l'enfiler avant
+ * celui-ci : sans ce retrait, le passage relancerait les impayés du seed et
+ * consommerait le plafond abaissé à 2 de l'essai.
+ */
+const dropUnpaidReminderJobs = async (): Promise<void> => {
+  const {a} = await tenantIds()
+  await asMaintenance((client) =>
+    client.query(
+      `delete from scheduled_job
+        where organization_id = $1 and kind = 'billing.unpaid_reminders'`,
+      [a]
+    )
+  )
+}
+
+const runSchedulerProcess = (): string =>
   execFileSync('pnpm', ['tsx', SCHEDULER_SCRIPT], {
     env: {...process.env, DATABASE_URL: databaseUrl()},
     encoding: 'utf8',
     timeout: 90_000,
   })
+
+const runScheduler = async (): Promise<string> => {
+  await dropUnpaidReminderJobs()
+  return runSchedulerProcess()
+}
 
 type SpreadRecipient = {
   id: string
@@ -1066,7 +1089,7 @@ test.describe('Campagnes — envoi étalé en parts quotidiennes (s26)', () => {
 
     let before = outboxFiles()
     await makePartDue(state.parts[0].id)
-    expect(runScheduler()).toMatch(/Taches traitees : \d+/)
+    expect(await runScheduler()).toMatch(/Taches traitees : \d+/)
     expect(
       state.recipients.flatMap((recipient) =>
         messagesTo(before, recipient.email)
@@ -1075,7 +1098,7 @@ test.describe('Campagnes — envoi étalé en parts quotidiennes (s26)', () => {
 
     before = outboxFiles()
     await makePartDue(state.parts[1].id)
-    const output = runScheduler()
+    const output = await runScheduler()
     const diagnosis = await diagnosisOf(
       spreadCampaignId,
       state.parts[1].id,
@@ -1119,7 +1142,7 @@ test.describe('Campagnes — envoi étalé en parts quotidiennes (s26)', () => {
 
     const before = outboxFiles()
     await makePartDue(state.parts[2].id)
-    const output = runScheduler()
+    const output = await runScheduler()
     const diagnosis = await diagnosisOf(
       spreadCampaignId,
       state.parts[2].id,
@@ -1579,6 +1602,7 @@ test.describe('Campagnes — nature des envois (s27b)', () => {
         'Relance manuelle',
         'Facture disponible',
         'Convocation à l’AG',
+        'Relance automatique',
       ])
       expect(await unsubscribeOf(natureFicheIds.subscribed)).toBe(0)
     } finally {

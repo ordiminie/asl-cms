@@ -44,6 +44,7 @@ import {
   markCampaignPartDeferredTxnDao,
   markRecipientFailedTxnDao,
   markRecipientSentTxnDao,
+  markRecipientSettledTxnDao,
   markRecipientToVerifyTxnDao,
   markRecipientUnsubscribedTxnDao,
   markSendingRecipientsToVerifyTxnDao,
@@ -682,6 +683,7 @@ describe('getPendingPartRecipientsDao', () => {
         accountName: 'Claire A.',
         parcelNumbers: ['12'],
         addressProfileCount: 1,
+        memberProfileIds: [PROFILE_A],
       },
     ])
   })
@@ -1237,5 +1239,140 @@ describe('getOpenCampaignPartsDao — parts non closes et leur report (s52, envo
     expect(sql).toContain(
       '(select count(*) from "campaign_part" "sibling_part" where "sibling_part"."campaign_id" = "campaign_part"."campaign_id")'
     )
+  })
+})
+
+describe('createCampaignWithRecipientsTxnDao — rang d’une relance d’impayé (s29, ADR 070 §6)', () => {
+  const createdResponses = () => [
+    [campaignRow()],
+    [],
+    [
+      [PART_1, 1, '2026-11-12'],
+      [PART_2, 2, '2026-11-13'],
+    ],
+    [
+      [RECIPIENT_ID, 'claire@example.fr'],
+      [RECIPIENT_B, 'paul@example.fr'],
+    ],
+  ]
+
+  it('écrit le rang dans la même transaction, juste après la campagne', async () => {
+    responses.current = createdResponses()
+
+    await createCampaignWithRecipientsTxnDao(
+      CAMPAIGN_INPUT,
+      PLAN,
+      RECIPIENTS,
+      [],
+      {dueOn: '2026-03-31', rank: 2}
+    )
+
+    expect(sent[0].sql).toMatch(/^insert into "campaign"/)
+    expect(sent[1].sql).toMatch(/^insert into "unpaid_reminder"/)
+    expect(sent[1].params).toEqual(
+      expect.arrayContaining([ORG_ID, '2026-03-31', 2, CAMPAIGN_ID])
+    )
+  })
+
+  it('soumission rejouée : ni campagne ni rang de plus', async () => {
+    responses.current = [[], [campaignRow()]]
+
+    const result = await createCampaignWithRecipientsTxnDao(
+      CAMPAIGN_INPUT,
+      PLAN,
+      RECIPIENTS,
+      [],
+      {dueOn: '2026-03-31', rank: 1}
+    )
+
+    expect(sent.some(({sql}) => sql.includes('unpaid_reminder'))).toBe(false)
+    expect(result).toMatchObject({created: false})
+  })
+
+  it('une relance sans destinataire email garde son rang et ses fiches du courrier', async () => {
+    responses.current = [[campaignRow()], []]
+
+    const result = await createCampaignWithRecipientsTxnDao(
+      {...CAMPAIGN_INPUT, recipientCount: 0},
+      [],
+      [],
+      [PROFILE_C],
+      {dueOn: '2026-03-31', rank: 1}
+    )
+
+    expect(sent.map(({sql}) => sql.split(' ').slice(0, 3).join(' '))).toEqual([
+      'insert into "campaign"',
+      'insert into "unpaid_reminder"',
+      'insert into "campaign_letter_profile"',
+    ])
+    expect(result).toMatchObject({created: true, parts: []})
+  })
+
+  it('une campagne manuelle n’écrit aucun rang', async () => {
+    responses.current = [
+      [campaignRow()],
+      [
+        [PART_1, 1, '2026-11-12'],
+        [PART_2, 2, '2026-11-13'],
+      ],
+      [
+        [RECIPIENT_ID, 'claire@example.fr'],
+        [RECIPIENT_B, 'paul@example.fr'],
+      ],
+    ]
+
+    await createCampaignWithRecipientsTxnDao(
+      CAMPAIGN_INPUT,
+      PLAN,
+      RECIPIENTS,
+      []
+    )
+
+    expect(sent.some(({sql}) => sql.includes('unpaid_reminder'))).toBe(false)
+  })
+})
+
+describe('markRecipientSettledTxnDao — réglée avant l’envoi (s29, ADR 070 §3)', () => {
+  it('passe la seule ligne en attente à settled, sans rien envoyer', async () => {
+    responses.current = [[[RECIPIENT_ID]]]
+
+    const row = await markRecipientSettledTxnDao(RECIPIENT_ID)
+
+    expect(sent[0].sql).toMatch(
+      /^update "campaign_recipient" set "status" = \$1/
+    )
+    expect(sent[0].params).toEqual(['settled', RECIPIENT_ID, 'pending'])
+    expect(row).toEqual({id: RECIPIENT_ID})
+  })
+})
+
+describe('getPendingPartRecipientsDao — les fiches que la ligne représente (s29, ADR 070 §3)', () => {
+  it('rend les fiches ciblées figées de l’adresse : la relance relit leurs factures', async () => {
+    responses.current = [
+      [
+        [
+          RECIPIENT_ID,
+          ORG_ID,
+          PROFILE_A,
+          'Bernard Lefèvre',
+          'bernard@example.fr',
+          'tok',
+        ],
+      ],
+      [
+        [PROFILE_A, 'bernard@example.fr', false, 'Bernard L.'],
+        [PROFILE_B, 'bernard@example.fr', false, 'Bernard L.'],
+        [PROFILE_C, 'bernard@example.fr', false, 'Bernard L.'],
+      ],
+      [],
+      [
+        [RECIPIENT_ID, PROFILE_A],
+        [RECIPIENT_ID, PROFILE_B],
+      ],
+    ]
+
+    const [row] = await getPendingPartRecipientsDao(PART_1)
+
+    expect(row.memberProfileIds).toEqual([PROFILE_A, PROFILE_B])
   })
 })

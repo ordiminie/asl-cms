@@ -377,3 +377,37 @@ describe('updateAssociationSettingsService — classement des statuts de facture
     expect(saveOrganizationSettingsTxnDao).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('updateAssociationSettingsService — variables de la relance (s29, ADR 070 §9)', () => {
+  it('le texte de la relance accepte {nom}, {parcelle}, {date} et {factures}', async () => {
+    const result = await updateAssociationSettingsService(ORG_ID, {
+      'billing.reminder.body':
+        'Bonjour {nom}, parcelle {parcelle}, le {date}.\n\n{factures}',
+    })
+
+    expect(result).toEqual({status: 'saved'})
+  })
+
+  it('refuse une variable inconnue dans le texte, rien n’est écrit', async () => {
+    const result = await updateAssociationSettingsService(ORG_ID, {
+      'billing.reminder.body': 'Bonjour {prenom}',
+    })
+
+    expect(result).toEqual({
+      status: 'rejected',
+      errors: {'billing.reminder.body': {code: 'unknownVariable'}},
+    })
+    expect(saveOrganizationSettingsTxnDao).not.toHaveBeenCalled()
+  })
+
+  it('{factures} n’est pas reconnue dans l’objet : une liste ne tient pas dans un objet', async () => {
+    const result = await updateAssociationSettingsService(ORG_ID, {
+      'billing.reminder.subject': 'Vos factures {factures}',
+    })
+
+    expect(result).toEqual({
+      status: 'rejected',
+      errors: {'billing.reminder.subject': {code: 'unknownVariable'}},
+    })
+  })
+})

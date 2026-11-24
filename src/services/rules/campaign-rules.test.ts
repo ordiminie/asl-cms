@@ -38,6 +38,14 @@ describe('findUnknownVariables — sur l’écrit brut (critère 4)', () => {
       'Nom',
     ])
   })
+  it('{factures} n’est reconnue que pour la relance automatique (s29, ADR 070 §9)', () => {
+    expect(findUnknownVariables('Vos factures : {factures}')).toEqual([
+      'factures',
+    ])
+    expect(
+      findUnknownVariables('Vos factures : {factures} {nom}', ['factures'])
+    ).toEqual([])
+  })
 })
 
 describe('substituteVariables', () => {
@@ -339,10 +347,37 @@ describe('toCampaignDto — liste blanche', () => {
       toVerify: 2,
       failed: 0,
       unsubscribed: 1,
+      settled: 0,
     })
     expect(
       Object.values(dto.recipientCounts).reduce((sum, n) => sum + n, 0)
     ).toBe(296)
+  })
+
+  it('une ligne réglée avant l’envoi est comptée à part : ni reçue, ni à vérifier, ni en échec (s29, ADR 070 §3)', () => {
+    const settledCounts = [
+      {
+        campaignId: row().id,
+        partId: parts[0].id,
+        status: 'settled' as const,
+        total: 4,
+      },
+      {
+        campaignId: row().id,
+        partId: parts[0].id,
+        status: 'sent' as const,
+        total: 6,
+      },
+    ]
+    const dto = toCampaignDto(row({status: 'sent'}), parts, settledCounts)
+
+    expect(dto.recipientCounts).toMatchObject({
+      received: 6,
+      toVerify: 0,
+      failed: 0,
+      settled: 4,
+    })
+    expect(dto.displayState).toBe('sent')
   })
 
   it('chaque part porte son jour, ses destinataires et son état', () => {

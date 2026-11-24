@@ -29,6 +29,7 @@ import {
   lettersOf,
 } from './rules/campaign-letter-rules'
 import {formatCampaignDate} from './rules/campaign-rules'
+import {substituteInvoicesList} from './rules/unpaid-reminder-rules'
 import {ActionIdConst} from './types/domain/action-registry-types'
 import {
   ASSOCIATION_LEGAL_MENTIONS_SETTING_KEY,
@@ -44,6 +45,11 @@ import type {
   CampaignLettersPdfResult,
   CampaignLetterUnavailableStatus,
 } from './types/domain/campaign-types'
+import {UNPAID_REMINDER_SEND_KIND} from './types/domain/campaign-types'
+import {
+  readReminderInvoices,
+  type ReminderInvoicesOf,
+} from './unpaid-reminder-invoices'
 import {campaignLetterGroupingSchema} from './validation/campaign-validation'
 
 /**
@@ -118,6 +124,8 @@ type FrozenLetters =
   | {status: CampaignLetterUnavailableStatus}
   | {
       status: 'ready'
+      campaignId: string
+      templateId: string | null
       sendDate: string
       subject: string
       bodyMarkdown: string
@@ -147,12 +155,46 @@ const readFrozenLetters = (
     if (profiles.length === 0) return {status: 'none'}
     return {
       status: 'ready',
+      campaignId: campaign.id,
+      templateId: campaign.templateId,
       sendDate: campaign.sendDate,
       subject: campaign.subject,
       bodyMarkdown: campaign.bodyMarkdown,
       profiles,
     }
   })
+
+type ReadyLetters = Extract<FrozenLetters, {status: 'ready'}>
+
+/**
+ * Les lettres d'une relance d'impaye (s29, ADR 070 §9) : les factures des
+ * fiches figees sont relues a la generation ; une fiche sans impaye de
+ * l'echeance est retiree. Une autre campagne est rendue telle quelle.
+ */
+const withReminderInvoices = async (
+  organizationId: string,
+  frozen: FrozenLetters
+): Promise<
+  | {status: CampaignLetterUnavailableStatus}
+  | (ReadyLetters & {invoicesOf: ReminderInvoicesOf | null})
+> => {
+  if (frozen.status !== 'ready') return frozen
+  if (frozen.templateId !== UNPAID_REMINDER_SEND_KIND) {
+    return {...frozen, invoicesOf: null}
+  }
+  const invoicesOf = await readReminderInvoices(
+    organizationId,
+    {id: frozen.campaignId, templateId: frozen.templateId},
+    await getAssociationSettingsService(organizationId),
+    frozen.profiles.map((profile) => profile.id)
+  )
+  if (!invoicesOf) return {...frozen, invoicesOf: null}
+  const profiles = frozen.profiles.filter(
+    (profile) => invoicesOf([profile.id]) !== null
+  )
+  if (profiles.length === 0) return {status: 'none'}
+  return {...frozen, profiles, invoicesOf}
+}
 
 const byNumber = (a: string, b: string) =>
   a.localeCompare(b, 'fr', {numeric: true})
@@ -214,7 +256,10 @@ export const getCampaignLetterContextService = async (
   const ids = parseOrThrow(idsSchema, {organizationId, campaignId})
   await requireCampaignManager(ids.organizationId)
 
-  const frozen = await readFrozenLetters(ids.organizationId, ids.campaignId)
+  const frozen = await withReminderInvoices(
+    ids.organizationId,
+    await readFrozenLetters(ids.organizationId, ids.campaignId)
+  )
   if (frozen.status !== 'ready') return {status: frozen.status}
   return {
     status: 'ready',
@@ -270,7 +315,10 @@ export const generateCampaignLettersService = async (
   const choice = parseOrThrow(campaignLetterGroupingSchema, grouping)
   await requireCampaignManager(ids.organizationId)
 
-  const frozen = await readFrozenLetters(ids.organizationId, ids.campaignId)
+  const frozen = await withReminderInvoices(
+    ids.organizationId,
+    await readFrozenLetters(ids.organizationId, ids.campaignId)
+  )
   if (frozen.status !== 'ready') return {status: frozen.status}
   const hasHomonyms = homonymGroupsOf(frozen.profiles).length > 0
   if (hasHomonyms && !choice) return {status: 'grouping_required'}
@@ -278,7 +326,19 @@ export const generateCampaignLettersService = async (
   const parcels = Object.fromEntries(
     frozen.profiles.map((profile) => [profile.id, profile.currentParcelNumbers])
   )
-  const letters = lettersOf(frozen.profiles, choice ?? 'per_land', parcels)
+  const invoicesOf = frozen.invoicesOf
+  const letters = lettersOf(frozen.profiles, choice ?? 'per_land', parcels).map(
+    (letter) =>
+      invoicesOf
+        ? {
+            ...letter,
+            bodyMarkdown: substituteInvoicesList(
+              frozen.bodyMarkdown,
+              invoicesOf(letter.memberProfileIds) ?? ''
+            ),
+          }
+        : letter
+  )
   const association = await readLetterAssociation(ids.organizationId)
   const t = await getTranslations({
     locale: PRODUCT_LOCALE,

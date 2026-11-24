@@ -1133,6 +1133,7 @@ const fakeStore = () => {
         parcelNumbers: r.parcelNumbers ?? ['12'],
         accountName: r.accountName ?? null,
         addressProfileCount: r.addressProfileCount ?? 1,
+        memberProfileIds: r.memberProfileId ? [r.memberProfileId] : [],
       }))
   )
   vi.mocked(claimRecipientForSendTxnDao).mockImplementation(async (id) => {
@@ -2667,6 +2668,7 @@ describe('nature des envois — réintégration des désinscrits (s27b, ADR 064)
       invoice: 'facultative',
       general_assembly: 'statutaire',
       post_assembly_documents: 'facultative',
+      unpaid_reminder: 'facultative',
     })
   })
 
