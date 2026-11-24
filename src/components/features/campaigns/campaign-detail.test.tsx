@@ -50,6 +50,7 @@ const renderDetail = (
       }
       associationName="ASL Les Pins"
       dailySendCap={100}
+      invitationLinkDays={7}
       justSent={options.justSent ?? false}
     />
   )
@@ -71,6 +72,7 @@ describe('CampaignDetail — carte « Courrier postal » (s28)', () => {
         letters={{status: 'none'}}
         associationName="ASL Les Pins"
         dailySendCap={100}
+        invitationLinkDays={7}
         justSent={false}
       />
     )
@@ -214,6 +216,7 @@ describe('CampaignDetail — écran 2 de s26, campagne étalée', () => {
           failed: 0,
           unsubscribed: 0,
           settled: 0,
+          superseded: 0,
         },
       })
     )
@@ -245,6 +248,7 @@ describe('CampaignDetail — écran 2 de s26, campagne étalée', () => {
           failed: 196,
           unsubscribed: 0,
           settled: 0,
+          superseded: 0,
         },
         parts: [
           partOf(1, '2026-11-12', 100),
@@ -286,6 +290,7 @@ describe('CampaignDetail — écran 2 de s26, campagne étalée', () => {
           failed: 0,
           unsubscribed: 0,
           settled: 0,
+          superseded: 0,
         },
         parts: [
           partOf(1, '2026-11-12', 100, {
@@ -329,6 +334,7 @@ describe('CampaignDetail — écran 2 de s26, campagne étalée', () => {
         recipients={recipientsPageOf([recipientOf('r1')])}
         associationName="ASL Les Pins"
         dailySendCap={100}
+        invitationLinkDays={7}
         justSent={false}
       />
     )
@@ -466,6 +472,27 @@ describe('CampaignDetail — carte Destinataires', () => {
     )
   })
 
+  it('une ligne d’invitation écartée à l’envoi le dit, badge « fait » (s42b, ADR 072 §5)', () => {
+    renderDetail(spreadCampaignOf('a'), {
+      recipients: recipientsPageOf([
+        recipientOf('r1', {
+          name: 'Anne Aubry',
+          status: 'superseded',
+          sentAt: null,
+        }),
+      ]),
+    })
+
+    const [row] = within(table()).getAllByRole('row').slice(1)
+    const cell = within(row).getAllByRole('cell')[2]
+    expect(cell).toHaveTextContent(
+      'Écartée à l’envoi : déjà connectée ou réinvitée'
+    )
+    expect(cell.querySelector('[data-slot="badge"]')).toHaveClass(
+      'text-muted-foreground'
+    )
+  })
+
   it('une fiche supprimée apparaît avec un libellé de repli, parcelles en données', () => {
     renderDetail(spreadCampaignOf('a'), {recipients: page})
 
@@ -578,6 +605,7 @@ describe('CampaignDetail — part reportée faute de budget d’envoi (s52, écr
         failed: 0,
         unsubscribed: 0,
         settled: 0,
+        superseded: 0,
       },
       parts: [
         partOf(1, '2026-11-13', 100),
@@ -642,6 +670,7 @@ describe('CampaignDetail — carte « Ouvertures et clics » (s30)', () => {
         statistics={<h2>Ouvertures et clics</h2>}
         associationName="ASL Les Pins"
         dailySendCap={100}
+        invitationLinkDays={7}
         justSent={false}
       />
     )
@@ -662,5 +691,44 @@ describe('CampaignDetail — carte « Ouvertures et clics » (s30)', () => {
     expect(
       screen.queryByRole('heading', {level: 2, name: 'Ouvertures et clics'})
     ).toBeNull()
+  })
+})
+
+describe('CampaignDetail — lancement des invitations (s42b, écran 6)', () => {
+  it('« Contenu envoyé » rend le texte de l’invitation littéralement, puis ce qui s’ajoute à chaque envoi', () => {
+    render(
+      <CampaignDetail
+        campaign={{
+          ...campaignOf('a'),
+          subject: 'Votre espace membre vous attend',
+          templateId: 'member_invitation_launch',
+          bodyMarkdown:
+            'Bonjour {nom},\n\n**gras** <b>balise</b> [x](https://piege.test)',
+        }}
+        recipients={recipientsPageOf([recipientOf('r1')])}
+        associationName="ASL Les Pins"
+        dailySendCap={100}
+        invitationLinkDays={7}
+        justSent={false}
+      />
+    )
+
+    const card = screen
+      .getByRole('heading', {level: 2, name: 'Contenu envoyé'})
+      .closest('[data-slot="card"]') as HTMLElement
+    expect(card).toHaveTextContent('Bonjour {nom},')
+    expect(card).toHaveTextContent(
+      '**gras** <b>balise</b> [x](https://piege.test)'
+    )
+    expect(card.querySelector('b')).toBeNull()
+    expect(card.querySelector('strong')).toBeNull()
+    expect(within(card).queryByRole('link')).toBeNull()
+    expect(card).toHaveTextContent(
+      'Ajoutés à chaque envoi : le bouton « Ouvrir mon espace », un lien de connexion propre à chaque destinataire, valable 7 jours, et le mode d’emploi en trois étapes. Les liens ne sont jamais conservés.'
+    )
+    expect(card).toHaveTextContent(
+      'ASL Les Pins — Votre espace membre vous attend'
+    )
+    expect(screen.getByText('Lancement du site')).toBeInTheDocument()
   })
 })

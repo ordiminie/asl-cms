@@ -20,6 +20,7 @@ vi.mock('@/db/tenant-scope', () => ({
 }))
 
 import {
+  getInvitationStatesByEmailsDao,
   getInvitationStatesByUserIdsDao,
   markFirstSignInTxnDao,
   markInvitedTxnDao,
@@ -83,6 +84,49 @@ describe('getInvitationStatesByUserIdsDao', () => {
 
   it('sans compte demandé : aucune requête', async () => {
     expect(await getInvitationStatesByUserIdsDao(ORG_ID, [])).toEqual([])
+    expect(sent).toHaveLength(0)
+  })
+})
+
+describe('getInvitationStatesByEmailsDao (s42b, ADR 072)', () => {
+  it('relie chaque adresse, sans casse, à son compte puis aux traces de ce compte sur l’association', async () => {
+    responses.current = [
+      [
+        ['anne@example.fr', USER_A, AT.toISOString(), null],
+        ['paul@example.fr', USER_B, null, null],
+      ],
+    ]
+
+    const rows = await getInvitationStatesByEmailsDao(ORG_ID, [
+      'Anne@Example.fr ',
+      'paul@example.fr',
+    ])
+
+    expect(sent).toHaveLength(1)
+    expect(sent[0].sql).toMatch(/from "user"/)
+    expect(sent[0].sql).toMatch(/left join "member_invitation_state"/)
+    expect(sent[0].sql).toMatch(/lower\("user"\."email"\)/)
+    expect(sent[0].params).toEqual(
+      expect.arrayContaining([ORG_ID, 'anne@example.fr', 'paul@example.fr'])
+    )
+    expect(rows).toEqual([
+      {
+        email: 'anne@example.fr',
+        userId: USER_A,
+        lastInvitedAt: AT,
+        firstSignedInAt: null,
+      },
+      {
+        email: 'paul@example.fr',
+        userId: USER_B,
+        lastInvitedAt: null,
+        firstSignedInAt: null,
+      },
+    ])
+  })
+
+  it('sans adresse demandée : aucune requête', async () => {
+    expect(await getInvitationStatesByEmailsDao(ORG_ID, [])).toEqual([])
     expect(sent).toHaveLength(0)
   })
 })

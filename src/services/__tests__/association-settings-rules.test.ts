@@ -43,6 +43,7 @@ import {
   getEmailDailySendLimit,
   getEmailLoginReserve,
   getGoogleVerificationCode,
+  getInvitationLetterText,
   getInvitationLinkDays,
   getInvitationText,
   getLetterAddressOffset,
@@ -53,6 +54,7 @@ import {
   getUnpaidReminderSettings,
   GOOGLE_VERIFICATION_SETTING_KEY,
   hasSettingReferenceCycle,
+  INVITATION_LETTER_TEXT_SETTING_KEY,
   INVITATION_LINK_DAYS_SETTING_KEY,
   INVITATION_TEXT_SETTING_KEY,
   isSuperAdminOnlySetting,
@@ -71,6 +73,9 @@ import {
   CAMPAIGN_SEND_KINDS,
   CAMPAIGN_SUBJECT_MAX_TOTAL,
   CAMPAIGN_TEMPLATE_IDS,
+  isMemberInvitationKind,
+  MEMBER_INVITATION_LAUNCH_SEND_KIND,
+  MEMBER_INVITATION_REMINDER_SEND_KIND,
 } from '../types/domain/campaign-types'
 import {TEST_SETTINGS_REGISTRY} from './association-settings-test-registry'
 
@@ -278,6 +283,12 @@ describe('registre de production', () => {
       },
       {
         key: INVITATION_TEXT_SETTING_KEY,
+        type: 'text',
+        required: false,
+        page: 'settings',
+      },
+      {
+        key: INVITATION_LETTER_TEXT_SETTING_KEY,
         type: 'text',
         required: false,
         page: 'settings',
@@ -904,6 +915,8 @@ describe('registre de production', () => {
       'campaign.nature.general_assembly',
       'campaign.nature.post_assembly_documents',
       'campaign.nature.unpaid_reminder',
+      'campaign.nature.member_invitation_launch',
+      'campaign.nature.member_invitation_reminder',
       MEMBER_DEFAULT_LAND_POSTAL_CODE_SETTING_KEY,
       MEMBER_DEFAULT_LAND_CITY_SETTING_KEY,
       BILLING_PROVIDER_SETTING_KEY,
@@ -919,6 +932,7 @@ describe('registre de production', () => {
       LETTER_ADDRESS_OFFSET_X_SETTING_KEY,
       LETTER_ADDRESS_OFFSET_Y_SETTING_KEY,
       INVITATION_TEXT_SETTING_KEY,
+      INVITATION_LETTER_TEXT_SETTING_KEY,
       INVITATION_LINK_DAYS_SETTING_KEY,
     ])
     expect(
@@ -1309,6 +1323,7 @@ describe('registre — carte « Referencement » (s11)', () => {
       LETTER_ADDRESS_OFFSET_X_SETTING_KEY,
       LETTER_ADDRESS_OFFSET_Y_SETTING_KEY,
       INVITATION_TEXT_SETTING_KEY,
+      INVITATION_LETTER_TEXT_SETTING_KEY,
       INVITATION_LINK_DAYS_SETTING_KEY,
     ])
   })
@@ -1756,6 +1771,8 @@ describe('nature de la relance automatique (s29, ADR 070 §8)', () => {
     expect(CAMPAIGN_SEND_KINDS).toEqual([
       ...CAMPAIGN_TEMPLATE_IDS,
       'unpaid_reminder',
+      'member_invitation_launch',
+      'member_invitation_reminder',
     ])
     expect(CAMPAIGN_TEMPLATE_IDS as readonly string[]).not.toContain(
       'unpaid_reminder'
@@ -2105,5 +2122,118 @@ describe('invitation des membres — réglages (s42a)', () => {
     >
     expect(cards.invitation.title).toBe('Invitation des membres')
     expect(cards.invitation.description).toEqual(expect.any(String))
+  })
+})
+
+describe('lancement des invitations — réglages (s42b, ADR 072)', () => {
+  const lookup = (dotted: string) =>
+    dotted
+      .split('.')
+      .reduce<unknown>(
+        (node, part) =>
+          typeof node === 'object' && node !== null
+            ? (node as Record<string, unknown>)[part]
+            : undefined,
+        fr.AssociationSettings
+      )
+  const letter = definitionOf(
+    ASSOCIATION_SETTINGS_REGISTRY,
+    INVITATION_LETTER_TEXT_SETTING_KEY
+  )
+
+  it('le lancement et la relance sont deux types d’envoi portant une nature, jamais des modèles du composeur', () => {
+    expect(MEMBER_INVITATION_LAUNCH_SEND_KIND).toBe('member_invitation_launch')
+    expect(MEMBER_INVITATION_REMINDER_SEND_KIND).toBe(
+      'member_invitation_reminder'
+    )
+    for (const kind of [
+      MEMBER_INVITATION_LAUNCH_SEND_KIND,
+      MEMBER_INVITATION_REMINDER_SEND_KIND,
+    ]) {
+      expect(CAMPAIGN_TEMPLATE_IDS as readonly string[]).not.toContain(kind)
+      expect(isMemberInvitationKind(kind)).toBe(true)
+    }
+    for (const kind of [...CAMPAIGN_TEMPLATE_IDS, 'unpaid_reminder', null]) {
+      expect(isMemberInvitationKind(kind)).toBe(false)
+    }
+  })
+
+  it('chaque type a sa nature générée, facultative par défaut, réservée au SuperAdmin, sous son libellé', () => {
+    const labels = {
+      member_invitation_launch: 'Lancement du site',
+      member_invitation_reminder: 'Relance des invitations',
+    } as const
+    for (const [kind, label] of Object.entries(labels)) {
+      const definition = definitionOf(
+        ASSOCIATION_SETTINGS_REGISTRY,
+        `campaign.nature.${kind}`
+      )
+      expect(definition).toMatchObject({
+        type: 'choice',
+        default: {value: 'facultative'},
+        section: 'campaign_nature',
+      })
+      expect(isSuperAdminOnlySetting(definition)).toBe(true)
+      expect(lookup(definition.labelKey)).toBe(label)
+    }
+  })
+
+  it('le texte du courrier de lancement est un texte long facultatif, sans défaut, juste après le texte de l’invitation', () => {
+    expect(INVITATION_LETTER_TEXT_SETTING_KEY).toBe('invitation.letter_text')
+    expect(letter).toMatchObject({
+      type: 'text',
+      required: false,
+      multiline: true,
+      maxLength: 2000,
+      page: 'settings',
+      section: 'invitation',
+      whenEmptyKey: 'fields.invitationLetterText.whenEmpty',
+    })
+    expect(letter.default).toBeUndefined()
+    const keys = ASSOCIATION_SETTINGS_REGISTRY.map(({key}) => key)
+    expect(keys.indexOf(INVITATION_LETTER_TEXT_SETTING_KEY)).toBe(
+      keys.indexOf(INVITATION_TEXT_SETTING_KEY) + 1
+    )
+    expect(parseSettingValue(letter, 'x'.repeat(2001))).toMatchObject({
+      valid: false,
+      error: {code: 'tooLong'},
+    })
+  })
+
+  it('accesseur : texte absent → null, sinon la valeur du bureau', () => {
+    expect(
+      getInvitationLetterText(
+        resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, [])
+      )
+    ).toBeNull()
+    expect(
+      getInvitationLetterText(
+        resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, [
+          {key: INVITATION_LETTER_TEXT_SETTING_KEY, value: 'Le site est là.'},
+        ])
+      )
+    ).toBe('Le site est là.')
+  })
+
+  it('libellés : le défaut du courrier ne promet aucun accès et ne porte aucun lien', () => {
+    const fields = fr.AssociationSettings.fields as unknown as Record<
+      string,
+      {label: string; help: string; whenEmpty?: string; defaultText?: string}
+    >
+    const field = fields.invitationLetterText
+    expect(field.label).toBe('Texte du courrier de lancement')
+    expect(field.help).toContain('aucun lien de connexion')
+    expect(field.whenEmpty).toContain('Laissé vide, le courrier reprend')
+    const fallback = fr.CampaignsBureau.letters.pdf.memberInvitation.defaultText
+    expect(field.whenEmpty).toContain(fallback.split('\n')[0])
+    for (const forbidden of ['http', '/login', 'espace', 'connect']) {
+      expect(fallback).not.toContain(forbidden)
+    }
+    expect(fields.invitationText.help).toContain('lancement')
+    const cards = fr.BureauSettingsPage.cards as unknown as Record<
+      string,
+      {title: string; description: string}
+    >
+    expect(cards.invitation.description).toContain('lancement')
   })
 })

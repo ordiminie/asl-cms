@@ -12,6 +12,7 @@ import {
 } from './letter-geometry'
 import {addressFrameOf} from './letter-geometry'
 import {renderCalibrationPdf} from './render-calibration-pdf'
+import {letterTextBlocksOf} from './render-letter-body'
 import {RenderLettersInput, renderLettersPdf} from './render-letters-pdf'
 
 vi.mock('server-only', () => ({}))
@@ -255,6 +256,28 @@ describe('renderLettersPdf — le lot imprimable (critères 1, 3, 4)', () => {
     expect(textOf(first)).not.toContain('{factures}')
     expect(textOf(second)).toContain('Bonjour Anne Roy,')
     expect(textOf(second)).toContain('Facture 2026, parcelle 30 : 185,00 €')
+  })
+
+  it('un courrier de lancement imprime ses blocs, jamais le corps de l’email (s42b, ADR 072 §6)', async () => {
+    const [page] = await readPdf(
+      await renderLettersPdf(
+        input({
+          subject: 'le site de ASL Les Pins est en ligne',
+          bodyMarkdown: 'Ouvrez votre espace : https://x.test/login',
+          bodyBlocks: letterTextBlocksOf(
+            'Le site est en ligne.\n\nLe bureau',
+            'Adresse du site : asl-les-pins.test'
+          ),
+        })
+      )
+    )
+    const text = textOf(page)
+
+    expect(text).toContain('Objet : le site de ASL Les Pins est en ligne')
+    expect(text).toContain('Le site est en ligne.')
+    expect(text).toContain('Adresse du site : asl-les-pins.test')
+    expect(text).not.toContain('Ouvrez votre espace')
+    expect(text).not.toContain('/login')
   })
 
   it('une valeur `**gras**` substituée reste littérale', async () => {

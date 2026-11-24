@@ -78,6 +78,7 @@ vi.mock('@/db/repositories/member-profile-email-repository', () => ({
 }))
 vi.mock('@/db/repositories/member-invitation-state-repository', () => ({
   markInvitedTxnDao: vi.fn(),
+  getInvitationStatesByUserIdsDao: vi.fn(async () => []),
 }))
 vi.mock('@/db/repositories/user-repository', () => ({
   getUserByEmailDao: vi.fn(),
@@ -110,7 +111,10 @@ import {
   refundReportableSendTxnDao,
 } from '@/db/repositories/email-send-budget-repository'
 import {markIncidentReportNotificationFailedDao} from '@/db/repositories/incident-report-repository'
-import {markInvitedTxnDao} from '@/db/repositories/member-invitation-state-repository'
+import {
+  getInvitationStatesByUserIdsDao,
+  markInvitedTxnDao,
+} from '@/db/repositories/member-invitation-state-repository'
 import {releaseStatusAlertByIdDao} from '@/db/repositories/member-invoice-repository'
 import {
   getActiveEmailCarriersDao,
@@ -973,5 +977,42 @@ describe('deliverDeferredEmailService — invitation reportée, rejouée avec un
 
     expect(issueInvitationLink).not.toHaveBeenCalled()
     expect(memoryTransport.messages).toHaveLength(0)
+  })
+
+  it('une invitation partie depuis le report (fiche, lancement ou relance) : le rejeu est sauté, sans lien ni budget (m5, ADR 072 §10)', async () => {
+    vi.mocked(getInvitationStatesByUserIdsDao).mockResolvedValue([
+      {
+        userId: 'user-jean',
+        lastInvitedAt: new Date(NOW.getTime() + 60_000),
+        firstSignedInAt: null,
+      },
+    ])
+
+    const outcome = await deliverDeferredEmailService(jobOf(), NOW)
+
+    expect(outcome).toEqual({status: 'completed'})
+    expect(getInvitationStatesByUserIdsDao).toHaveBeenCalledWith(ORG_ID, [
+      'user-jean',
+    ])
+    expect(issueInvitationLink).not.toHaveBeenCalled()
+    expect(memoryTransport.messages).toHaveLength(0)
+    expect(markInvitedTxnDao).not.toHaveBeenCalled()
+    expect(store.rows.has(DEFERRED_ID)).toBe(false)
+    expect(refundReportableSendTxnDao).toHaveBeenCalled()
+  })
+
+  it('une invitation antérieure au report ne saute pas le rejeu', async () => {
+    vi.mocked(getInvitationStatesByUserIdsDao).mockResolvedValue([
+      {
+        userId: 'user-jean',
+        lastInvitedAt: new Date(NOW.getTime() - 60_000),
+        firstSignedInAt: null,
+      },
+    ])
+
+    await deliverDeferredEmailService(jobOf(), NOW)
+
+    expect(issueInvitationLink).toHaveBeenCalledTimes(1)
+    expect(memoryTransport.messages).toHaveLength(1)
   })
 })

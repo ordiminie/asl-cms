@@ -19,7 +19,10 @@ import {
   refundReportableSendTxnDao,
 } from '@/db/repositories/email-send-budget-repository'
 import {markIncidentReportNotificationFailedDao} from '@/db/repositories/incident-report-repository'
-import {markInvitedTxnDao} from '@/db/repositories/member-invitation-state-repository'
+import {
+  getInvitationStatesByUserIdsDao,
+  markInvitedTxnDao,
+} from '@/db/repositories/member-invitation-state-repository'
 import {releaseStatusAlertByIdDao} from '@/db/repositories/member-invoice-repository'
 import {
   getActiveEmailCarriersDao,
@@ -55,8 +58,8 @@ import IncidentReportMail, {
   type IncidentReportEmailReport,
 } from '@/lib/emails/incident-report-email'
 import InternalEmail from '@/lib/emails/internal-email'
+import {invitationParagraphsOf} from '@/lib/emails/invitation-content'
 import InvitationMail from '@/lib/emails/invitation-email'
-import {invitationParagraphsOf} from '@/lib/emails/invitation-email'
 import InvitationOrganizationLinkMail from '@/lib/emails/invitation-organization-link-email'
 import InvoiceStatusAlertMail, {
   INVOICE_STATUS_ALERT_SUBJECT_MAX_LENGTH,
@@ -1824,6 +1827,21 @@ type DeferredEmailToSend =
 const DAY_MS = 24 * 60 * 60 * 1000
 
 /**
+ * Une invitation est partie vers ce compte apres le report (correctif m5 de
+ * s42a, ADR 072 §10) : depuis sa fiche, un lancement ou une relance. Le rejeu
+ * enverrait un second email et revoquerait le lien du premier.
+ */
+const invitedSince = (
+  traces: readonly {lastInvitedAt: Date | null}[],
+  deferredAt: Date
+): boolean =>
+  traces.some(
+    (trace) =>
+      trace.lastInvitedAt !== null &&
+      trace.lastInvitedAt.getTime() > deferredAt.getTime()
+  )
+
+/**
  * Une invitation reportee, rejouee **sans requete** (s42a, ADR 071 §4) : le
  * compte de son destinataire et son association sont relus ; encore membre
  * avec une adresse active, un lien **neuf** est emis par le generateur du lien
@@ -1835,6 +1853,7 @@ const deferredInvitationToSend = async (
   email: ComposedEmail,
   organizationId: string,
   recipient: string,
+  deferredAt: Date,
   now: Date
 ): Promise<DeferredEmailToSend> => {
   const [organization, account] = await Promise.all([
@@ -1842,10 +1861,12 @@ const deferredInvitationToSend = async (
     getUserByEmailDao(recipient),
   ])
   if (!organization || !account) return {kind: 'gone'}
-  const carriers = await withTenant(organizationId, () =>
-    getActiveEmailCarriersDao(organizationId, account.email)
-  )
+  const {carriers, traces} = await withTenant(organizationId, async () => ({
+    carriers: await getActiveEmailCarriersDao(organizationId, account.email),
+    traces: await getInvitationStatesByUserIdsDao(organizationId, [account.id]),
+  }))
   if (carriers.length === 0) return {kind: 'gone'}
+  if (invitedSince(traces, deferredAt)) return {kind: 'gone'}
 
   const days = getInvitationLinkDays(
     await getAssociationSettingsService(organizationId)
@@ -1890,7 +1911,13 @@ const deferredEmailToSend = async (
 ): Promise<DeferredEmailToSend> => {
   const email = composedOfDeferred(row)
   if (row.nature === 'invitation') {
-    return deferredInvitationToSend(email, organizationId, row.recipient, now)
+    return deferredInvitationToSend(
+      email,
+      organizationId,
+      row.recipient,
+      row.createdAt,
+      now
+    )
   }
   if (!row.confirmationTokenHash) return {kind: 'send', email}
   const link = await rotatePendingLink(

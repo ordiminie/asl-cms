@@ -609,3 +609,94 @@ describe('[BUREAU] courrier d’une relance d’impayé (s29, ADR 070 §9)', () 
     )
   })
 })
+
+describe('[BUREAU] courrier du lancement des invitations (s42b, C2, ADR 072 §6)', () => {
+  beforeEach(async () => {
+    await setupAuthUserMocked(board)
+  })
+
+  const launchRow = (overrides: Record<string, unknown> = {}) =>
+    campaignRow({
+      templateId: 'member_invitation_launch',
+      subject: 'Votre espace membre vous attend',
+      bodyMarkdown: 'Ouvrez votre espace membre : le lien est ci-dessous.',
+      letterText: 'Le site est en ligne.\n\n**Le bureau** {nom}',
+      ...overrides,
+    })
+  const lettersInput = () => vi.mocked(renderLettersPdf).mock.calls[0][0]
+
+  it('objet fixe, texte du courrier, adresse du site ; ni le texte de l’invitation, ni lien de connexion', async () => {
+    vi.mocked(getCampaignByIdDao).mockResolvedValue(launchRow() as never)
+
+    await generateCampaignLettersService(...contextInput, 'per_land')
+
+    const input = lettersInput()
+    expect(input.subject).toBe(
+      'memberInvitation.subject {"name":"ASL Les Pins"}'
+    )
+    expect(input.bodyBlocks).toEqual([
+      {
+        kind: 'paragraph',
+        runs: [{text: 'Le site est en ligne.', bold: false, italic: false}],
+      },
+      {
+        kind: 'paragraph',
+        runs: [{text: '**Le bureau** {nom}', bold: false, italic: false}],
+      },
+      {
+        kind: 'quote',
+        paragraphs: [
+          [
+            {
+              text: 'memberInvitation.siteLine {"domain":"asl-les-pins.test"}',
+              bold: false,
+              italic: false,
+            },
+          ],
+        ],
+      },
+    ])
+    const printed = JSON.stringify({
+      subject: input.subject,
+      blocks: input.bodyBlocks,
+      letters: input.letters,
+    })
+    expect(printed).not.toContain('Ouvrez votre espace')
+    expect(printed).not.toContain('/login')
+    expect(printed).not.toContain('magic-link')
+  })
+
+  it('un lancement sans texte figé reprend le texte par défaut du courrier', async () => {
+    vi.mocked(getCampaignByIdDao).mockResolvedValue(
+      launchRow({letterText: null}) as never
+    )
+
+    await generateCampaignLettersService(...contextInput, 'per_land')
+
+    expect(JSON.stringify(lettersInput().bodyBlocks)).toContain(
+      'memberInvitation.defaultText'
+    )
+  })
+
+  it('une campagne ordinaire n’a pas de blocs : son corps Markdown, inchangé', async () => {
+    await generateCampaignLettersService(...contextInput, 'per_land')
+
+    expect(lettersInput().bodyBlocks).toBeUndefined()
+    expect(lettersInput().bodyMarkdown).toBe('Bonjour {nom}')
+  })
+
+  it('la relance des invitations n’a pas de courrier : none', async () => {
+    vi.mocked(getCampaignByIdDao).mockResolvedValue(
+      campaignRow({
+        templateId: 'member_invitation_reminder',
+        withoutEmailCount: 0,
+      }) as never
+    )
+    vi.mocked(getCampaignLetterProfileIdsDao).mockResolvedValue([])
+
+    await expect(
+      generateCampaignLettersService(...contextInput, 'per_land')
+    ).resolves.toEqual({status: 'none'})
+    expect(renderLettersPdf).not.toHaveBeenCalled()
+  })
+})

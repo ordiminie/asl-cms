@@ -68,6 +68,7 @@ describe('CampaignList — écran 1 du design s25', () => {
               failed: 0,
               unsubscribed: 0,
               settled: 0,
+              superseded: 0,
             },
           }),
           campaignOf('d', {
@@ -81,6 +82,7 @@ describe('CampaignList — écran 1 du design s25', () => {
               failed: 196,
               unsubscribed: 0,
               settled: 0,
+              superseded: 0,
             },
           }),
         ])}
@@ -127,6 +129,25 @@ describe('CampaignList — écran 1 du design s25', () => {
     )
     expect(screen.getByTestId('campaign-card')).toHaveTextContent(
       'Relance automatique'
+    )
+  })
+
+  it('le lancement et la relance des invitations (s42b) sont nommés par leur type', () => {
+    render(
+      <CampaignList
+        list={campaignListOf([
+          campaignOf('a', {templateId: 'member_invitation_launch'}),
+          campaignOf('b', {templateId: 'member_invitation_reminder'}),
+        ])}
+      />
+    )
+
+    const [first, second] = tableRows()
+    expect(within(first).getAllByRole('cell')[3]).toHaveTextContent(
+      'Lancement du site'
+    )
+    expect(within(second).getAllByRole('cell')[3]).toHaveTextContent(
+      'Relance des invitations'
     )
   })
 

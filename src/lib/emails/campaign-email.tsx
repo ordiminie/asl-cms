@@ -23,6 +23,10 @@ import {
 import fr from '../../../messages/fr.json'
 import type {CampaignFooterTexts} from './campaign-text'
 import {
+  getInvitationContentTexts,
+  InvitationContent,
+} from './invitation-content'
+import {
   EMAIL_COLORS,
   EMAIL_DARK_CLASSES,
   EMAIL_FONTS,
@@ -57,6 +61,20 @@ export type CampaignMailProps = {
    */
   nature: CampaignNature
   locale: SupportedLocale
+  /**
+   * Le contenu d'une invitation (s42b, ADR 072 §7) : present, il remplace le
+   * titre et le corps ; l'en-tete et le pied de campagne restent.
+   */
+  invitation?: CampaignInvitationContent
+}
+
+/** Ce qu'un destinataire d'un lancement recoit : son lien, son echeance. */
+export type CampaignInvitationContent = {
+  url: string
+  /** L'echeance du lien, deja ecrite en toutes lettres. */
+  expiresOn: string
+  /** Le texte de l'invitation fige sur la campagne, lu comme texte. */
+  text: string
 }
 
 const EMAIL_WIDTH = 600
@@ -135,6 +153,7 @@ export default async function CampaignMail({
   unsubscribeUrl,
   nature,
   locale,
+  invitation,
 }: CampaignMailProps) {
   const footer = await getCampaignFooterTexts(locale, association, nature)
   const accent = getEmailAccent(association.hue)
@@ -171,29 +190,42 @@ export default async function CampaignMail({
           </Section>
 
           <Section style={{padding: '32px'}}>
-            <Heading
-              as="h1"
-              className={c.text}
-              style={{
-                margin: '0 0 24px',
-                fontFamily: EMAIL_FONTS.heading,
-                fontSize: '24px',
-                lineHeight: 1.25,
-                fontWeight: 700,
-                color: EMAIL_COLORS.foreground,
-              }}
-            >
-              {heading}
-            </Heading>
-            <div
-              className={c.text}
-              style={{
-                fontSize: '17px',
-                lineHeight: 1.6,
-                color: EMAIL_COLORS.foreground,
-              }}
-              dangerouslySetInnerHTML={{__html: bodyHtml}}
-            />
+            {invitation ? (
+              <InvitationContent
+                url={invitation.url}
+                texts={getInvitationContentTexts(locale, {
+                  associationName: association.name,
+                  text: invitation.text,
+                  expiresOn: invitation.expiresOn,
+                })}
+              />
+            ) : (
+              <>
+                <Heading
+                  as="h1"
+                  className={c.text}
+                  style={{
+                    margin: '0 0 24px',
+                    fontFamily: EMAIL_FONTS.heading,
+                    fontSize: '24px',
+                    lineHeight: 1.25,
+                    fontWeight: 700,
+                    color: EMAIL_COLORS.foreground,
+                  }}
+                >
+                  {heading}
+                </Heading>
+                <div
+                  className={c.text}
+                  style={{
+                    fontSize: '17px',
+                    lineHeight: 1.6,
+                    color: EMAIL_COLORS.foreground,
+                  }}
+                  dangerouslySetInnerHTML={{__html: bodyHtml}}
+                />
+              </>
+            )}
           </Section>
 
           <Section

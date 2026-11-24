@@ -184,6 +184,7 @@ describe('BureauSidebar — « Propriétaires » (s12)', () => {
       'Groupes',
       'Campagnes',
       'Relances',
+      'Invitations',
       'Envois',
       'Identité',
       'Réglages',
@@ -247,7 +248,7 @@ describe('BureauSidebar — « Page d’accueil » (s44)', () => {
 })
 
 describe('BureauSidebar — entrée « Envois » (s52)', () => {
-  it('suit « Relances » dans le groupe « L’association », active sur sa route', () => {
+  it('suit « Invitations » (s42b) dans le groupe « L’association », active sur sa route', () => {
     renderSidebarAt('/bureau/envois')
 
     const sends = screen.getByRole('link', {name: 'Envois'})
@@ -261,7 +262,7 @@ describe('BureauSidebar — entrée « Envois » (s52)', () => {
       .getAllByRole('link')
       .map((link) => link.getAttribute('href'))
     expect(links.indexOf('/bureau/envois')).toBe(
-      links.indexOf('/bureau/relances') + 1
+      links.indexOf('/bureau/invitations') + 1
     )
   })
 })
@@ -367,6 +368,26 @@ describe('BureauSidebar — entrée « Relances » (s29)', () => {
       .map((link) => link.getAttribute('href'))
     expect(links.indexOf('/bureau/relances')).toBe(
       links.indexOf('/bureau/campagnes') + 1
+    )
+  })
+})
+
+describe('BureauSidebar — entrée « Invitations » (s42b)', () => {
+  it('suit « Relances » et précède « Envois », active sur sa route, sans icône', () => {
+    renderSidebarAt('/bureau/invitations')
+
+    const entry = screen.getByRole('link', {name: 'Invitations'})
+    expect(entry).toHaveAttribute('href', '/bureau/invitations')
+    expect(entry).toHaveAttribute('aria-current', 'page')
+    expect(entry.querySelector('svg')).toBeNull()
+    const links = screen
+      .getAllByRole('link')
+      .map((link) => link.getAttribute('href'))
+    expect(links.indexOf('/bureau/invitations')).toBe(
+      links.indexOf('/bureau/relances') + 1
+    )
+    expect(links.indexOf('/bureau/envois')).toBe(
+      links.indexOf('/bureau/invitations') + 1
     )
   })
 })

@@ -42,6 +42,7 @@ export const campaignRecipientStatusEnum = pgEnum('campaign_recipient_status', [
   'to_verify',
   'unsubscribed',
   'settled',
+  'superseded',
 ])
 
 export const campaignPartStatusEnum = pgEnum('campaign_part_status', [
@@ -74,6 +75,12 @@ export const campaign = pgTable(
     subject: text('subject').notNull(),
     preheader: text('preheader'),
     bodyMarkdown: text('body_markdown').notNull(),
+    /**
+     * Texte du courrier d'un lancement des invitations (s42b, ADR 072 §6),
+     * fige a la creation ; le PDF l'imprime a la place du corps de l'email.
+     * Vide pour toute autre campagne.
+     */
+    letterText: text('letter_text'),
     templateId: text('template_id'),
     /**
      * Nature figee a l'envoi (s27b, ADR 064) : commande la livraison et le

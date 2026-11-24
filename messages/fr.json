@@ -990,6 +990,10 @@
           "preheader": "Le procès-verbal et les documents de l’assemblée sont publiés.",
           "body": "**[Texte provisoire — à remplacer avant l’envoi]**\n\nBonjour {nom},\n\nLe procès-verbal et les documents de la dernière assemblée générale sont publiés. Vous pouvez les consulter depuis votre espace membre.\n\nPour toute question, répondez simplement à cet email.\n\nMessage envoyé le {date}.\n\nLe bureau de l’association"
         }
+      },
+      "memberInvitation": {
+        "subject": "Votre espace membre vous attend",
+        "preheader": "Un espace personnel vous est ouvert sur le site de l’association. Aucun mot de passe à retenir."
       }
     },
     "invoice": {
@@ -2023,6 +2027,7 @@
       "recipientGroups": "Groupes",
       "campaigns": "Campagnes",
       "unpaidReminders": "Relances",
+      "memberInvitations": "Invitations",
       "sends": "Envois"
     },
     "cards": {
@@ -2276,8 +2281,13 @@
       },
       "invitationText": {
         "label": "Texte de l’invitation",
-        "help": "Il s’affiche au-dessus du bouton de connexion. Le bouton, le lien et le mode d’emploi sont ajoutés d’office.",
+        "help": "Il s’affiche au-dessus du bouton de connexion, dans l’invitation depuis la fiche comme dans le lancement et la relance. Le bouton, le lien et le mode d’emploi sont ajoutés d’office.",
         "whenEmpty": "Laissé vide, l’email reprend le texte par défaut : « Bonjour, Votre association a ouvert sur son site un espace personnel pour chaque propriétaire. Vous y retrouverez les informations qui vous concernent. »"
+      },
+      "invitationLetterText": {
+        "label": "Texte du courrier de lancement",
+        "help": "Envoyé par la poste, lors du lancement, aux membres sans adresse email. Ils n’ont pas d’espace membre : ce courrier ne contient aucun lien de connexion et ne doit promettre aucun accès. L’adresse du site est ajoutée d’office en dessous.",
+        "whenEmpty": "Laissé vide, le courrier reprend le texte par défaut : « Bonjour, L’association a mis en ligne son site internet. Chacun peut le consulter librement, sans inscription : vous y trouverez les actualités de l’association et les résultats des analyses de l’eau. Rien ne change pour vous : le bureau continue de vous écrire par la poste pour tout ce qui vous concerne, comme aujourd’hui. Le bureau de l’association »"
       },
       "invitationLinkDays": {
         "label": "Durée de validité du lien d’invitation",
@@ -2319,7 +2329,9 @@
         "invoice": "Facture disponible",
         "general_assembly": "Convocation à l’AG",
         "post_assembly_documents": "Documents après l’AG",
-        "unpaid_reminder": "Relance automatique"
+        "unpaid_reminder": "Relance automatique",
+        "member_invitation_launch": "Lancement du site",
+        "member_invitation_reminder": "Relance des invitations"
       },
       "help": "Dit si les membres désinscrits des campagnes reçoivent ce type d’envoi.",
       "options": {
@@ -2374,7 +2386,7 @@
       },
       "invitation": {
         "title": "Invitation des membres",
-        "description": "L’email qui invite un membre à se connecter à son espace, depuis sa fiche."
+        "description": "L’email qui invite un membre à se connecter à son espace, depuis sa fiche ou lors du lancement, et le courrier envoyé à ceux qui n’ont pas d’adresse email."
       }
     },
     "submit": "Enregistrer les réglages",
@@ -4544,7 +4556,9 @@
       "invoice": "Facture disponible",
       "general_assembly": "Convocation à l’AG",
       "post_assembly_documents": "Documents après l’AG",
-      "unpaid_reminder": "Relance automatique"
+      "unpaid_reminder": "Relance automatique",
+      "member_invitation_launch": "Lancement du site",
+      "member_invitation_reminder": "Relance des invitations"
     },
     "templateUsages": {
       "free": "Vous écrivez le message en entier.",
@@ -4648,7 +4662,8 @@
         },
         "cardTitle": "Part {number}",
         "deferredLine": "{received} reçues · {deferred} reportées au {date}"
-      }
+      },
+      "invitationAdded": "Ajoutés à chaque envoi : le bouton « Ouvrir mon espace », un lien de connexion propre à chaque destinataire, valable {days, plural, one {# jour} other {# jours}}, et le mode d’emploi en trois étapes. Les liens ne sont jamais conservés."
     },
     "breadcrumb": {
       "label": "Fil d’Ariane",
@@ -4712,7 +4727,8 @@
       "to_verify": "À vérifier",
       "failed": "En échec",
       "unsubscribed": "Désinscrit",
-      "settled": "Réglée avant l’envoi"
+      "settled": "Réglée avant l’envoi",
+      "superseded": "Écartée à l’envoi : déjà connectée ou réinvitée"
     },
     "recipients": {
       "title": "Destinataires",
@@ -4758,10 +4774,16 @@
         "sampleName": "Nom du destinataire",
         "sampleAddress": "Adresse",
         "sampleLocality": "Code postal Ville",
-        "calibrationInstruction": "Glissez cette feuille pliée dans une enveloppe à fenêtre : le cadre en tirets doit apparaître entier dans la fenêtre. Décalage appliqué : {x} mm horizontal, {y} mm vertical."
+        "calibrationInstruction": "Glissez cette feuille pliée dans une enveloppe à fenêtre : le cadre en tirets doit apparaître entier dans la fenêtre. Décalage appliqué : {x} mm horizontal, {y} mm vertical.",
+        "memberInvitation": {
+          "subject": "le site de {name} est en ligne",
+          "siteLine": "Adresse du site : {domain}",
+          "defaultText": "Bonjour,\n\nL’association a mis en ligne son site internet. Chacun peut le consulter librement, sans inscription : vous y trouverez les actualités de l’association et les résultats des analyses de l’eau.\n\nRien ne change pour vous : le bureau continue de vous écrire par la poste pour tout ce qui vous concerne, comme aujourd’hui.\n\nLe bureau de l’association"
+        }
       },
       "title": "Courrier postal",
       "usage": "Les membres sans adresse email reçoivent cette campagne par la poste. Le PDF contient une lettre par destinataire, au même contenu que l’email, prête à glisser dans une enveloppe à fenêtre. Chaque lettre commence sur une nouvelle page ; une lettre longue continue sur des pages de suite.",
+      "launchUsage": "Les membres sans adresse email reçoivent par la poste le courrier de lancement : il annonce le site, sans lien de connexion. Le PDF contient une lettre par fiche, prête à glisser dans une enveloppe à fenêtre.",
       "counter": {
         "withoutEmail": "Fiches sans adresse email",
         "withoutHome": "Dont sans domicile",
@@ -4962,6 +4984,160 @@
       "previous": "Précédent",
       "next": "Suivant",
       "position": "Page {page} sur {total} · {count, plural, one {# impayé} other {# impayés}}"
+    }
+  },
+  "MemberInvitationsBureau": {
+    "metadata": {
+      "title": "Invitations des membres"
+    },
+    "breadcrumb": {
+      "association": "L'association",
+      "current": "Invitations"
+    },
+    "title": "Invitations des membres",
+    "intro": "Annoncer le site à tous les propriétaires, puis suivre qui s’est connecté à son espace.",
+    "plan": {
+      "part": "{count, plural, one {# adresse} other {# adresses}} {day}",
+      "today": "aujourd’hui",
+      "tomorrow": "demain",
+      "on": "le {date}"
+    },
+    "launch": {
+      "title": "Lancement",
+      "usage": "Un seul envoi, une seule fois : chaque adresse email active reçoit une invitation avec son propre lien de connexion ; les membres sans adresse email reçoivent un courrier qui annonce le site.",
+      "profilesTitle": "Fiches",
+      "addressesTitle": "Adresses",
+      "counts": {
+        "profilesWithEmail": "Avec au moins une adresse email active — reçoivent l’invitation",
+        "profilesByLetter": "Sans adresse email active — reçoivent le courrier",
+        "profilesRefused": "Toutes leurs adresses désinscrites — ne reçoivent rien",
+        "profiles": "Fiches au total",
+        "recipients": "Adresses qui recevront l’invitation",
+        "reinstated": "Dont désinscrites des campagnes — elles la reçoivent : c’est un envoi statutaire",
+        "unsubscribed": "Désinscrites — exclues : c’est un envoi facultatif",
+        "pending": "En attente de confirmation — ne reçoivent rien"
+      },
+      "countsNote": "Une adresse partagée par plusieurs fiches ne reçoit qu’une invitation. Une fiche dont les seules adresses attendent leur confirmation reçoit le courrier.",
+      "action": "Lancer les invitations",
+      "pending": "Lancement en cours…",
+      "settingsNote": "Le texte de l’invitation et celui du courrier se règlent dans",
+      "settingsLink": "Réglages › Invitation des membres",
+      "confirm": {
+        "title": "Lancer les invitations ?",
+        "counts": "<strong>{email, plural, one {# fiche} other {# fiches}}</strong> {email, plural, one {reçoit} other {reçoivent}} l’invitation par email ({recipients, plural, one {# adresse} other {# adresses}}) · <strong>{letters, plural, one {# fiche} other {# fiches}}</strong> {letters, plural, one {reçoit} other {reçoivent}} le courrier.",
+        "planMany": "Le lancement part en {days} jours :",
+        "planOne": "Il part en une seule fois, aujourd’hui.",
+        "letters": "Le courrier des {count, plural, one {# fiche} other {# fiches}} sera prêt à télécharger dès aujourd’hui.",
+        "linkDays": "Chaque lien de connexion vaut {days, plural, one {# jour} other {# jours}} à partir de son envoi.",
+        "irreversible": "Le lancement ne peut ni être annulé ni être refait. Ensuite, vous pourrez relancer les adresses jamais connectées.",
+        "submit": "Envoyer le lancement",
+        "back": "Revenir"
+      },
+      "sent": {
+        "title": "Lancement parti.",
+        "description": "Le courrier des fiches sans adresse email se télécharge depuis le détail de l’envoi."
+      },
+      "line": "Lancement — {date}",
+      "lineMeta": "{received, plural, one {# reçue} other {# reçues}} sur {recipients, plural, one {# adresse} other {# adresses}} · {letters, plural, =0 {aucun courrier} one {# courrier} other {# courriers}} · par {author}",
+      "lineMetaDone": "{recipients, plural, one {# adresse} other {# adresses}} · {letters, plural, =0 {aucun courrier} one {# courrier} other {# courriers}} · par {author}",
+      "deferred": "Le lancement continue seul : <strong>{count, plural, one {# adresse} other {# adresses}}</strong> le recevront le {date}, la limite d’envois du jour étant atteinte. Vous n’avez rien à faire.",
+      "viewSend": "Voir l’envoi",
+      "letters": "Courrier postal ({count})",
+      "unknownAuthor": "auteur inconnu",
+      "inProgress": "Le lancement est en cours d’envoi : vous pourrez relancer quand il sera entièrement parti."
+    },
+    "reminder": {
+      "title": "Relancer les jamais connectés",
+      "usage": "Une nouvelle invitation part à chaque adresse active qui ne s’est jamais connectée, qu’elle ait déjà été invitée ou non. Par email seulement : la relance n’envoie aucun courrier.",
+      "counts": {
+        "recipients": "Adresses qui recevront la relance",
+        "neverInvited": "Dont jamais invitées — ajoutées depuis le lancement",
+        "reinstated": "Dont désinscrites des campagnes — elles la reçoivent : c’est un envoi statutaire",
+        "unsubscribed": "Désinscrites — exclues : c’est un envoi facultatif",
+        "pending": "En attente de confirmation — ne reçoivent rien"
+      },
+      "action": "Relancer les jamais connectés",
+      "pending": "Relance en cours…",
+      "note": "Les liens encore valides de ces adresses cesseront de fonctionner : chacune reçoit un lien neuf.",
+      "line": "Relance — {date}",
+      "lineMeta": "{recipients, plural, one {# adresse} other {# adresses}}",
+      "inProgress": "Une relance est en cours d’envoi : vous pourrez relancer quand elle sera entièrement partie.",
+      "nobody": "Personne à relancer : toutes les adresses actives se sont connectées au moins une fois.",
+      "confirm": {
+        "title": "Relancer {count, plural, one {# adresse} other {# adresses}} ?",
+        "planOne": "Elle part en une seule fois, aujourd’hui. Aucun courrier n’est produit.",
+        "planMany": "La relance part en {days} jours. Aucun courrier n’est produit :",
+        "superseded": "Les adresses connectées entre-temps sont écartées au moment de l’envoi.",
+        "submit": "Envoyer la relance",
+        "back": "Revenir"
+      },
+      "sent": {
+        "title": "Relance partie.",
+        "description": "Chaque adresse jamais connectée reçoit un lien neuf."
+      }
+    },
+    "refusals": {
+      "alreadyLaunched": "<strong>Le lancement a déjà été envoyé</strong> le {date} par {author}. Rien n’est reparti.",
+      "noSiteAddressTitle": "Le lancement attend la mise en ligne du site.",
+      "noSiteAddress": "L’association n’a pas encore d’adresse de site : les liens de connexion ne peuvent pas être créés. Rien n’a été envoyé.",
+      "deliveryDisabledTitle": "Les envois d’emails aux membres sont coupés.",
+      "deliveryDisabled": "Rien n’a été envoyé. Ils se rétablissent dans les réglages de l’association.",
+      "inProgress": "Un envoi est encore en cours : rien n’est reparti.",
+      "notLaunched": "Le lancement n’a pas encore été envoyé : rien n’est reparti.",
+      "nobody": "Personne à relancer : rien n’est parti."
+    },
+    "failure": {
+      "launchTitle": "Le lancement n’est pas parti.",
+      "launch": "Aucun email n’a été envoyé, aucun courrier préparé. Réessayez dans quelques minutes.",
+      "reminderTitle": "La relance n’est pas partie.",
+      "reminder": "Aucun email n’a été envoyé. Réessayez dans quelques minutes."
+    },
+    "loadFailed": {
+      "title": "Les invitations ne peuvent pas être lues pour l’instant.",
+      "description": "Rien n’est perdu et rien n’a été envoyé. Rechargez la page dans un instant."
+    },
+    "tracking": {
+      "title": "Suivi",
+      "invited": "Invitations envoyées",
+      "signedIn": "Adresses connectées",
+      "neverSignedIn": "Jamais connectées",
+      "pending": "En attente",
+      "note": "Compté en adresses. « Connectée » : une connexion réussie au moins une fois sur le site de l’association, pas un clic sur le lien.",
+      "coverageTitle": "Couverture des fiches",
+      "byEmail": "Par email",
+      "byLetter": "Par courrier",
+      "neither": "Ni l’un ni l’autre"
+    },
+    "addresses": {
+      "title": "Adresses jamais connectées",
+      "summary": "{total, plural, one {# adresse} other {# adresses}}{pending, plural, =0 {.} one { — dont # en attente de confirmation, qui ne reçoit rien.} other { — dont # en attente de confirmation, qui ne reçoivent rien.}}",
+      "columns": {
+        "address": "Adresse",
+        "profile": "Fiche",
+        "invitation": "Invitation"
+      },
+      "shared": "Même adresse sur {count} fiches : un seul état",
+      "parcels": "{count, plural, =0 {sans parcelle} one {parcelle {numbers}} other {parcelles {numbers}}}",
+      "invitedOn": "Invitée le {date}",
+      "neverInvited": "Jamais invitée",
+      "addedOn": "ajoutée le {date}",
+      "pendingBadge": "En attente de confirmation",
+      "pendingMeta": "ne reçoit rien tant qu’elle n’est pas confirmée",
+      "empty": "Aucune adresse en attente de première connexion. Toutes les adresses se sont connectées au moins une fois.",
+      "pagination": {
+        "label": "Pages des adresses jamais connectées",
+        "previous": "Précédent",
+        "next": "Suivant",
+        "position": "Page {page} sur {total}"
+      }
+    },
+    "refused": {
+      "title": "Ont refusé les envois facultatifs",
+      "description": "Ces <strong>{count, plural, one {# fiche} other {# fiches}}</strong> n’ont reçu ni email ni courrier : toutes leurs adresses sont désinscrites des campagnes, et le lancement est un envoi facultatif."
+    },
+    "errors": {
+      "forbidden": "Seul le bureau de l’association peut inviter les membres.",
+      "failed": "L’envoi n’a pas pu être préparé. Réessayez dans quelques minutes."
     }
   },
   "UnpaidReminders": {

@@ -67,6 +67,7 @@ const NAV_GROUPS: {labelKey: string; items: NavItem[]}[] = [
         matchesSubroutes: true,
       },
       {href: '/bureau/relances', labelKey: 'unpaidReminders'},
+      {href: '/bureau/invitations', labelKey: 'memberInvitations'},
       {href: '/bureau/envois', labelKey: 'sends'},
       {href: '/bureau/identite', labelKey: 'identity'},
       {href: '/bureau/reglages', labelKey: 'settings'},
@@ -92,7 +93,8 @@ type BureauSidebarProps = {
  * d'eau (s09), Navigation,
  * Messages recus (s08) et
  * « L'association » › Proprietaires (s12), Questions des membres (s23),
- * Documents (s31), Groupes (s27), Campagnes (s25), Envois (s52), Identite, Reglages ; l'item actif
+ * Documents (s31), Groupes (s27), Campagnes (s25), Relances (s29),
+ * Invitations (s42b), Envois (s52), Identite, Reglages ; l'item actif
  * suit la route. Tiroir
  * sur petit ecran.
  */

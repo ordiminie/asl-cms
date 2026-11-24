@@ -78,6 +78,8 @@ const contextOf = (
     general_assembly: 'statutaire',
     post_assembly_documents: 'facultative',
     unpaid_reminder: 'statutaire',
+    member_invitation_launch: 'statutaire',
+    member_invitation_reminder: 'statutaire',
   },
   ...overrides,
 })

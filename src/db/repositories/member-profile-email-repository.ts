@@ -7,6 +7,8 @@ import {
   MemberProfileEmailModel,
   MemberProfileEmailRoleModel,
 } from '@/db/models/member-profile-email-model'
+import {memberProfile} from '@/db/models/member-profile-model'
+import {getCurrentParcelNumbersForMembersDao} from '@/db/repositories/campaign-repository'
 import {getDb} from '@/db/tenant-scope'
 
 /**
@@ -235,4 +237,44 @@ export const deletePendingEmailsAddedByDao = async (
         eq(memberProfileEmail.status, 'pending')
       )
     )
+}
+
+/** Une adresse de fiche telle que le suivi des invitations la lit (s42b). */
+export type InvitationAddressRowModel = Pick<
+  MemberProfileEmailModel,
+  'email' | 'status' | 'createdAt' | 'expiresAt' | 'memberProfileId'
+> & {name: string; parcelNumbers: string[]}
+
+/**
+ * Toutes les adresses de fiche de l'association, **actives et en attente**,
+ * avec le nom et les parcelles actuelles de leur fiche (s42b, critere 7).
+ * Les attentes echues sont rendues : la regle pure les masque.
+ */
+export const getInvitationAddressesDao = async (
+  organizationId: string
+): Promise<InvitationAddressRowModel[]> => {
+  const rows = await getDb()
+    .select({
+      email: memberProfileEmail.email,
+      status: memberProfileEmail.status,
+      createdAt: memberProfileEmail.createdAt,
+      expiresAt: memberProfileEmail.expiresAt,
+      memberProfileId: memberProfileEmail.memberProfileId,
+      name: memberProfile.name,
+    })
+    .from(memberProfileEmail)
+    .innerJoin(
+      memberProfile,
+      eq(memberProfile.id, memberProfileEmail.memberProfileId)
+    )
+    .where(eq(memberProfileEmail.organizationId, organizationId))
+    .orderBy(asc(memberProfile.name), asc(memberProfileEmail.email))
+
+  const numbers = await getCurrentParcelNumbersForMembersDao([
+    ...new Set(rows.map((row) => row.memberProfileId)),
+  ])
+  return rows.map((row) => ({
+    ...row,
+    parcelNumbers: numbers[row.memberProfileId] ?? [],
+  }))
 }

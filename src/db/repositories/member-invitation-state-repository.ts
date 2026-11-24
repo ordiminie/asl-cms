@@ -1,5 +1,6 @@
 import {and, eq, inArray, sql} from 'drizzle-orm'
 
+import {user} from '@/db/models/auth-model'
 import {memberInvitationState} from '@/db/models/member-invitation-state-model'
 import {getDb} from '@/db/tenant-scope'
 
@@ -77,4 +78,39 @@ export const getInvitationStatesByUserIdsDao = async (
         inArray(memberInvitationState.userId, [...userIds])
       )
     )
+}
+
+/** Une adresse, son compte et les traces de ce compte sur l'association. */
+export type InvitationStateByEmailRowModel = InvitationStateRowModel & {
+  /** L'adresse du compte, en minuscules. */
+  email: string
+}
+
+/**
+ * Les traces des adresses demandees (s42b, ADR 072) : chaque adresse, sans
+ * casse, relie a son compte, puis aux traces de ce compte sur l'association.
+ * Une adresse sans compte ne rend rien.
+ */
+export const getInvitationStatesByEmailsDao = async (
+  organizationId: string,
+  emails: readonly string[]
+): Promise<InvitationStateByEmailRowModel[]> => {
+  const keys = [...new Set(emails.map((email) => email.trim().toLowerCase()))]
+  if (keys.length === 0) return []
+  return getDb()
+    .select({
+      email: sql<string>`lower(${user.email})`,
+      userId: user.id,
+      lastInvitedAt: memberInvitationState.lastInvitedAt,
+      firstSignedInAt: memberInvitationState.firstSignedInAt,
+    })
+    .from(user)
+    .leftJoin(
+      memberInvitationState,
+      and(
+        eq(memberInvitationState.userId, user.id),
+        eq(memberInvitationState.organizationId, organizationId)
+      )
+    )
+    .where(inArray(sql`lower(${user.email})`, keys))
 }

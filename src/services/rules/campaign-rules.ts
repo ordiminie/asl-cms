@@ -124,9 +124,14 @@ export type ComputedCampaignTarget<Row extends CampaignTargetRow> = {
   profilesWithEmail: number
 }
 
-/** Le predicat d'une cible (ADR 060 §2) : la fiche de la ligne est-elle visee ? */
+/**
+ * Le predicat d'une cible (ADR 060 §2) : la ligne est-elle visee ? Par sa
+ * fiche le plus souvent ; par son adresse pour la relance des invitations
+ * (s42b, ADR 072).
+ */
 export type CampaignTargetPredicate = (row: {
   memberProfileId: string
+  email: string | null
 }) => boolean
 
 const everyProfile: CampaignTargetPredicate = () => true
@@ -333,6 +338,7 @@ const COUNT_KEY_OF: Record<
   failed: 'failed',
   unsubscribed: 'unsubscribed',
   settled: 'settled',
+  superseded: 'superseded',
 }
 
 /** Les decomptes par statut d'un ensemble de lignes. */
@@ -347,6 +353,7 @@ export const recipientCountsOf = (
     failed: 0,
     unsubscribed: 0,
     settled: 0,
+    superseded: 0,
   }
   for (const row of rows) counts[COUNT_KEY_OF[row.status]] += row.total
   return counts

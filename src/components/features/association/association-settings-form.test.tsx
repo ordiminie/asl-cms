@@ -843,6 +843,9 @@ describe('AssociationSettingsForm — carte « Nature des envois » (s27b, ADR 0
       'Facture disponible',
       'Convocation à l’AG',
       'Documents après l’AG',
+      'Relance automatique',
+      'Lancement du site',
+      'Relance des invitations',
     ]) {
       expect(natureOf(name)).toBeInTheDocument()
     }
@@ -1033,5 +1036,24 @@ describe('AssociationSettingsForm — carte « Invitation des membres » (s42a, 
     expect(card).toHaveTextContent(
       'Laissé vide, l’email reprend le texte par défaut'
     )
+  })
+
+  it('5a · le texte du courrier de lancement vient juste après celui de l’invitation (s42b)', () => {
+    renderInvitationForm()
+
+    const card = invitationCard()
+    const fields = within(card)
+      .getAllByRole('textbox')
+      .map((field) => field.getAttribute('name'))
+    expect(fields.slice(0, 2)).toEqual([
+      'setting-invitation-text',
+      'setting-invitation-letter_text',
+    ])
+    expect(
+      within(card).getByLabelText(/Texte du courrier de lancement/)
+    ).toBeInTheDocument()
+    expect(card).toHaveTextContent('aucun lien de connexion')
+    expect(card).toHaveTextContent('Laissé vide, le courrier reprend')
+    expect(card).toHaveTextContent('lors du lancement')
   })
 })

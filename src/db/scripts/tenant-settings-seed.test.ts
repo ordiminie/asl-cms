@@ -139,6 +139,8 @@ describe('TEST_TENANT_SETTINGS — nature des envois (s27b, ADR 064)', () => {
       'invoice',
       'general_assembly',
       'unpaid_reminder',
+      'member_invitation_launch',
+      'member_invitation_reminder',
     ])
     expect(getCampaignNature(settings, 'free')).toBe('facultative')
     expect(getCampaignNature(settings, 'post_assembly_documents')).toBe(
@@ -183,6 +185,28 @@ describe('TEST_TENANT_SETTINGS — relances des impayés (s29, ADR 070 §7)', ()
       enabled: false,
       delaysWeeks: null,
     })
+  })
+})
+
+describe('TEST_TENANT_SETTINGS — lancement des invitations (s42b, ADR 072)', () => {
+  it('le premier tenant classe le lancement et sa relance statutaires, en valeurs de seed ; l’autre les laisse facultatifs', () => {
+    const settings = settingsOf('techcorp-solutions')
+    const other = settingsOf('marketing-pro')
+    for (const kind of [
+      'member_invitation_launch',
+      'member_invitation_reminder',
+    ] as const) {
+      expect(getCampaignNature(settings, kind), kind).toBe('statutaire')
+      expect(
+        TEST_TENANT_SETTINGS.some(
+          (row) =>
+            row.organizationSlug === 'techcorp-solutions' &&
+            row.key === `campaign.nature.${kind}`
+        ),
+        kind
+      ).toBe(true)
+      expect(getCampaignNature(other, kind), kind).toBe('facultative')
+    }
   })
 })
 
