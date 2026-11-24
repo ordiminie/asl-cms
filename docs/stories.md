@@ -28,6 +28,7 @@ s44 à s46b **avant s12b et avant s12d**, s47 avant s12b. Elles nettoient ce qui
 avant la mise en ligne ; s46 fixe l'adresse de l'espace membre que s12d remplit, et s46b la
 destination après connexion. s48, ajoutée le 28 octobre 2026, peut se jouer dès la fusion de s14.
 **s52**, scindée de s26 le 11 novembre 2026, se joue **juste après s26 et avant s29 et s42**, qui en dépendent.
+**s42a et s42b**, scindées de s42 le 24 novembre 2026, se jouent dans cet ordre ; ailleurs dans ce document, « s42 » désigne les deux.
 **s53 à s57**, ajoutées le 15 novembre 2026 après les réponses de La Fourche, se jouent ainsi : s53
 **après s25** et **avant s18, s19 et s33**, qui lisent « mes terrains » — s25 se joue donc avant s18 et s19 ;
 s54 **après s26** (elle étend le calcul de la cible) et **avant s27, s29 et s42** ; s55 **avant s28** ; s56 après s20, s53, s54 et s55 ; s57 après s19, s32, s53 et s54.
@@ -2938,7 +2939,7 @@ droits n'a aucun moyen de revenir en arrière sans le prestataire.
 
 ### Dependencies
 
-s01b, s02, s04, s04b, s05, s06, s07, s08, s09, s10, s12, s14, s17, s19, s23, s24, s25, s26, s27, s27b, s29, s30, s31, s32, s36, s37, s42, s52, s53, s54, s55
+s01b, s02, s04, s04b, s05, s06, s07, s08, s09, s10, s12, s14, s17, s19, s23, s24, s25, s26, s27, s27b, s29, s30, s31, s32, s36, s37, s42a, s42b, s52, s53, s54, s55
 
 ### Agentic notes
 
@@ -3145,13 +3146,81 @@ pendant une simulation reste possible mais est attribuée au SuperAdmin (critèr
 
 ---
 
-## Story s42-lancement-invitations — Faire entrer les membres dans le service
+## Story s42a-invitation-individuelle — Inviter un membre à rejoindre son espace
 
-⚠️ **Absorbe s15-inviter-membre le 23 octobre 2026** (arbitrage de l'utilisatrice, après la recherche
-de s15). L'invitation unitaire n'avait de valeur propre que pour un propriétaire arrivé après le
-lancement ; construite seule, elle aurait tranché trop tôt des questions qui relèvent du lancement
-(habillage des envois de s25, budget quotidien de s52). Les critères de s15 sont repris ci-dessous ;
-la recherche faite pour s15 est le point de départ de celle de s42.
+⚠️ **Scindée de s42 le 24 novembre 2026, avant son design**, au seuil que prévoyaient ses notes
+(complexité 5) : la recherche (`docs/research/s42a-invitation-individuelle.md`, complément du 24/11) a
+compté au moins douze tâches et trois écrans. Coupe prévue par la story : **s42a** porte l'invitation
+individuelle (ex-s15) et tout ce que le lancement réutilise — générateur du lien d'invitation hors
+requête, traces « invitée le » et « connectée le » par adresse, état sur la fiche ; **s42b** porte le
+lancement de masse, le courrier, la relance et le suivi d'adoption. Dans les stories antérieures, « s42 »
+désigne les deux. **Arbitrages du 24 novembre 2026 (utilisatrice)** : le lien d'une invitation vaut plus
+longtemps que le lien demandé (paramètre de tenant, valeur de seed 7 jours) ; l'invitation individuelle
+est un envoi **reportable** faute de budget, rejoué avec un lien neuf ; le courrier du lancement a son
+propre texte, réglage de tenant (s42b).
+
+**En tant que** membre du bureau **je veux** envoyer à un membre son invitation à se connecter **afin
+qu'**il sache qu'il a un espace et puisse y entrer sans explication au téléphone — c'est le chemin d'un
+propriétaire arrivé après le lancement.
+
+### Complexity
+
+4
+
+### Acceptance criteria
+
+- [ ] Depuis la fiche d'un membre disposant d'une adresse email active, le bureau déclenche l'envoi d'une invitation ; elle part à **chaque adresse active de la fiche** (s54), chacune avec son propre lien de connexion valide.
+- [ ] L'invitation part par le même canal transactionnel que le lien magique (s03), dont elle reprend l'en-tête au logo de l'association (s01b, ou son nom à défaut), et porte le nom de l'association.
+- [ ] Le texte de l'invitation est un paramètre de tenant : le modifier change l'email suivant, sans redéploiement.
+- [ ] Le lien d'une invitation reste valable pendant une durée propre, paramètre de tenant (valeur de seed : 7 jours), distincte des 20 minutes du lien demandé depuis la page de connexion, qui ne change pas. Passé ce délai, ou déjà utilisé, il mène à la page du lien invalide de s03, d'où le membre redemande un lien.
+- [ ] La fiche membre affiche l'état de l'invitation **adresse par adresse** : jamais invitée, invitée le <date>, ou connectée au moins une fois le <date>. « Connectée » se déduit de la **première connexion réussie** de l'adresse sur cette association — pas d'un clic sur le lien, ni d'une connexion sur une autre association, ni d'une connexion à la place du membre (s48).
+- [ ] Inviter un membre marqué « joignable par courrier uniquement » est refusé avec un message expliquant qu'il relève du courrier, et non par une erreur technique.
+- [ ] Réinviter un membre déjà invité est possible et remplace l'invitation précédente de chaque adresse de la fiche ; les anciens liens cessent de fonctionner.
+- [ ] L'invitation passe par l'adaptateur d'envoi et le budget quotidien du tenant (s52) sous une nature propre, « Invitation », visible dans les envois en attente : au-delà du budget, elle est reportée au lendemain, jamais perdue, et part alors avec un lien **neuf** — le lien n'est jamais conservé avec l'email reporté.
+- [ ] Le bureau d'une association ne peut inviter aucun membre d'une autre.
+- [ ] Le lien d'une invitation pointe vers le domaine de l'association du membre et y ouvre la session — vérifié sur deux associations, pour une invitation partie aussitôt comme pour une invitation reportée, rejouée hors de toute requête.
+
+### Dependencies
+
+s02, s03, s03c, s12, s12d, s52, s53, s54
+
+### Agentic notes
+
+Réf. `PRD` (ligne « Connexion par lien magique » : « flux d'invitation, expiration et absence de mot de
+passe à éprouver auprès d'un public âgé »), `docs/research/s42a-invitation-individuelle.md` (les deux
+parties ; le complément du 24/11 fait foi sur la fiche depuis s53 et s54).
+
+**Elle n'implémente ni compte ni lien magique** (repris de s15) : le compte vient de s12d (ouvrir un
+compte n'envoie rien), le lien de s03 — même jeton, même révocation, même vérification. Une seconde
+implémentation du lien de connexion serait un défaut de review. Seuls changent l'enveloppe (gabarit
+d'invitation), la durée de vie, l'absence du quota par adresse de la demande anonyme (geste authentifié
+du bureau) et l'association, **passée en paramètre** et lue en base (ADR 022) au lieu d'être déduite de
+l'hôte : s42b génère ces liens depuis la livraison d'une part, sans requête. Prolonger le lien touche la
+ligne `verification` de Better Auth : décision à porter dans un ADR.
+
+**L'enveloppe est transactionnelle** : pas l'habillage de campagne de s25, pas de lien de désinscription.
+Le lancement (s42b) insère le même texte et le même lien dans le gabarit de campagne.
+
+**À vérifier en review, pas en test** : que le texte par défaut de l'invitation n'énumère aucune
+fonctionnalité livrée après cette story ; le bureau l'enrichira au fil des mises en ligne. Public âgé et
+peu à l'aise : la rédaction de l'email compte autant que le mécanisme ; elle se traite en `/ks-design`,
+sa qualité relève de la recette. Le design system (§5.5) décrit une « Invitation initiale » en trois
+étapes : il vise l'envoi de lancement ; le « téléphone du bureau » qu'il cite n'existe dans aucun
+réglage (gap à remonter, pas à combler).
+
+Les traces « invitée le » et « connectée le » sont **par adresse et par association** (un même compte
+peut être membre de deux associations, s53) : une table métier sous RLS forcée, test d'accès croisé en
+e2e. Les comptes déjà connectés avant la livraison n'ont aucune trace et partent « jamais connectés ».
+
+Le lien porte un secret à usage unique : ni journalisé, ni conservé dans l'email reporté, ni exporté
+(s38).
+
+---
+
+## Story s42b-lancement-invitations — Faire entrer les membres dans le service
+
+⚠️ **Scindée de s42 le 24 novembre 2026** (voir s42a). Elle réutilise le générateur de lien, les traces
+d'invitation et de connexion, et le texte de l'invitation posés par s42a, sans rien en réimplémenter.
 
 **En tant que** membre du bureau **je veux** annoncer le site à tous les propriétaires d'un seul geste
 **afin que** chacun sache qu'il a un espace — ou, à défaut, que le site existe.
@@ -3163,43 +3232,36 @@ la recherche faite pour s15 est le point de départ de celle de s42.
 ### Acceptance criteria
 
 - [ ] Une campagne d'invitation part vers tous les membres disposant d'une adresse email, chaque destinataire recevant un lien de connexion qui lui est propre.
-- [ ] La même opération produit, pour les membres sans email, un publipostage PDF (s28) annonçant le site public et ses contenus consultables sans compte.
+- [ ] La même opération produit, pour les membres sans email, un publipostage PDF (s28) annonçant le site public et ses contenus consultables sans compte. Son texte est un paramètre de tenant, distinct de celui de l'invitation : il ne contient ni lien de connexion ni promesse d'accès.
 - [ ] L'invitation de lancement et sa relance déclarent leur nature dans le mécanisme de s27b, avec la valeur de seed `statutaire` pour le premier tenant, et la suivent : avec la nature `statutaire` (valeur du premier tenant), la relance atteint aussi un membre qui s'est désinscrit depuis l'email de lancement sans s'être connecté — vérifié sur ce cas ; avec `facultative`, elle l'exclut.
-- [ ] L'email de lancement porte l'habillage commun des campagnes (s25) — en-tête au logo, pied de page avec lien de désinscription — et, avec la nature `statutaire`, la mention de s27b indiquant qu'il est reçu malgré une désinscription. Son texte et son lien de connexion sont ceux de l'invitation individuelle.
+- [ ] L'email de lancement porte l'habillage commun des campagnes (s25) — en-tête au logo, pied de page avec lien de désinscription — et, avec la nature `statutaire`, la mention de s27b indiquant qu'il est reçu malgré une désinscription. Son texte et son lien de connexion sont ceux de l'invitation individuelle (s42a).
 - [ ] Aucune fiche n'est omise des deux canaux : chaque fiche de l'association est couverte soit par au moins une adresse email destinataire, soit par un courrier, jamais par aucun des deux. Le décompte se fait **en fiches**, pas en messages : une fiche peut valoir plusieurs adresses (s54) et une adresse plusieurs fiches (s53).
 - [ ] L'invitation part à **chaque adresse active de la fiche** (s54), chacune avec son propre lien de connexion. Une adresse portée par plusieurs fiches (s53) ne reçoit qu'une invitation.
 - [ ] Le bureau suit l'adoption **par adresse** : nombre d'invitations envoyées, nombre d'adresses s'étant connectées au moins une fois, liste des adresses jamais connectées avec leur fiche, où une adresse non active (en attente de confirmation ou désactivée par l'import) apparaît marquée comme telle. Une adresse portée par plusieurs fiches (s53) a un seul état, affiché sur chacune. La couverture des canaux reste comptée en fiches (critère 5).
 - [ ] Relancer les jamais connectés renvoie une invitation à chaque adresse **active** jamais connectée — jamais à une adresse en attente de confirmation ou désactivée —, qu'elle ait déjà été invitée ou non (une adresse ajoutée après le lancement comprise), y compris celle d'un proche sur une fiche dont le propriétaire s'est déjà connecté, sans réinviter une adresse déjà connectée.
 - [ ] L'opération passe par l'adaptateur d'envoi et respecte le budget quotidien du tenant (s52) : au-delà du budget, elle se scinde et se reporte comme n'importe quel envoi.
-- [ ] **Invitation individuelle** (ex-s15) : depuis la fiche d'un membre disposant d'une adresse email, le bureau déclenche l'envoi d'une invitation ; elle part à **chaque adresse active de la fiche** (s54), chacune avec son propre lien de connexion valide. C'est le chemin d'un propriétaire arrivé après le lancement.
-- [ ] L'invitation individuelle part par le même canal transactionnel que le lien magique (s03), dont elle reprend l'en-tête au logo de l'association (s01b, ou son nom à défaut), et porte le nom de l'association.
-- [ ] Le texte de l'invitation est un paramètre de tenant : le modifier change l'email suivant, sans redéploiement.
-- [ ] La fiche membre affiche l'état de l'invitation **adresse par adresse** : jamais invitée, invitée le <date>, ou connectée au moins une fois le <date>.
-- [ ] Inviter un membre marqué « joignable par courrier uniquement » est refusé avec un message expliquant qu'il relève du courrier, et non par une erreur technique.
-- [ ] Réinviter un membre déjà invité est possible et remplace l'invitation précédente de chaque adresse de la fiche ; les anciens liens cessent de fonctionner.
-- [ ] Le bureau d'une association ne peut inviter aucun membre d'une autre.
-- [ ] Le lien d'une invitation individuelle pointe vers le domaine de l'association du membre et y ouvre la session — vérifié sur deux associations.
 - [ ] Un lien d'invitation envoyé par une part reportée au lendemain, donc hors de toute requête, pointe vers le domaine de l'association et y ouvre la session — vérifié sur deux associations.
 
 ### Dependencies
 
-s02, s03, s03c, s12, s12d, s13, s25, s26, s27, s27b, s28, s52, s53, s54
+s02, s13, s25, s26, s27, s27b, s28, s42a, s52, s53, s54
 
 ### Agentic notes
 
 Réf. `PRD` (ligne « Connexion par lien magique » : « flux d'invitation […] à éprouver auprès d'un
-public âgé »), `V5 §2, §3.3`. Story créée en revue du découpage : les stories précédentes
-livraient un service que **personne n'aurait su utiliser** — aucune ne disait comment 300
-propriétaires apprennent qu'ils ont un espace.
+public âgé »), `V5 §2, §3.3`, `docs/research/s42a-invitation-individuelle.md` (complément du 24/11/2026).
+Story créée en revue du découpage : les stories précédentes livraient un service que **personne
+n'aurait su utiliser** — aucune ne disait comment 300 propriétaires apprennent qu'ils ont un espace.
 
 **À vérifier en review, pas en test** : que le courrier ne promette aucun accès à ces membres. C'est
-un jugement rédactionnel, comme pour le texte par défaut de l'invitation (ci-dessous).
+un jugement rédactionnel, comme pour le texte par défaut de l'invitation (s42a).
 
 **Le courrier des 100 sans email n'est pas une invitation** : ils n'ont pas de compte et n'en auront
 pas (cimetière du PRD — aucun plan B de connexion). Leur courrier annonce le site public, les
 analyses d'eau consultables sans compte, et rappelle que le bureau continue de les joindre par
 courrier. Promettre un accès dans ce courrier serait un défaut fonctionnel, pas une maladresse de
-rédaction.
+rédaction. Le PDF de s28 imprime aujourd'hui le corps de l'email : le lancement doit lui donner le
+texte du courrier, jamais celui de l'invitation.
 
 La ligne « Connexion par lien magique » du périmètre nomme le flux d'invitation **et** son suivi
 d'adoption (« qui a été invité, qui s'est connecté »), précisé en revue du découpage. Il est retenu
@@ -3210,29 +3272,21 @@ envoi à l'aveugle sur la population que le PRD désigne comme la plus fragile.
 C'est le moment de vérité de l'angle n°2 du PRD : les deux populations reçoivent la même information
 au même moment, depuis le même outil, sans double saisie.
 
-Un seul mécanisme d'invitation, appliqué à un membre (invitation individuelle) ou à une cible entière
-(lancement, relance) : ni second gabarit d'invitation, ni seconde génération de lien. **Mais
-l'enveloppe change** : l'invitation individuelle est un email transactionnel sans habillage de
-campagne, alors que le lancement est un envoi de masse — il porte donc le gabarit commun de s25 et son
-lien de désinscription, obligatoire sur tout envoi de masse. Le texte et le lien de l'invitation
-s'insèrent dans ce gabarit.
+Un seul mécanisme d'invitation, appliqué à un membre (s42a) ou à une cible entière (lancement,
+relance) : ni second gabarit d'invitation, ni seconde génération de lien. **Mais l'enveloppe change** :
+le lancement est un envoi de masse — il porte le gabarit commun de s25 et son lien de désinscription,
+obligatoire sur tout envoi de masse. Le texte et le lien de l'invitation s'insèrent dans ce gabarit.
+Le moteur est celui des campagnes (cœur partagé `createCampaignInTenant`, patron de s29, ADR 070) : la
+cible, les parts, le budget, le dédoublonnage par adresse et le courrier existent déjà.
 
-**Elle n'implémente ni compte ni lien magique** (repris de s15) : le compte vient de s12d (ouvrir un
-compte n'envoie rien), le lien de s03. Une seconde implémentation du lien de connexion serait un
-défaut de review. **À vérifier en review, pas en test** : que le texte par défaut de l'invitation
-n'énumère aucune fonctionnalité livrée après cette story ; le bureau l'enrichira au fil des mises en
-ligne. L'état « connecté au moins une fois » se déduit de la **première connexion réussie** sur
-l'association, pas d'un clic sur le lien — un lien cliqué par un antivirus n'est pas une connexion.
-Public âgé et peu à l'aise : la rédaction de l'email compte autant que le mécanisme ; elle se traite
-en `/ks-design`, sa qualité relève de la recette.
-
-**Taille** : avec l'invitation individuelle, la story frôle le seuil de scission. Si la recherche ou
-le plan la portent à 5, la scinder (par exemple invitation individuelle et suivi d'adoption, puis
-lancement de masse et relance).
+L'état « connecté au moins une fois » vient des traces de s42a (première connexion réussie sur
+l'association, pas un clic sur le lien). « Désactivée par l'import » est un statut d'adresse que pose
+s56, non livrée : tant qu'elle ne l'est pas, seule l'adresse en attente de confirmation est marquée.
 
 Le lien de connexion propre à chaque destinataire est une variable de campagne d'un genre nouveau —
 elle porte un secret à usage unique. Ne pas la journaliser, ne pas la stocker dans l'archive de
-campagne (s25), ne pas la faire figurer dans l'export (s38).
+campagne (s25), ne pas la faire figurer dans l'export (s38) : il naît à la livraison de chaque
+destinataire.
 
 ---
 
@@ -4354,11 +4408,12 @@ Déclarer la nouvelle donnée à l'inventaire de s12c et à l'export de s38 ; si
 | s35  | petites-annonces                 | 3   | s10, s12, s12d                                                                                                                                | F    |
 | s36  | modeles-documents                | 3   | s27, s28, s32                                                                                                                                 | F    |
 | s37  | permissions-configurables        | 4   | s03b                                                                                                                                          | F    |
-| s38  | export-donnees                   | 4   | s01b, s02, s04, s04b, s05, s06, s07, s08, s09, s10, s12, s14, s17, s19, s23, s24, s25, s26, s27, s27b, s29, s30, s31, s32, s36, s37, s42, s52, s53, s54, s55 | F    |
+| s38  | export-donnees                   | 4   | s01b, s02, s04, s04b, s05, s06, s07, s08, s09, s10, s12, s14, s17, s19, s23, s24, s25, s26, s27, s27b, s29, s30, s31, s32, s36, s37, s42a, s42b, s52, s53, s54, s55 | F    |
 | s39  | completude-export                | 2   | s38                                                                                                                                           | F    |
 | s40  | export-membre                    | 2   | s12, s12d, s22, s23, s24, s38, s39, s53, s54                                                                                                    | F    |
 | s41  | simulation-role                  | 2   | s01, s03b, s24, s37, s38, s39                                                                                                                 | F    |
-| s42  | lancement-invitations            | 4   | s02, s03, s03c, s12, s12d, s13, s25, s26, s27, s27b, s28, s52, s53, s54                                                                       | F    |
+| s42a | invitation-individuelle          | 4   | s02, s03, s03c, s12, s12d, s52, s53, s54                                                                                                      | F    |
+| s42b | lancement-invitations            | 4   | s02, s13, s25, s26, s27, s27b, s28, s42a, s52, s53, s54                                                                                       | F    |
 | s43  | locale-unique                    | 2   | s11                                                                                                                                           | A    |
 | s44  | page-accueil                     | 3   | s02, s04, s04b, s05, s07, s11                                                                                                                 | A    |
 | s45  | retrait-pages-publiques-heritees | 3   | s43, s44                                                                                                                                      | A    |
@@ -4377,7 +4432,7 @@ Déclarer la nouvelle donnée à l'inventaire de s12c et à l'export de s38 ; si
 | s57  | acces-ancien-proprietaire        | 3   | s12, s12d, s19, s32, s53, s54                                                                                                                 | B    |
 | s58  | adresse-votante                  | 2   | s03b, s33, s53, s54, s56                                                                                                                      | E    |
 
-**68 stories, aucune à 5.** Répartition : cinq à 1, vingt-quatre à 2, vingt-six à 3, treize à 4 (s58 ajoutée le 16 novembre 2026, s53 à s57 ajoutées le 15 novembre 2026, s15 fondue dans s42 le 23 octobre 2026, s48 ajoutée le 28 octobre 2026, s49 ajoutée le 4 novembre 2026, s50 et s51 ajoutées le 5 novembre 2026, s52 scindée de s26 le 11 novembre 2026).
+**69 stories, aucune à 5.** Répartition : cinq à 1, vingt-quatre à 2, vingt-six à 3, quatorze à 4 (s42 scindée en s42a et s42b le 24 novembre 2026, s58 ajoutée le 16 novembre 2026, s53 à s57 ajoutées le 15 novembre 2026, s15 fondue dans s42 le 23 octobre 2026, s48 ajoutée le 28 octobre 2026, s49 ajoutée le 4 novembre 2026, s50 et s51 ajoutées le 5 novembre 2026, s52 scindée de s26 le 11 novembre 2026).
 **s53 à s57**, ajoutées après les réponses de La Fourche, ont chacune leur ligne au PRD depuis la revue du découpage du 15 novembre 2026 ; s58 relève de la ligne « Vote » des modules activables. **Treize stories sont hors du tableau de périmètre du PRD**, chacune justifiée dans son en-tête :
 s39, garde-fou de non-régression de l'export, qui ne livre aucune valeur observable par un
 utilisateur de l'association ; s12a, le retrait de Supabase, qui solde la contrainte du PRD sur le
@@ -4407,7 +4462,7 @@ blocs typés et réordonnancement accessible), s12 (modèle membre↔parcelle
 daté), s26
 (planificateur, étalement des campagnes et suivi par destinataire), s29 (planification et idempotence des
 relances), s32 (cloisonnement physique des documents nominatifs), s37 (autorisation transverse),
-s38 (moteur d'export et son archive), s42 (invitation individuelle et lancement de masse, absorbe s15), s46b (inscription fermée, connexion limitée à l'association du
+s38 (moteur d'export et son archive), s42a et s42b (invitation individuelle puis lancement de masse, absorbent s15), s46b (inscription fermée, connexion limitée à l'association du
 domaine, destination par rôle), s52 (budget atomique en base, adaptateur d'envoi, report des envois), s53 (lien fiche ↔ compte rendu plusieurs-à-un), s54 (plusieurs adresses connectables, confirmation, retrait ciblé) — portent chacune leur risque
 explicité dans leurs notes agentiques, à trancher en `/ks-architect` ou `/ks-design` avant
 `/ks-plan`.

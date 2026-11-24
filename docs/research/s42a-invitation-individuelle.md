@@ -1,6 +1,8 @@
 > **Recherche faite le 23/10/2026 pour s15-inviter-membre, fondue dans s42 le même jour.** Elle couvre
-> l'invitation individuelle ; `/ks-research s42` la complète (lancement de masse, s25 à s28, budget de
-> s26) avant le design.
+> l'invitation individuelle. **Complétée le 24/11/2026** (fin du fichier, « Complément s42 ») pour le
+> lancement de masse, la relance et le suivi d'adoption, sur `main` à `acad6d58` (s29 mergée) : les
+> constats de 2026-10-23 sur la fiche (`member_profile.email`, `mail_only`, `user_id`) sont **périmés**
+> depuis s53 et s54 — le complément fait foi.
 
 # Research — Story s15-inviter-membre
 
@@ -367,3 +369,254 @@ Colonnes vérifiées : `user` n'a **aucun** `lastLoginAt` (`auth-model.ts:25-39`
 10. **Visibilité de l'état dans la liste des propriétaires** : le critère 4 ne parle que de la fiche ;
     s42 voudra mesurer l'adoption. Afficher l'état en liste est-il dans le périmètre ? (Recommandation :
     non, fiche seulement.)
+
+---
+
+# Complément s42 — lancement, relance, suivi d'adoption (24/11/2026)
+
+> Recherche menée sur `main` à `acad6d58` (s25 → s31, s52 → s55 mergées). Fichiers ouverts, rien de mémoire.
+> Better Auth toujours en 1.7.1 : le plugin `magic-link` (`node_modules/better-auth/dist/plugins/magic-link/index.mjs`)
+> et `magic-link-integration.ts` sont **inchangés** depuis la première partie.
+
+## Target story
+
+s42-lancement-invitations, complexité 4, **18 critères** (story l. 3148 de `docs/stories.md`), numérotés
+ci-dessous dans l'ordre du fichier :
+
+- **L1** campagne d'invitation à tous les membres avec email, lien propre à chaque destinataire ;
+- **L2** même opération → publipostage PDF (s28) annonçant le site public aux fiches sans email ;
+- **L3** nature déclarée (s27b) pour le lancement **et** la relance, seed `statutaire` ; un désinscrit
+  depuis l'email de lancement, jamais connecté, reçoit la relance en `statutaire`, pas en `facultative` ;
+- **L4** habillage de campagne (s25) + mention statutaire (s27b) ; texte et lien = ceux de l'invitation
+  individuelle ;
+- **L5** couverture **en fiches** : chaque fiche a ≥ 1 adresse destinataire ou un courrier, jamais aucun ;
+- **L6** chaque adresse active de la fiche, son propre lien ; une adresse sur plusieurs fiches = une
+  invitation ;
+- **L7** suivi d'adoption **par adresse** (envoyées, connectées au moins une fois, jamais connectées avec
+  leur fiche, adresse non active marquée) ;
+- **L8** relance des jamais connectés : chaque adresse **active** jamais connectée, invitée ou non ;
+- **L9** adaptateur d'envoi + budget de s52, scission et report ;
+- **I1 à I9** (ex-s15) : invitation individuelle depuis la fiche, canal transactionnel du lien magique,
+  texte paramètre de tenant, état adresse par adresse, refus « courrier uniquement », réinvitation qui
+  révoque, isolation, domaine de l'association (deux associations), et **lien d'une part reportée, hors
+  requête**, ouvrant la session sur le bon domaine (deux associations).
+
+## Current state of the code
+
+### Ce que s53 et s54 ont changé dans la fiche (périme la première partie)
+
+- `member_profile.email` et `mail_only` **n'existent plus** (ADR 056 §2). Les adresses vivent dans
+  `member_profile_email` (`src/db/models/member-profile-email-model.ts`) : `role` (`holder` |
+  `additional`), `status` (**`active` | `pending` seulement**), `origin` (`file` | `site`),
+  `unsubscribed_at` (ADR 057), RLS forcée. « Courrier uniquement » = **aucune adresse active**, calculé.
+- Lien fiche ↔ compte : `member_profile_account` (`member-profile-account-model.ts`), unique
+  `(member_profile_id, user_id)` ; **un `user` par adresse active**, un même `user` relié à plusieurs
+  fiches (s53). `member_profile.user_id` a disparu.
+- `openMemberAccount({organizationId, memberProfileId, email, name})` (`member-account-service.ts:143`)
+  trouve ou crée le `user` par l'adresse en minuscules, pose `member` si absente, relie la fiche.
+- La carte « Accès à l'espace membre » de la fiche est toujours `AccessState`
+  (`member-profile-detail.tsx:266`, `:453`).
+
+### Le moteur de campagne, socle du lancement (s25 → s30)
+
+- **Cœur partagé** `createCampaignInTenant(input)` (`campaign-service.ts:659`), extrait par s29 (ADR 070
+  §1) : sous `withTenant`, lit la cible (`readTarget` injecté), calcule les canaux
+  (`campaignChannelsOf` → `letterProfileIds`), verrouille le plan, découpe en parts
+  (`planCampaignParts`, plafond `campaign.daily_send_cap`), crée campagne + parts + lignes
+  `campaign_recipient` + fiches figées (`campaign_recipient_profile`, ADR 061) + fiches du courrier
+  (ADR 065), puis une tâche `campaign.deliver_part` par part. **N'autorise rien** : l'appelant tranche.
+  Options : `unpaidReminder` (rang s29), `acceptsLettersOnly` (cible sans adresse → campagne créée et
+  close, courrier seul).
+- **Cible** (`readTarget`, l. 345 ; `computeCampaignTarget`, `rules/campaign-rules.ts`) : lignes
+  `(fiche, adresse active)` de `getCampaignTargetRowsDao` (`campaign-repository.ts:178`, jointure
+  `member_profile_email` `status = 'active'`), prédicat de cible **sur la ligne** (donc l'adresse est
+  disponible au prédicat), groupement par `lower(trim(email))` (ADR 057 : une adresse sur plusieurs
+  fiches = un destinataire), nature lue par `getCampaignNature(settings, templateId)` — en `statutaire`
+  les désinscrits sont réintégrés (`reinstated`).
+- **Livraison** `deliverCampaignPartService(job, now)` (l. 1212), **sans session** : par destinataire
+  `pending`, compose l'email (`composeRecipientEmail` → `buildCampaignEmail` : `CampaignMail` +
+  pied de nature + version texte), prend la ligne (`pending → sending`) **avant** l'envoi, envoie par
+  `sendEmailService(payload, {scope: 'tenant', organizationId, nature: 'campaign'}, {recipientType:
+  'client'})`. `deferred` → la part glisse au lendemain (`deferPartOutcome`, ADR 053) ; la ligne reste
+  sa propre file de report : **rien du message n'est conservé** pour une campagne. Variante déjà
+  branchée : `invoicesOf` (s29) réécrit `bodyMarkdown` par destinataire au moment de l'envoi
+  (`substituteInvoicesList`) et peut écarter une ligne (`settled`).
+- **Types d'envoi** (`campaign-types.ts:10-31`) : `CAMPAIGN_TEMPLATE_IDS` (composeur) puis
+  `UNPAID_REMINDER_SEND_KIND` ; `CAMPAIGN_SEND_KINDS` porte la nature (réglage
+  `campaign.nature.<kind>`, `section: 'campaign_nature'`, `editableBy: 'super_admin'`, défaut
+  `facultative`, seed par tenant — ADR 064 §1). s42 ajoute ses types ici, comme s29.
+- **Variables** : liste fermée `CAMPAIGN_VARIABLES = ['nom','parcelle','date']` ; `{factures}` réservée
+  à la relance (ADR 070 §9). Une variable inconnue est refusée avant l'envoi.
+- **Courrier** (`campaign-letter-service.ts`) : PDF généré **depuis la carte « Courrier postal » de la
+  campagne**, à partir de `campaign.subject` et `campaign.bodyMarkdown` (l. 161-162, 352-353) — **le même
+  contenu que l'email**. Fiches figées à la création, relues à la génération (ADR 065).
+- **Relance automatique** (s29, `unpaid-reminder-service.ts`) : le patron d'une campagne **sans
+  session** créée par un service (tâche `billing.unpaid_reminders`, soumission déterministe uuid v5,
+  table de rang unique écrite dans la même transaction).
+
+### Budget et adaptateur (s52, ADR 053) — `email-service.ts`
+
+- `sendEmailService(payload, context, options)` (l. 418) : **portée obligatoire**
+  (`EmailSendContext`, `email-send-types.ts`). Natures d'association : `TENANT_EMAIL_NATURES = ['login',
+  'campaign', 'board_notification', 'member_email_confirmation']` — le commentaire dit « s29 et s42 y
+  ajoutent la leur ».
+- `login` n'est **jamais** reporté (`isNeverDeferred`), décompté ; les autres sont accordés par
+  l'incrément conditionnel (`budget − réserve`), sinon **reportés** : conservés dans `deferred_email` +
+  tâche `email.deliver_deferred` (`keepDeferredEmail`, l. 335), sauf `campaign` dont l'appelant tient la
+  file (`isDeferredByCaller`).
+- **Précédent direct pour un lien secret reporté** (s54, revue M1) : option `confirmationLink` de
+  `sendEmailService`. L'email conservé a son jeton remplacé par une marque (`withoutConfirmationLink`,
+  l. 1578) ; au rejeu, `rotatePendingLink` (l. 1606) émet un **jeton neuf**. Le secret n'est jamais
+  stocké en clair dans l'email reporté.
+- Vue « Envois d'emails » (`/bureau/envois`, `email-sending-service.ts`) : les natures y sont libellées
+  (`EmailSendingBureau.pending.natures`) ; le design system prévoit « s42 Invitation ».
+
+### Lien magique — rien de nouveau, mais un point vérifié
+
+- `auth.api.signInMagicLink` a `requireHeaders: true` et le middleware `formCsrfMiddleware`, qui
+  **sort immédiatement sans `ctx.request`** (`api/middlewares/origin-check.mjs:119-121`) : un appel
+  serveur avec des en-têtes construits (sans `Request`) n'est pas bloqué par le contrôle CSRF.
+- `sendMagicLink` lit l'association **de l'hôte des en-têtes** (`requestHostOf`), applique le quota par
+  adresse (3/jour) et **ne rend rien** à l'appelant (`{status: true}` quoi qu'il arrive). Le plugin crée
+  la ligne `verification` (`identifier` = jeton en clair, `value` = `JSON.stringify({email, name})`,
+  durée globale `expiresIn` = 20 min) **avant** d'appeler `sendMagicLink`.
+- Seul appelant : `requestMagicLinkAction` (`src/app/[locale]/(auth)/action.ts:256`). Aucun générateur
+  hors requête n'existe encore.
+
+### Première connexion
+
+- **Aucune trace** de connexion n'existe toujours (`first_login`, `last_login`, `connected_at`,
+  `invited_at` : zéro occurrence dans `src/`). Le hook unique de création de session reste
+  `associationSessionGuard` (`association-session-guard.ts`, `session.create.before`), qui résout
+  l'association par l'hôte.
+
+## Anchor points
+
+| Où | Ce que s42 y branche |
+| --- | --- |
+| `campaign-types.ts` (`CAMPAIGN_SEND_KINDS`) + `association-settings-types.ts` (`campaign.nature.*`) + seed | types d'envoi « invitation de lancement » et « relance d'invitation », nature seed `statutaire` (L3) |
+| `campaign-service.ts` → `createCampaignInTenant` | création de la campagne de lancement et de la relance, sans réécrire le cœur (patron s29) |
+| `readTarget` / `computeCampaignTarget` | cible « toutes les adresses actives » (lancement) et « adresses actives jamais connectées » (relance), prédicat sur la ligne |
+| `deliverToRecipient` / `composeRecipientEmail` | lien de connexion **généré à la livraison**, par destinataire, inséré dans le gabarit ; jamais dans `bodyMarkdown` archivé |
+| `campaign-letter-service.ts` | le courrier du lancement n'a **pas** le contenu de l'email (L2 : site public, pas d'accès promis) |
+| `email-send-types.ts` (`TENANT_EMAIL_NATURES`) + `email-service.ts` | nature de l'invitation individuelle ; rejeu d'un report avec jeton neuf (patron `confirmationLink`) |
+| `magic-link-integration.ts` | chemin d'invitation : association **en paramètre**, sans quota par adresse, qui sait si l'envoi est parti |
+| `association-session-guard.ts` | enregistrer la première connexion réussie par (association, adresse), imitation exclue |
+| `member-profile-detail.tsx` (`AccessState`) + `bureau/proprietaires/actions.ts` | bouton d'invitation, état par adresse, refus courrier |
+| nouvel écran bureau (adoption + lancer + relancer) | à placer en `/ks-design` (probablement sous `/bureau/campagnes`) |
+| `src/db/models/` | persistance « invitée le » / « connectée le » par adresse et par association, via `pnpm db:generate` |
+
+## Verified APIs / functions
+
+| Nom | Signature / comportement vérifié | Emplacement |
+| --- | --- | --- |
+| `createCampaignInTenant` | `(CampaignCreationInput) => Promise<{status:'created', campaignId, created} \| {status:'no_recipient'}>` ; options `unpaidReminder?`, `acceptsLettersOnly?` | `src/services/campaign-service.ts:659` |
+| `CampaignCreationContent` | `{submissionId, subject, preheader, bodyMarkdown, templateId: CampaignSendKind, targetKind, author…}` | `campaign-service.ts:619` |
+| `readTarget` (privée) | `(organizationId, choice, settings, templateId) => CampaignTargetReading` | `campaign-service.ts:345` |
+| `deliverCampaignPartService` | `(job, now) => ScheduledJobOutcome`, sans session | `campaign-service.ts:1212` |
+| `deliverToRecipient` (privée) | compose puis prend la ligne puis envoie ; `invoicesOf` réécrit le corps par destinataire | `campaign-service.ts:999` |
+| `getCampaignTargetRowsDao` | lignes `(fiche, adresse active)` avec `unsubscribed`, `accountName`, domicile, parcelles | `src/db/repositories/campaign-repository.ts:178` |
+| `CAMPAIGN_SEND_KINDS`, `UNPAID_REMINDER_SEND_KIND` | types portant une nature | `src/services/types/domain/campaign-types.ts:20-31` |
+| `getCampaignNature` | `(settings, kind) => CampaignNature`, `facultative` si absent | `association-settings-types.ts:1238` |
+| `sendEmailService` | `(payload, context: EmailSendContext, options?: {recipientType?, confirmationLink?}) => EmailSendResult` | `src/services/email-service.ts:418` |
+| `TENANT_EMAIL_NATURES` | `login`, `campaign`, `board_notification`, `member_email_confirmation` | `src/services/types/domain/email-send-types.ts:13` |
+| `rotatePendingLink` / `withoutConfirmationLink` | patron du lien secret d'un email reporté, jeton neuf au rejeu | `email-service.ts:1578, 1606` |
+| `sendMagicLinkEmailService` | `({organizationId, email, url, association, locale})`, nature `login`, `recipientType: 'system'` | `email-service.ts:501` |
+| `openMemberAccount` | `({organizationId, memberProfileId, email, name}) => {userId}` | `src/services/member-account-service.ts:143` |
+| `formCsrfMiddleware` | `if (!ctx.request) return` | `node_modules/better-auth/dist/api/middlewares/origin-check.mjs:119` |
+| `memberProfileEmailStatusEnum` | `['active', 'pending']` | `src/db/models/member-profile-email-model.ts` |
+
+## Traps & constraints
+
+**Taille — le seuil de scission est atteint.** La story prévoit de se scinder « si la recherche ou le
+plan la portent à 5 ». Inventaire minimal : (1) générateur de lien d'invitation hors requête, sans quota,
+qui sait si l'envoi est parti ; (2) persistance invitée / connectée par adresse et par association +
+migration ; (3) enregistrement de la première connexion dans le hook de session ; (4) texte d'invitation
+en réglage de tenant ; (5) gabarit transactionnel d'invitation ; (6) invitation individuelle (service,
+action, fiche, refus, réinvitation) + rejeu d'un report avec jeton neuf ; (7) deux types d'envoi de
+campagne + natures + seed ; (8) lien généré à la livraison d'une part ; (9) courrier du lancement au
+contenu distinct de l'email ; (10) cible « jamais connectés » ; (11) écran d'adoption (lancer, relancer,
+compteurs, liste) ; (12) e2e deux associations, dont le lien d'une part reportée. **Douze tâches au
+moins, trois écrans (fiche, adoption, deux emails)** : complexité 5 au sens de la story.
+La coupe suggérée par la story (individuelle + suivi, puis lancement + relance) suit la dépendance réelle :
+le lancement réutilise le générateur, la persistance et la première connexion.
+
+**Lien de connexion dans une campagne**
+
+- **Le lien est un secret à usage unique** : jamais dans `campaign.body_markdown` (archive s25), ni dans
+  `deferred_email`, ni dans un journal, ni dans l'export (s38). Il doit naître **à la livraison** de
+  chaque destinataire (`deliverToRecipient`), comme `{factures}` y est substitué, et disparaître avec
+  l'email. Une campagne étant sa propre file de report (rien n'est conservé), un report de part
+  régénère naturellement un lien neuf le lendemain.
+- **Hors requête, l'association ne vient pas de l'hôte** : `deliverCampaignPartService` n'a ni en-têtes
+  ni session. Le générateur doit prendre l'association (et son domaine, `associationOriginOf`) **en
+  paramètre** — ou recevoir des en-têtes construits `Host: <domaine>` si l'on passe par
+  `auth.api.signInMagicLink` (possible : CSRF sauté sans `ctx.request`). Critère I9 vérifié sur deux
+  associations.
+- **Quota par adresse (3/jour)** de `sendMagicLink` : il couperait silencieusement une invitation
+  (lancement puis relance le même jour, ou demande du membre). À contourner pour l'invitation, pas à
+  désactiver pour la demande anonyme.
+- **Révocation** : `revokeEarlierMagicLinks` efface tout lien en attente de la même adresse ; une
+  invitation révoque un lien demandé par le membre et inversement. Voulu par I6 (réinvitation).
+- **Durée de 20 minutes, globale** (open question 1 de la première partie, toujours ouverte). Dans une
+  campagne étalée, chaque lien vit 20 minutes après **son** envoi ; un email de lancement lu le soir est
+  expiré. Le PRD écrit « Connexion par lien magique (validité 20 min) » et nomme « expiration […] à
+  éprouver auprès d'un public âgé ».
+- **Nature budgétaire** : la campagne reste `campaign` (plafond 100/jour de s26, puis budget de s52).
+  L'invitation individuelle : `login` ne serait **jamais** reportée (et mangerait la réserve des
+  connexions) ; une nature reportable nouvelle (« Invitation », déjà prévue au design system l. 880)
+  exige le rejeu avec jeton neuf.
+
+**Courrier (L2)**
+
+- Le PDF de s28 imprime `campaign.bodyMarkdown` : le corps de l'email d'invitation (lien, « connectez-vous »)
+  y deviendrait une **promesse d'accès**, défaut fonctionnel nommé par la story. Le lancement a donc
+  besoin d'un **texte de courrier distinct** (réglage de tenant ou contenu propre à la campagne), et le
+  courrier ne doit jamais citer de lien.
+- L5 compte **en fiches** : `campaignChannelsOf` rend déjà `letterProfileIds` = fiches sans adresse active
+  de la cible ; la complétude email ∪ courrier est la règle de s28 (critère 6) — à prouver sur le cas
+  s53/s54 (fiche à deux adresses, adresse sur deux fiches).
+
+**Suivi d'adoption et relance**
+
+- « Connectée au moins une fois » se lit **par adresse = par `user`**, et **par association** (un même
+  `user` est membre de plusieurs associations). Aucune table ne le porte. `member` (Better Auth) est
+  hors RLS (ADR 014) : y ajouter une colonne serait l'exception bornée de l'architecture ; une table
+  métier sous RLS forcée suit la règle.
+- **« Désactivée par l'import »** (L7, L8) : l'enum de statut n'a que `active` et `pending` ; la
+  désactivation vient de s56 (import annuel), **pas livrée**. s42 ne peut afficher que l'état « en
+  attente de confirmation » ; l'autre arrivera avec s56.
+- **Relance (L8)** : cible = adresses actives **sans** connexion, invitées ou non, y compris le proche
+  d'une fiche dont le titulaire s'est connecté → prédicat sur l'**adresse**, pas sur la fiche. Le
+  désinscrit (ADR 057, `unsubscribed_at` par adresse) est réintégré seulement en `statutaire` (L3).
+- **L3 en test** : le désinscrit « depuis l'email de lancement » se désinscrit par le jeton de sa ligne
+  de campagne (`/desinscription/<jeton>`, s25) — chemin existant, rien à créer.
+- **Imitation** (s48) : une session `impersonatedBy` ne doit pas compter comme connexion.
+- **Pas d'historique** : les comptes déjà connectés avant la livraison (bureau, seed) partent « jamais
+  connectés » ; la relance les inclurait.
+
+**Règles transverses**
+
+- Rien en dur (ADR 010) : textes d'invitation et de courrier, natures, en réglages ; libellés dans
+  `messages/fr.json`.
+- Toute nouvelle table métier : `organization_id`, RLS forcée, test d'accès croisé **e2e** (deux
+  tenants). e2e en CI seulement ; unitaires `pnpm test --run` (montage 9p lent : valider sur copie locale).
+- Cycle d'imports `auth.ts → façade` : tout service appelé depuis `magic-link-integration.ts` ou le hook
+  de session passe par `import()` dynamique (garde `magic-link-integration-imports.test.ts`).
+- Classement RLS de `docs/architecture.md` et inventaire de s38/s12c à mettre à jour pour toute table.
+
+## Open questions
+
+1. **Scission** (la story la prévoit à 5) : couper en **s42a** invitation individuelle + persistance +
+   première connexion + état sur la fiche (I1-I9 hors I9 « part reportée »), puis **s42b** lancement de
+   masse, courrier, relance, suivi d'adoption (L1-L9 + I9) ?
+2. **Durée de validité du lien d'invitation** (déjà posée le 23/10, jamais tranchée) : 20 minutes comme
+   le lien demandé (le membre redemande un lien depuis la page « lien invalide »), ou plus long (combien)
+   pour l'invitation seule — ce qui impose de toucher la ligne `verification` après création (ADR) ?
+3. **Texte du courrier de lancement** : réglage de tenant distinct (défaut dans `messages/fr.json`), ou
+   saisi par le bureau au moment du lancement ?
+4. **Nature budgétaire de l'invitation individuelle** : nouvelle nature reportable « Invitation »
+   (rejeu avec jeton neuf, patron s54), ou `login`, jamais reportée ?
+5. Questions 3 à 10 de la première partie, à reprendre au plan de la partie qui les porte (texte par
+   défaut et variables, téléphone du bureau absent du registre, état fiche/compte, fiche à adresse sans
+   compte, page d'erreur d'une invitation expirée, liste des propriétaires).
