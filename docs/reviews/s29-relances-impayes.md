@@ -1,85 +1,128 @@
-# Review s29-relances-impayes — round 5 (short round on `01b7f4bc`)
+# Review s29-relances-impayes — round 6 (short round on `ce66303a`)
 
-> Branche `feature/s29-relances-impayes`, HEAD `01b7f4bc` (correctif revue 4, tâche 15). Subagent
-> `reviewer`, contexte neuf, lecture seule. Tour court décidé par arbitrage (23/11/2026, « Corriger puis
-> CI ») : relecture de ce commit comme du code neuf, plus `e2e/unpaid-reminders.spec.ts` en entier ; la CI
-> tranche ensuite par une vraie exécution.
+> Branch `feature/s29-relances-impayes`, HEAD `ce66303a` (fix for plan task 16, CI of 23/11, run 120112870061).
+> `reviewer` subagent, fresh context, read-only. Short round: this commit read as new code, against task 16 of
+> `docs/plans/s29-relances-impayes.md`, plus a trace of the two scheduler handlers for request-only APIs.
 
-**Verdict:** `01b7f4bc` fixes the round-4 CRITICAL 1 and MINORS 13, 14, 15. No new finding. Nothing validated in
-rounds 3 and 4 regressed. Only the minors kept for the final round remain. CI still has to confirm the e2e run.
+**Verdict:** `ce66303a` fixes the product defect CI found. `readReminderInvoices` no longer needs a Next request. The
+tests prove the fix and would fail on the old code. I traced both scheduler handlers (`billing.unpaid_reminders`,
+`campaign.deliver_part`) and neither reaches any other request-only API. No new finding. Only the minors kept for the
+final round remain. CI still has to confirm the e2e at `unpaid-reminders.spec.ts:746`.
 
 ## History
 
 - **Round 1** (`ca17486d`): max major (missing `templateNames.unpaid_reminder`). Fixed in `e13f9b7f`.
 - **Round 2** (`e13f9b7f`): max minor, Ship allowed yes; minors 7, 8. PR 82 opened.
 - **PR 82 CI, 23/11**: `unpaid-reminders.spec.ts:362` (`[]`, then FK error in `afterAll`), `campaigns.spec.ts:1601`
-  (intended new list item); `campaigns.spec.ts:622` flaky, unrelated to s29 (already seen 20/11).
-- **Round 3** (`90f4713b`): CRITICAL — status lists written by SQL, overwritten by the form's cached copy. Minors 9–12.
-- **Round 4** (`2c6f9ea0`): CRITICAL — stored body comes back CRLF, assertion expected LF. Minors 13–15.
-- **Round 5** (`01b7f4bc`): this report.
+  (an intended new list item); `campaigns.spec.ts:622` flaky, unrelated to s29 (already seen 20/11).
+- **Round 3** (`90f4713b`): CRITICAL. Status lists written by SQL were overwritten by the form's cached copy. Minors 9–12.
+- **Round 4** (`2c6f9ea0`): CRITICAL. The stored body comes back CRLF but the assertion expected LF. Minors 13–15.
+- **Round 5** (`01b7f4bc`): no finding, Ship allowed yes.
+- **PR 82 CI, 23/11, run 120112870061**: 329 passed, 1 failed (`unpaid-reminders.spec.ts:746`). The scheduler script
+  logged `[CAMPAIGN] Factures de la relance illisibles` because `getTranslations` (`next-intl/server`) throws outside a
+  request. This is a product defect: in production no reminder would ever be sent. Became plan task 16.
+- **Round 6** (`ce66303a`): this report.
 
 ## Findings
 
 None.
 
-## Status of round-4 findings
+## Verification of task 16
 
-### CRITICAL 1 — fixed
+### 1. The fix is correct
 
-`normalizeLineEndings` (`unpaid-reminders.spec.ts:332`) and `normalizedSettings` (`:334-340`) apply to the values
-`storedTouchedSettings` reads (`:350`); the expected body is normalized too (`:627`). Holds whether the server stores
-CRLF or LF. No other multiline comparison in the spec; the multiline seed status lists only appear in the `afterAll`
-comparison, normalized on both sides.
+- `src/services/unpaid-reminder-invoices.ts` now uses `createTranslator` from `next-intl`, with
+  `messages: MESSAGES[PRODUCT_LOCALE]`, `MESSAGES: Record<SupportedLocale, typeof fr> = {fr}` and `fr` from
+  `../../messages/fr.json`. This is the same pattern as `getCampaignFooterTexts`
+  (`src/lib/emails/campaign-email.tsx:1,23,70,87-91`).
+  - `SupportedLocale` and `PRODUCT_LOCALE` exist in `src/lib/helper/locale-helper.ts:5,12`.
+  - `resolveJsonModule: true` is set in `tsconfig.json`.
+  - `createTranslator` is synchronous, so dropping the `await` is right.
+- The namespace `UnpaidReminders.invoiceList` exists (`messages/fr.json:4921-4924`):
+  - `line` takes `{subject}`, `{parcelNumber}`, `{amount}`, `{dueOn}`.
+  - `lineWithoutParcel` takes `{subject}`, `{amount}`, `{dueOn}`.
+  - `lineOf` passes `{...values, parcelNumber}` and `values` (`UnpaidInvoiceLineValues` minus `parcelNumber`:
+    `subject`, `amount`, `dueOn`, from `unpaid-reminder-rules.ts:129-134`). The ICU arguments match exactly, and every
+    value is a plain string.
+- Number and date formatting is unchanged. `formatUnpaidInvoicesList` (`unpaid-reminder-rules.ts:141-155`) is not
+  touched by the commit: the amount still comes from `formatAmountCents` and the date from `formatReminderDay`, both
+  computed before the translator runs.
 
-### MINOR 13 — fixed
+### 2. The tests prove the fix
 
-Against `src/components/features/unpaid-reminder/unpaid-reminders-overview.tsx`: 5 `TableHead` (Membre, Parcelle,
-Facture, Relances, Envoi — `messages/fr.json:4896-4902`), « Envoi » at index 4; 5 `TableCell` per row, same order;
-mobile cards are a `ul` outside the `table` (`sm:hidden`), CI projects desktop only; single `table` on the page;
-`Channel` renders `<span>Email</span>` or a `Badge` « Courrier » (`fr.json:4906-4909`), exact `toHaveText`; headers
-read after the table is awaited. Fiche renamed `Brunet ${MARKER}`.
+- In the services project, the global setup mocks only `next-intl/server` (`src/services/__tests__/setup-mocks.ts:28-30`).
+  `next-intl` itself is real, so `createTranslator` runs against the real `fr.json`.
+- In `unpaid-reminder-delivery.test.ts`, `beforeEach` now makes `getTranslations` reject with "hors d'une requête
+  Next". This simulates the scheduler.
+- The existing assertions at `:276` and `:279` check real French lines with a parcel. The new test at `:285-301` checks
+  the line without a parcel, `markRecipientSentTxnDao('r1')` and `{status: 'completed'}`.
+- On the old code, `await getTranslations(...)` would reject, `readReminderInvoices` would throw,
+  `deliverCampaignPartService` would take the `illisibles` branch and fall to `failedAttemptOutcome`, and nothing would
+  be sent. All three tests would fail. The test pins the fix.
 
-### MINOR 14 — fixed
+### 3. No other request-only API on the scheduler paths
 
-`originalSettings` is `Record | null`, set only in `beforeAll` (`:522`); no restore when `null` (`:577-584`),
-`deleteRunData` still in `finally`. DB check after restore against `normalizedSettings(original)`.
-`deleteSettingsAbsentFrom` (`:391-401`) only deletes `TOUCHED_KEYS` absent from the snapshot, scoped to TechCorp under
-`inTenantScope`, no-op in CI (seed `'true'`). Known limit documented: the cache may hold `'false'` for a boolean deleted
-by SQL — harmless (default), not reached with the seed.
+I computed the import closure of `scheduled-job-service-facade.ts` (229 files) and then traced the call paths of both
+handlers.
 
-### MINOR 15 — fixed
+- **`runUnpaidRemindersJobService`** (`unpaid-reminder-service.ts:219-267`) calls:
+  - `getAssociationSettingsService`: DAO under `withTenant` only; the s29 diff adds only validation in the update path.
+  - `readProfilesAndInvoices`: the billing provider.
+  - `listUnpaidRemindersDao`.
+  - `createDueRank`, which calls `createCampaignInTenant` (`campaign-service.ts:659-741`): DAOs and
+    `enqueueScheduledJobTxnDao`, with no `getAuthUser`, `after()`, `updateTag` or `revalidate*`.
+  - `enqueueNextDay`.
+  - `getAuthUser` is only used in `requireCampaignManager` (`:102-110`), which this handler never calls.
+- **`deliverCampaignPartService`** (`campaign-service.ts:1213-1276`) calls:
+  - `isClientEmailEnabledService` and `sendEmailService` (`email-service.ts:418-453`). Their helpers sit at `:155-400`,
+    and the file's `getTranslations`/`getLocale` calls all start at `:470`, in the user and subscription emails.
+    `email-service.ts` is also not part of the story diff.
+  - `readAssociationWithSettings`.
+  - `readReminderInvoices`: fixed.
+  - `deliverToRecipient`, then `composeRecipientEmail`, then `buildCampaignEmail`: `getCampaignFooterTexts` (via
+    `createTranslator`), `renderCampaignBodyHtml`, `renderCampaignText`, `substituteInvoicesList`.
+- Across `campaign-service.ts`, `unpaid-reminder-service.ts`, `unpaid-reminder-invoices.ts` (only a comment mentions
+  `next-intl/server`), `association-settings-service.ts`, the repositories touched and the rules touched, there are no
+  hits for `next-intl/server`, `next/headers`, `next/cache`, `getLocale`, `headers()` or `cookies()`.
 
-The scheduler script has no kind filter (`run-scheduled-jobs.ts`): the filter is only in the spec's wait condition
-(`jobsOf(ids, kind)`), consistent with tests 2 and 4. `payload->>'campaignId'` matches the enqueue code
-(`campaign-service.ts:724-729`); kind `campaign.deliver_part` (`scheduled-job-types.ts:71`). Open jobs made due cover
-the 00:00–02:00 Paris case (`campaign-schedule-rules.ts:103`). `toEqual(['sent'])` correct (« 1 sur 3 » counts
-reminders whose campaign has a `sent` recipient, `unpaid-reminder-repository.ts:58,107`). Residual risks surfaced by
-the diagnosis, not hidden: client email off (`released`), daily cap reached (`deferred`, unlikely: `email-budget.spec.ts`
-restores the counter), outbox unaffected (only `water-analysis.spec.ts` runs after). Precedent:
-`campaigns.spec.ts:890-950`. Test 9 timeout `SCHEDULER_TEST_TIMEOUT_MS` (330 s).
+### 4. `campaign-letter-service.test.ts` is not weakened
 
-## Rounds 3–4 regressions and tests 1–6 consistency
+The old assertions matched the JSON echo of the mock translator (`"parcelNumber":"3"`). That mock no longer applies,
+because the list now uses the real `createTranslator`. The new assertions are stronger:
 
-Test 1 unchanged apart from normalization; tests 2 and 4 `jobsOf(ids, JOB_KIND)` = former `reminderJobsOf`; test 9
-gains delivery and exact cell checks; tests 3 and 6 unchanged; cleanup order (restore, absent keys, SQL in `finally`)
-consistent with the FK order validated in round 3. Task 15 fully implemented, nothing outside it.
+- the full French line for letter 1;
+- `parcelle 14 :` present and `parcelle 3 :` absent for letter 2, so the per-letter isolation is still pinned.
+
+The `listInvoicesOf` call assertion is unchanged.
+
+### Plan conformity
+
+Task 16 is fully done: the cause is fixed, the test is no longer mocked for this path (it is stricter than asked: the
+mock rejects), and the paths were checked. The e2e spec is unchanged, as the plan says. Nothing in the commit falls
+outside task 16.
 
 ## Open minors carried over (final round)
 
-- MINOR 1 — « Relance automatique » label missing in `EmailSendingBureau.pending`.
-- MINOR 3 — subject cap ignores the association prefix (`association-settings-types.ts:737`).
-- MINOR 4 — disabled with empty delays: `[0,0,0]`, each rank shows the due date (`unpaid-reminder-service.ts:499-500`).
-- MINOR 5 — « Email » channel shown for a fiche whose only addresses are unsubscribed (`membersOf`).
-- MINOR 6 — avoidable queries (`readRankCampaigns`, `readReminderInvoices`).
-- MINOR 7 — doc comment `unpaid-reminder-service.ts:275-280` out of date.
-- MINOR 8 — scheduler-spec cleanup racy under parallel local e2e.
-- MINOR 11 — the replay test passes without proving the `submissionId` uniqueness (covered by unit tests).
+- MINOR 1: the « Relance automatique » label is missing in `EmailSendingBureau.pending`.
+- MINOR 3: the subject cap ignores the association prefix (`association-settings-types.ts:737`).
+- MINOR 4: when disabled with empty delays, the delays are `[0,0,0]` and each rank shows the due date
+  (`unpaid-reminder-service.ts:499-500`).
+- MINOR 5: the « Email » channel is shown for a fiche whose only addresses are unsubscribed (`membersOf`).
+- MINOR 6: avoidable queries (`readRankCampaigns`, `readReminderInvoices`).
+- MINOR 7: the doc comment at `unpaid-reminder-service.ts:275-280` is out of date.
+- MINOR 8: the scheduler-spec cleanup is racy when local e2e runs in parallel.
+- MINOR 11: the replay test passes without proving `submissionId` uniqueness (unit tests cover it).
 
 ## Checks run
 
-- `pnpm exec tsc --noEmit`: exit 0. `pnpm lint`: 0 errors (2 warnings in untracked files outside the diff).
-- Unit tests not rerun: no product code changed since round 2 (`Tests 6101 passed | 4 skipped (6105)`, local-disk copy).
-- No build, no e2e (CI only).
+- `pnpm test --run src/services/__tests__/unpaid-reminder-delivery.test.ts src/services/__tests__/campaign-letter-service.test.ts`:
+  `Test Files 2 passed (2)`, `Tests 30 passed (30)`.
+- `pnpm exec tsc --noEmit`: exit 0.
+- `pnpm lint`: 0 errors. The 2 warnings are in untracked files outside the diff (`.remember/tmp/last-ndc.ts`,
+  `.scratch/check-migration.mjs`).
+- Full suite not rerun by the reviewer. Implementer, local-disk copy: `Test Files 446 passed (446)`,
+  `Tests 6102 passed | 4 skipped (6106)`.
+- No build, no e2e (CI only). The fix for `unpaid-reminders.spec.ts:746` still needs a CI run to confirm it.
 
-Max severity: minor
+Max severity: none
 Ship allowed: yes
