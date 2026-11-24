@@ -12,6 +12,7 @@ import {
   rebaseMagicLinkUrl,
   requestHostOf,
 } from './association-origin'
+import type {InvitationLinkRequest} from './invitation-link'
 import {
   MAGIC_LINK_EXPIRES_IN_SECONDS,
   MAGIC_LINK_VERIFY_RATE_LIMIT,
@@ -41,6 +42,11 @@ type MagicLinkRequestContext = {
         model: string
         where: VerificationWhere[]
       }) => Promise<number>
+      update: (data: {
+        model: string
+        where: VerificationWhere[]
+        update: {expiresAt: Date}
+      }) => Promise<unknown>
     }
   }
 }
@@ -128,6 +134,89 @@ const revokeEarlierMagicLinks = async (
   })
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000
+
+/**
+ * La demande d'invitation portee par `metadata.invitation`, si elle est bien
+ * formee. Le canal de retour est une fonction : il ne peut venir que du code
+ * serveur, jamais d'un corps JSON (route HTTP fermee).
+ */
+const invitationRequestOf = (
+  metadata: Record<string, unknown> | undefined
+): InvitationLinkRequest | undefined => {
+  const candidate = metadata?.invitation as
+    Partial<InvitationLinkRequest> | undefined
+  if (
+    !candidate ||
+    typeof candidate.organizationId !== 'string' ||
+    typeof candidate.expiresInDays !== 'number' ||
+    typeof candidate.deliver !== 'function'
+  ) {
+    return undefined
+  }
+  return candidate as InvitationLinkRequest
+}
+
+/** Retire le jeton tout juste cree : aucun lien ne doit subsister. */
+const discardToken = async (token: string, ctx?: MagicLinkRequestContext) => {
+  await ctx?.context?.adapter.deleteMany({
+    model: 'verification',
+    where: [{field: 'identifier', value: token}],
+  })
+}
+
+/**
+ * Prolonge la ligne `verification` du jeton a la duree de l'invitation
+ * (ADR 071) : le plugin l'a creee a sa duree globale, celle du lien demande.
+ */
+const extendToken = async (
+  token: string,
+  expiresInDays: number,
+  ctx?: MagicLinkRequestContext
+) => {
+  await ctx?.context?.adapter.update({
+    model: 'verification',
+    where: [{field: 'identifier', value: token}],
+    update: {expiresAt: new Date(Date.now() + expiresInDays * DAY_MS)},
+  })
+}
+
+/**
+ * Branche « invitation » (s42a, ADR 071) : l'association vient de la demande,
+ * jamais de l'hote ; aucun quota de la demande anonyme ; meme controle
+ * d'ouverture de session que la connexion ; liens precedents revoques, jeton
+ * prolonge, lien rebase sur l'association puis rendu a l'appelant. **Rien
+ * n'est envoye** : l'envoi, la trace et le report appartiennent au service
+ * d'invitation. Lecture de l'association par son identifiant, chargee a
+ * l'appel (aucune arete statique, et aucune session requise hors requete).
+ */
+const issueInvitation = async (
+  {email, url, token}: SendMagicLinkData,
+  invitation: InvitationLinkRequest,
+  ctx?: MagicLinkRequestContext
+) => {
+  if (!token) return
+  const {getOrganizationByIdDao} =
+    await import('@/db/repositories/organization-repository')
+  const organization = await getOrganizationByIdDao(invitation.organizationId)
+  const origin = associationOriginOf(organization?.domain)
+  const user = organization && origin ? await getUserByEmailDao(email) : null
+  if (
+    !organization ||
+    !origin ||
+    !user ||
+    !canOpenSessionOn(user, organization)
+  ) {
+    logger.warn('[INVITATION-LINK] Compte hors de l’association : aucun lien')
+    await discardToken(token, ctx)
+    return
+  }
+
+  await revokeEarlierMagicLinks(email, token, ctx)
+  await extendToken(token, invitation.expiresInDays, ctx)
+  invitation.deliver({url: rebaseMagicLinkUrl(url, origin), token})
+}
+
 /**
  * Envoi du lien de connexion (s03). Chaque demande est d'abord comptee pour
  * l'association du domaine appele, adresse connue ou non (3 par adresse et par
@@ -143,12 +232,19 @@ const revokeEarlierMagicLinks = async (
  * B). Ni l'URL ni le jeton ne sont journalises. Un echec du transport remonte
  * a Better Auth. L'email parle la locale de la page de demande, que l'action
  * transmet par `metadata.locale` : verifiee contre le routage, francais sinon
- * (ADR 008).
+ * (ADR 008). Une demande portant `metadata.invitation` (s42a, ADR 071) prend
+ * la branche de l'invitation, qui n'envoie rien.
  */
 export async function sendMagicLink(
   {email, url, token, metadata}: SendMagicLinkData,
   ctx?: MagicLinkRequestContext
 ) {
+  const invitation = invitationRequestOf(metadata)
+  if (invitation) {
+    await issueInvitation({email, url, token}, invitation, ctx)
+    return
+  }
+
   const services = await loadServices()
   const host = requestHostOf(requestHeadersOf(ctx))
 

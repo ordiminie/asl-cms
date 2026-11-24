@@ -1,5 +1,6 @@
 import {describe, expect, it} from 'vitest'
 
+import fr from '../../../messages/fr.json'
 import {TENANT_EMAIL_NATURES} from '../types/domain/email-send-types'
 import {parisTwoAm} from './campaign-schedule-rules'
 import {
@@ -346,5 +347,37 @@ describe('groupPendingSends — la nature enregistrée de chaque email reporté 
       'board_notification',
     ])
     expect(groups[0].reference).toBeNull()
+  })
+})
+
+describe('nature de l’invitation d’un membre (s42a, ADR 071 §4)', () => {
+  it('est un envoi d’association, décompté et copié pour le lendemain si le budget est épuisé', () => {
+    expect(TENANT_EMAIL_NATURES).toContain('invitation')
+    expect(isNeverDeferred('invitation')).toBe(false)
+    expect(isDeferredByCaller('invitation')).toBe(false)
+  })
+
+  it('un email d’invitation reporté est montré comme tel dans les envois en attente', () => {
+    const [group] = groupPendingSends(
+      [
+        {
+          id: 'd1',
+          nature: 'invitation',
+          referenceType: null,
+          referenceId: null,
+          sendOn: '2026-11-25',
+          status: 'pending',
+        },
+      ],
+      []
+    )
+
+    expect(group.nature).toBe('invitation')
+  })
+
+  it('porte le libellé « Invitation » dans la vue des envois', () => {
+    expect(fr.EmailSendingBureau.pending.natures).toMatchObject({
+      invitation: 'Invitation',
+    })
   })
 })

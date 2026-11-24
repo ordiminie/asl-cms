@@ -40,6 +40,9 @@ vi.mock('@/db/repositories/user-repository', () => ({
   getUserByEmailDao: vi.fn(),
   getUserByIdDao: vi.fn(),
 }))
+vi.mock('@/db/repositories/member-invitation-state-repository', () => ({
+  getInvitationStatesByUserIdsDao: vi.fn(async () => []),
+}))
 vi.mock('@/db/repositories/member-role-event-repository', () => ({
   insertMemberRoleEventDao: vi.fn(),
 }))
@@ -55,6 +58,7 @@ vi.mock('@/db/repositories/organization-repository', () => ({
   updateMemberRoleFromDao: vi.fn(),
 }))
 
+import {getInvitationStatesByUserIdsDao} from '@/db/repositories/member-invitation-state-repository'
 import {
   getMemberProfileEmailsDao,
   insertMemberProfileEmailDao,
@@ -1492,5 +1496,126 @@ describe('updateMemberProfilePennylaneIdService — le bureau relie une fiche à
         pennylaneCustomerId: 'x'.repeat(500),
       })
     ).rejects.toThrow(ValidationParsedZodError)
+  })
+})
+
+/**
+ * s42a : chaque adresse **active** de la fiche porte l'état de son
+ * invitation, lu par le compte de l'adresse et par association ; une adresse
+ * en attente n'en a pas.
+ */
+describe('[s42a] état de l’invitation de chaque adresse', () => {
+  const JEAN = '77777777-7777-4777-8777-777777777777'
+  const CLAIRE = '88888888-8888-4888-8888-888888888888'
+  const MARC = '99999999-9999-4999-8999-999999999999'
+  const INVITED_AT = new Date('2026-11-24T09:15:00.000Z')
+  const SIGNED_IN_AT = new Date('2026-11-26T18:40:00.000Z')
+
+  beforeEach(() => {
+    setupAuthUserMocked(withRole(UserOrganizationRoleConst.ADMIN))
+    vi.mocked(getMemberProfileByIdDao).mockResolvedValue(
+      profileRow({mailOnly: false})
+    )
+    vi.mocked(getMemberProfileEmailsDao).mockResolvedValue([
+      emailRow({id: 'email-jean', email: 'jean@exemple.test'}),
+      emailRow({
+        id: 'email-claire',
+        email: 'claire@exemple.test',
+        role: 'additional',
+      }),
+      emailRow({
+        id: 'email-marc',
+        email: 'marc@exemple.test',
+        role: 'additional',
+      }),
+      emailRow({
+        id: 'email-pending',
+        email: 'nouvelle@exemple.test',
+        role: 'additional',
+        status: 'pending',
+        expiresAt: new Date('2099-01-01T00:00:00Z'),
+      }),
+    ] as never)
+    vi.mocked(getLinkedAccountsDao).mockResolvedValue([
+      {userId: CLAIRE, email: 'claire@exemple.test', name: 'Claire'},
+      {userId: JEAN, email: 'jean@exemple.test', name: 'Jean'},
+      {userId: MARC, email: 'marc@exemple.test', name: 'Marc'},
+    ])
+    vi.mocked(getInvitationStatesByUserIdsDao).mockImplementation(
+      async (organizationId) =>
+        organizationId === ORG_ID
+          ? [
+              {
+                userId: JEAN,
+                lastInvitedAt: INVITED_AT,
+                firstSignedInAt: SIGNED_IN_AT,
+              },
+              {
+                userId: CLAIRE,
+                lastInvitedAt: INVITED_AT,
+                firstSignedInAt: null,
+              },
+            ]
+          : [
+              {
+                userId: MARC,
+                lastInvitedAt: INVITED_AT,
+                firstSignedInAt: SIGNED_IN_AT,
+              },
+            ]
+    )
+  })
+
+  it('connectée le, invitée le, jamais invitée ; rien pour une adresse en attente', async () => {
+    const profile = await getMemberProfileService(ORG_ID, PROFILE_ID)
+
+    const states = Object.fromEntries(
+      (profile?.emails ?? []).map((email) => [email.email, email.invitation])
+    )
+    expect(states).toEqual({
+      'jean@exemple.test': {state: 'signed_in', at: SIGNED_IN_AT.toISOString()},
+      'claire@exemple.test': {state: 'invited', at: INVITED_AT.toISOString()},
+      'marc@exemple.test': {state: 'never', at: null},
+      'nouvelle@exemple.test': null,
+    })
+  })
+
+  it('lit les traces des comptes des adresses actives, sous l’association de la fiche', async () => {
+    await getMemberProfileService(ORG_ID, PROFILE_ID)
+
+    expect(getInvitationStatesByUserIdsDao).toHaveBeenCalledWith(ORG_ID, [
+      JEAN,
+      CLAIRE,
+      MARC,
+    ])
+    expect(getInvitationStatesByUserIdsDao).not.toHaveBeenCalledWith(
+      OTHER_ORG_ID,
+      expect.anything()
+    )
+  })
+
+  it('une adresse portée par deux fiches a le même état sur chacune (même compte)', async () => {
+    const first = await getMemberProfileService(ORG_ID, PROFILE_ID)
+    vi.mocked(getMemberProfileByIdDao).mockResolvedValue(
+      profileRow({id: OTHER_PROFILE_ID, mailOnly: false})
+    )
+    vi.mocked(getMemberProfileEmailsDao).mockResolvedValue([
+      emailRow({
+        id: 'email-claire-2',
+        memberProfileId: OTHER_PROFILE_ID,
+        email: 'Claire@Exemple.test',
+      }),
+    ] as never)
+    const second = await getMemberProfileService(ORG_ID, OTHER_PROFILE_ID)
+
+    const claireOn = (profile: typeof first) =>
+      profile?.emails.find(
+        (email) => email.email.toLowerCase() === 'claire@exemple.test'
+      )?.invitation
+    expect(claireOn(second)).toEqual(claireOn(first))
+    expect(claireOn(second)).toEqual({
+      state: 'invited',
+      at: INVITED_AT.toISOString(),
+    })
   })
 })

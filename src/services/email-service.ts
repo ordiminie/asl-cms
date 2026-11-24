@@ -19,16 +19,26 @@ import {
   refundReportableSendTxnDao,
 } from '@/db/repositories/email-send-budget-repository'
 import {markIncidentReportNotificationFailedDao} from '@/db/repositories/incident-report-repository'
+import {markInvitedTxnDao} from '@/db/repositories/member-invitation-state-repository'
 import {releaseStatusAlertByIdDao} from '@/db/repositories/member-invoice-repository'
 import {
+  getActiveEmailCarriersDao,
   getMemberProfileEmailsByTokenHashDao,
   updateMemberProfileEmailDao,
 } from '@/db/repositories/member-profile-email-repository'
 import {markMemberQuestionNotificationFailedDao} from '@/db/repositories/member-question-repository'
+import {getOrganizationByIdDao} from '@/db/repositories/organization-repository'
 import {enqueueScheduledJobTxnDao} from '@/db/repositories/scheduled-job-repository'
-import {getUserByStripeCustomerIdDao} from '@/db/repositories/user-repository'
+import {
+  getUserByEmailDao,
+  getUserByStripeCustomerIdDao,
+} from '@/db/repositories/user-repository'
 import {withTenant} from '@/db/tenant-scope'
 import {env} from '@/env'
+import {
+  issueInvitationLink,
+  revokeInvitationLink,
+} from '@/lib/better-auth/invitation-link'
 import {MAGIC_LINK_EXPIRES_IN_MINUTES} from '@/lib/better-auth/magic-link-constants'
 import AdminNotificationEmail from '@/lib/emails/admin-notification-email'
 import ContactMessageMail, {
@@ -45,6 +55,8 @@ import IncidentReportMail, {
   type IncidentReportEmailReport,
 } from '@/lib/emails/incident-report-email'
 import InternalEmail from '@/lib/emails/internal-email'
+import InvitationMail from '@/lib/emails/invitation-email'
+import {invitationParagraphsOf} from '@/lib/emails/invitation-email'
 import InvitationOrganizationLinkMail from '@/lib/emails/invitation-organization-link-email'
 import InvoiceStatusAlertMail, {
   INVOICE_STATUS_ALERT_SUBJECT_MAX_LENGTH,
@@ -118,6 +130,7 @@ import {
   getCampaignSendMaxAttempts,
   getEmailDailySendLimit,
   getEmailLoginReserve,
+  getInvitationLinkDays,
   getMemberEmailConfirmationDays,
 } from './types/domain/association-settings-types'
 import {receivedAtPartsOf} from './types/domain/contact-message-types'
@@ -236,9 +249,21 @@ export type ConfirmationLinkOfEmail = {
   tokenHash: string
 }
 
+/**
+ * Le lien d'une invitation (s42a, ADR 071 §4) que porte l'email : ni son URL
+ * ni son echeance affichee ne sont conservees si l'email est reporte, et son
+ * jeton est revoque ; le rejeu en emet un neuf.
+ */
+export type InvitationLinkOfEmail = {
+  url: string
+  token: string
+  expiresOn: string
+}
+
 export interface SendEmailOptions {
   recipientType?: EmailRecipientType
   confirmationLink?: ConfirmationLinkOfEmail
+  invitationLink?: InvitationLinkOfEmail
 }
 
 /** Un email pret a partir : objet prefixe, gabarit deja rendu en HTML. */
@@ -336,12 +361,15 @@ const keepDeferredEmail = async (
   composed: ComposedEmail,
   context: TenantEmailSendContext,
   day: string,
-  confirmationLink?: ConfirmationLinkOfEmail
+  links: Pick<SendEmailOptions, 'confirmationLink' | 'invitationLink'>
 ): Promise<void> => {
   const {organizationId} = context
+  const {confirmationLink, invitationLink} = links
   const email = confirmationLink
     ? withoutConfirmationLink(composed, confirmationLink)
-    : composed
+    : invitationLink
+      ? withoutInvitationLink(composed, invitationLink)
+      : composed
   const reference = confirmationLink ? undefined : context.reference
   await withTenant(organizationId, async () => {
     const {id} = await createDeferredEmailTxnDao({
@@ -367,6 +395,22 @@ const keepDeferredEmail = async (
       payload: {deferredEmailId: id},
     })
   })
+  if (invitationLink) await revokeUnsentInvitationLink(invitationLink.token)
+}
+
+/**
+ * Le jeton d'une invitation reportee ne doit plus ouvrir de session. Un echec
+ * est journalise, sans rien du lien : l'email reste reporte, et le rejeu
+ * emettra un lien neuf qui revoque les precedents.
+ */
+const revokeUnsentInvitationLink = async (token: string): Promise<void> => {
+  try {
+    await revokeInvitationLink(token)
+  } catch (error) {
+    logger.error("[EMAIL] Lien d'une invitation reportee non revoque", {
+      error: error instanceof Error ? error.name : 'unknown',
+    })
+  }
 }
 
 /**
@@ -379,7 +423,7 @@ const sendTenantEmail = async (
   email: ComposedEmail,
   context: TenantEmailSendContext,
   now: Date,
-  confirmationLink?: ConfirmationLinkOfEmail
+  links: Pick<SendEmailOptions, 'confirmationLink' | 'invitationLink'> = {}
 ): Promise<EmailSendResult> => {
   const {organizationId} = context
   const day = budgetDayOf(now)
@@ -398,7 +442,7 @@ const sendTenantEmail = async (
   )
   if (!granted) {
     if (!isDeferredByCaller(context.nature)) {
-      await keepDeferredEmail(email, context, day, confirmationLink)
+      await keepDeferredEmail(email, context, day, links)
     }
     return {status: 'deferred', until: deferredSendOn(day)}
   }
@@ -434,7 +478,10 @@ export const sendEmailService = async (
     await transmitComposedEmail(email)
     return {status: 'sent'}
   }
-  return sendTenantEmail(email, context, new Date(), options?.confirmationLink)
+  return sendTenantEmail(email, context, new Date(), {
+    confirmationLink: options?.confirmationLink,
+    invitationLink: options?.invitationLink,
+  })
 }
 
 const senderOf = (fromEmail: string, senderName?: string): string => {
@@ -613,6 +660,64 @@ export const sendMemberEmailConfirmationEmailService = async ({
       recipientType: 'client',
       confirmationLink: {token, expiresOn: props.expiresOn, tokenHash},
     }
+  )
+}
+
+/**
+ * Email d'invitation d'un membre (s42a, ecran 3) : gabarit transactionnel du
+ * lien de connexion, texte de l'association (reglage, texte par defaut
+ * sinon), version texte complete (URL en clair). Envoi d'association de
+ * nature `invitation` (ADR 071 §4) : decompte du budget, reporte au lendemain
+ * s'il est epuise — l'issue est rendue a l'appelant. `recipientType:
+ * 'system'` : comme le lien de connexion, jamais coupe par les interrupteurs
+ * de l'application. Locale explicite. Ni l'URL ni le jeton ne sont
+ * journalises.
+ */
+export const sendInvitationEmailService = async ({
+  organizationId,
+  email,
+  url,
+  token,
+  association,
+  text,
+  expiresAt,
+  locale,
+}: {
+  organizationId: string
+  email: string
+  url: string
+  /** Le jeton de `url`. */
+  token: string
+  association: MagicLinkEmailAssociation
+  /** Le texte de l'association ; nul, le texte par defaut. */
+  text: string | null
+  expiresAt: Date
+  locale: SupportedLocale
+}): Promise<EmailSendResult> => {
+  const t = await getTranslations({locale, namespace: 'email.user.invitation'})
+  const expiresOn = CONFIRMATION_DAY_FORMAT.format(expiresAt)
+  const values = {name: association.name, date: expiresOn}
+  const plain = [
+    t('title', values),
+    ...invitationParagraphsOf(text ?? t('defaultText')),
+    `${t('urlIntro')}\n${url}`,
+    [
+      `1. ${t('step1')}`,
+      `2. ${t('step2', values)}`,
+      `3. ${t.markup('step3', {strong: (chunks) => chunks})}`,
+    ].join('\n'),
+    t('footer', values),
+  ].join('\n\n')
+
+  return sendEmailService(
+    {
+      to: email,
+      subject: t('subject', values),
+      text: plain,
+      react: InvitationMail({url, association, text, expiresOn, locale}),
+    },
+    {scope: 'tenant', organizationId, nature: 'invitation'},
+    {recipientType: 'system', invitationLink: {url, token, expiresOn}}
   )
 }
 
@@ -1556,7 +1661,28 @@ export const deliverDeferredEmailService = async (
   await withTenant(organizationId, () =>
     deleteDeferredEmailTxnDao(deferredEmailId)
   )
+  await traceAfterSent(job, toSend.afterSent)
   return {status: 'completed'}
+}
+
+/**
+ * La trace d'un email reporte parti (« invitee le », s42a). L'email est parti
+ * et sa ligne supprimee : un echec est journalise, sans rien du message, et
+ * ne rejoue rien.
+ */
+const traceAfterSent = async (
+  job: ScheduledJob,
+  afterSent: (() => Promise<void>) | undefined
+): Promise<void> => {
+  if (!afterSent) return
+  try {
+    await afterSent()
+  } catch (error) {
+    logger.error("[EMAIL] Trace d'un email reporte parti non ecrite", {
+      jobId: job.id,
+      error: error instanceof Error ? error.name : 'unknown',
+    })
+  }
 }
 
 /** Les gestionnaires du planificateur que porte l'envoi d'emails (s52). */
@@ -1584,6 +1710,51 @@ const withoutConfirmationLink = (
       .replaceAll(link.token, CONFIRMATION_TOKEN_PLACEHOLDER)
       .replaceAll(link.expiresOn, CONFIRMATION_EXPIRY_PLACEHOLDER)
   )
+
+/** Marques d'une invitation reportee : lien et echeance, remis au rejeu. */
+export const INVITATION_URL_PLACEHOLDER = '{{lien-invitation}}'
+export const INVITATION_EXPIRY_PLACEHOLDER = '{{echeance-invitation}}'
+
+/** Une URL telle que le rendu HTML l'ecrit dans un attribut et un texte. */
+const htmlEscapedUrlOf = (url: string): string => url.replaceAll('&', '&amp;')
+
+/**
+ * Remplace le lien d'une invitation (URL brute et URL du HTML) et son
+ * echeance affichee.
+ */
+const replaceInvitationLink = (
+  email: ComposedEmail,
+  from: {url: string; expiresOn: string},
+  to: {url: string; expiresOn: string}
+): ComposedEmail => ({
+  ...email,
+  subject: email.subject,
+  text: email.text
+    .replaceAll(from.url, to.url)
+    .replaceAll(from.expiresOn, to.expiresOn),
+  ...(email.html
+    ? {
+        html: email.html
+          .replaceAll(htmlEscapedUrlOf(from.url), htmlEscapedUrlOf(to.url))
+          .replaceAll(from.url, to.url)
+          .replaceAll(from.expiresOn, to.expiresOn),
+      }
+    : {}),
+})
+
+/** L'invitation a conserver : lien et echeance remplaces par des marques. */
+const withoutInvitationLink = (
+  email: ComposedEmail,
+  link: InvitationLinkOfEmail
+): ComposedEmail => {
+  const kept = replaceInvitationLink(email, link, {
+    url: INVITATION_URL_PLACEHOLDER,
+    expiresOn: INVITATION_EXPIRY_PLACEHOLDER,
+  })
+  return replaceInEmail(kept, (value) =>
+    value.replaceAll(link.token, INVITATION_URL_PLACEHOLDER)
+  )
+}
 
 /** Le lien d'un email reporte apres rotation (s54, revues M1, mi1, mi-r4). */
 type RotatedPendingLink =
@@ -1642,8 +1813,69 @@ const rotatePendingLink = async (
 
 /** L'email reporte a envoyer, ou pourquoi il ne part pas. */
 type DeferredEmailToSend =
-  | {kind: 'send'; email: ComposedEmail}
+  | {
+      kind: 'send'
+      email: ComposedEmail
+      /** Ecrit une fois l'email parti (trace d'une invitation, s42a). */
+      afterSent?: () => Promise<void>
+    }
   | Exclude<RotatedPendingLink, {kind: 'rotated'}>
+
+const DAY_MS = 24 * 60 * 60 * 1000
+
+/**
+ * Une invitation reportee, rejouee **sans requete** (s42a, ADR 071 §4) : le
+ * compte de son destinataire et son association sont relus ; encore membre
+ * avec une adresse active, un lien **neuf** est emis par le generateur du lien
+ * de connexion, a la duree du tenant, et remplace les marques ; « invitee
+ * le » s'ecrit une fois l'email parti. Compte introuvable, adresse retiree ou
+ * plus membre : rien ne part.
+ */
+const deferredInvitationToSend = async (
+  email: ComposedEmail,
+  organizationId: string,
+  recipient: string,
+  now: Date
+): Promise<DeferredEmailToSend> => {
+  const [organization, account] = await Promise.all([
+    getOrganizationByIdDao(organizationId),
+    getUserByEmailDao(recipient),
+  ])
+  if (!organization || !account) return {kind: 'gone'}
+  const carriers = await withTenant(organizationId, () =>
+    getActiveEmailCarriersDao(organizationId, account.email)
+  )
+  if (carriers.length === 0) return {kind: 'gone'}
+
+  const days = getInvitationLinkDays(
+    await getAssociationSettingsService(organizationId)
+  )
+  const link = await issueInvitationLink({
+    organization,
+    email: account.email,
+    expiresInDays: days,
+  })
+  if (!link) return {kind: 'gone'}
+
+  const expiresOn = CONFIRMATION_DAY_FORMAT.format(
+    new Date(now.getTime() + days * DAY_MS)
+  )
+  return {
+    kind: 'send',
+    email: replaceInvitationLink(
+      email,
+      {
+        url: INVITATION_URL_PLACEHOLDER,
+        expiresOn: INVITATION_EXPIRY_PLACEHOLDER,
+      },
+      {url: link.url, expiresOn}
+    ),
+    afterSent: () =>
+      withTenant(organizationId, () =>
+        markInvitedTxnDao({organizationId, userId: account.id, at: now})
+      ),
+  }
+}
 
 /**
  * L'email reporte tel qu'il part : tel qu'il a ete rendu, sauf un lien de
@@ -1657,6 +1889,9 @@ const deferredEmailToSend = async (
   now: Date
 ): Promise<DeferredEmailToSend> => {
   const email = composedOfDeferred(row)
+  if (row.nature === 'invitation') {
+    return deferredInvitationToSend(email, organizationId, row.recipient, now)
+  }
   if (!row.confirmationTokenHash) return {kind: 'send', email}
   const link = await rotatePendingLink(
     organizationId,

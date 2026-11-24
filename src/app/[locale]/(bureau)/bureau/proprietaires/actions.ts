@@ -15,6 +15,7 @@ import {
   createAttachParcelFormSchema,
   createMemberContactFormSchema,
   createMemberProfileFormSchema,
+  type InviteMemberActionResult,
   MEMBER_CONTACT_FORM_FIELDS,
   MEMBER_PROFILE_FORM_FIELDS,
   type MemberProfileActionResult,
@@ -30,6 +31,8 @@ import {
 } from '@/components/features/member-profile/sale-form-validation'
 import {frenchDateToIso} from '@/components/ui/date-field-format'
 import {AuthorizationError} from '@/services/errors/authorization-error'
+import {NotFoundError} from '@/services/errors/not-found-error'
+import {inviteMemberProfileService} from '@/services/facades/member-invitation-service-facade'
 import {
   createMemberProfileService,
   getMemberProfilePageService,
@@ -44,7 +47,10 @@ import {
   addMembersToRecipientGroupService,
   removeMembersFromRecipientGroupService,
 } from '@/services/facades/recipient-group-service-facade'
-import type {MemberProfileWriteResult} from '@/services/types/domain/member-profile-types'
+import type {
+  MemberInvitationResult,
+  MemberProfileWriteResult,
+} from '@/services/types/domain/member-profile-types'
 import type {MemberRoleChangeResult} from '@/services/types/domain/member-role-types'
 import type {
   RecipientGroupMembersInput,
@@ -468,4 +474,49 @@ export async function removeFromRecipientGroupAction(
     removeMembersFromRecipientGroupService,
     'recipientGroups.errors.removeFailed'
   )
+}
+
+/** Traduit l'issue de l'invitation pour la carte « Acces a l'espace membre ». */
+const toInvitationActionResult = (
+  result: MemberInvitationResult
+): InviteMemberActionResult => {
+  if (result.status === 'mail_only') return result
+  if (result.status === 'deferred') {
+    return {status: 'deferred', sent: result.sent, deferred: result.deferred}
+  }
+  revalidateMemberProfileScreens()
+  return {status: result.status, sent: result.sent}
+}
+
+/**
+ * « Envoyer l'invitation » depuis la fiche (s42a, ecran 2) : une invitation a
+ * chaque adresse active, chacune avec son lien. Le service reverifie
+ * `member.profile.manage` et relit la fiche sous le tenant du domaine. Le
+ * refus « courrier uniquement » et l'echec sont rendus, jamais leves ; la
+ * fiche n'est revalidee qu'apres un depart reel.
+ */
+export async function inviteMemberProfileAction(
+  _prevState: InviteMemberActionResult | undefined,
+  formData: FormData
+): Promise<InviteMemberActionResult> {
+  const tenant = await requireCurrentTenantDal()
+  const t = await getTranslations('BureauMemberProfilesPage')
+
+  try {
+    await requireActionAuth()
+
+    const result = await inviteMemberProfileService({
+      organizationId: tenant.id,
+      memberProfileId: readField(formData, 'memberProfileId'),
+    })
+    return toInvitationActionResult(result)
+  } catch (error) {
+    if (error instanceof AuthorizationError) {
+      return {status: 'error', message: t('errors.forbidden')}
+    }
+    if (error instanceof NotFoundError) {
+      return {status: 'error', message: t('errors.notFound')}
+    }
+    return {status: 'failed'}
+  }
 }

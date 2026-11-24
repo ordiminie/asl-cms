@@ -125,6 +125,8 @@ export type MemberProfileEmailDTO = {
   boardRole: 'board' | 'owner' | null
   /** Les autres fiches reliees au compte de l'adresse (s53, 3c). */
   otherProfiles: MemberAccountProfileDTO[]
+  /** L'etat de l'invitation d'une adresse active (s42a) ; nul en attente. */
+  invitation: MemberInvitationStateDTO | null
 }
 
 export type MemberProfileDTO = MemberProfileFieldsDTO & {
@@ -316,3 +318,32 @@ export type UpdateMemberProfilePennylaneIdResult =
   | {status: 'not_found'}
   /** Deja porte par une autre fiche de l'association : rien n'est ecrit. */
   | {status: 'pennylane_id_taken'; holderName: string}
+
+/**
+ * L'etat de l'invitation d'une adresse active (s42a) : jamais invitee, invitee
+ * le (dernier envoi parti), connectee le (premiere connexion reussie sur
+ * l'association, hors connexion a la place du membre). La connexion prime.
+ */
+export type MemberInvitationStateDTO = {
+  state: 'never' | 'invited' | 'signed_in'
+  /** Instant de l'etat (ISO) ; nul pour « jamais invitee ». */
+  at: string | null
+}
+
+export type InviteMemberProfileInput = {
+  organizationId: string
+  memberProfileId: string
+}
+
+/**
+ * L'issue d'une invitation (s42a) : refus « courrier uniquement » (aucune
+ * adresse active), ou les adresses parties et reportees. `partial` : une
+ * erreur a interrompu l'envoi apres un premier email.
+ */
+export type MemberInvitationResult =
+  | {status: 'mail_only'}
+  | {
+      status: 'sent' | 'deferred' | 'partial'
+      sent: string[]
+      deferred: string[]
+    }

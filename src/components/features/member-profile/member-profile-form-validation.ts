@@ -288,6 +288,24 @@ export type ChangeMemberRoleFormAction = (
 ) => Promise<ChangeMemberRoleActionResult>
 
 /**
+ * L'issue de « Envoyer l'invitation » (s42a, ecran 2) : envoyee, reportee
+ * au lendemain, partielle, refusee « courrier uniquement », echouee (aucun
+ * email parti), ou refusee par la session ou le tenant.
+ */
+export type InviteMemberActionResult =
+  | {status: 'sent'; sent: string[]}
+  | {status: 'deferred'; sent: string[]; deferred: string[]}
+  | {status: 'partial'; sent: string[]}
+  | {status: 'mail_only'}
+  | {status: 'failed'}
+  | {status: 'error'; message: string}
+
+export type InviteMemberFormAction = (
+  prevState: InviteMemberActionResult | undefined,
+  formData: FormData
+) => Promise<InviteMemberActionResult>
+
+/**
  * « Mes coordonnees » (s16, ADR 040) : les coordonnees que le membre corrige
  * lui-meme, sans email, ni terrain, ni nom d'entreprise (s55). Memes regles
  * et memes messages que la fiche du bureau.

@@ -24,7 +24,7 @@ import type {
   MemberProfileEmailDTO,
 } from '@/services/types/domain/member-profile-types'
 
-import {shortDayOfInstant} from './member-email-format'
+import {dayOfInstant, shortDayOfInstant} from './member-email-format'
 import {BoardRoleBadge} from './member-profile-badges'
 import {DetailCard} from './member-profile-detail-card'
 import {
@@ -238,11 +238,29 @@ function RoleBadges({email}: {email: MemberProfileEmailDTO}) {
   )
 }
 
-/** « Active » en texte ; l'attente en badge, avec son auteur et son echeance. */
+/**
+ * « Active » en texte, avec l'etat de son invitation en dessous (s42a) ;
+ * l'attente en badge, avec son auteur et son echeance.
+ */
 function EmailStatus({email}: {email: MemberProfileEmailDTO}) {
   const t = useTranslations('BureauMemberProfilesPage.detail.emails')
 
-  if (email.status === 'active') return t('statuses.active')
+  if (email.status === 'active') {
+    return (
+      <span className="flex flex-col gap-1">
+        <span>{t('statuses.active')}</span>
+        {email.invitation && (
+          <span className="text-muted-foreground text-[15px]">
+            {email.invitation.at
+              ? t(`invitation.${email.invitation.state}`, {
+                  date: dayOfInstant(email.invitation.at),
+                })
+              : t('invitation.never')}
+          </span>
+        )}
+      </span>
+    )
+  }
   const date = email.expiresAt ? shortDayOfInstant(email.expiresAt) : ''
   return (
     <span className="flex flex-col gap-1">

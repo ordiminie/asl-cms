@@ -987,3 +987,51 @@ describe('AssociationSettingsForm — carte « Relances des impayés » (s29, é
     ).toBeInTheDocument()
   })
 })
+
+describe('AssociationSettingsForm — carte « Invitation des membres » (s42a, écran 4)', () => {
+  const invitationCard = () =>
+    screen
+      .getByRole('heading', {level: 3, name: 'Invitation des membres'})
+      .closest('[data-slot="card"]') as HTMLElement
+
+  const renderInvitationForm = () =>
+    render(
+      <AssociationSettingsForm
+        definitions={getSettingsForPage(
+          ASSOCIATION_SETTINGS_REGISTRY,
+          'settings'
+        )}
+        settings={resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, [
+          {key: CONTACT_EMAIL_SETTING_KEY, value: CONTACT},
+        ])}
+        saveAction={saved()}
+        canEditSuperAdminOnly={false}
+      />
+    )
+
+  it('vient en dernière carte, avec le texte facultatif puis la durée en jours', () => {
+    renderInvitationForm()
+
+    const headings = screen
+      .getAllByRole('heading', {level: 3})
+      .map((heading) => heading.textContent)
+    expect(headings.at(-1)).toBe('Invitation des membres')
+    const card = invitationCard()
+    expect(
+      within(card).getByLabelText(/Texte de l’invitation/)
+    ).toBeInTheDocument()
+    expect(
+      within(card).getByLabelText(/Durée de validité du lien d’invitation/)
+    ).toBeInTheDocument()
+    expect(card).toHaveTextContent('jours')
+    expect(card).toHaveTextContent(
+      "Vide : la valeur par défaut s'applique (7)."
+    )
+    expect(card).toHaveTextContent(
+      'Le lien de connexion demandé depuis la page de connexion garde, lui, 20 minutes.'
+    )
+    expect(card).toHaveTextContent(
+      'Laissé vide, l’email reprend le texte par défaut'
+    )
+  })
+})

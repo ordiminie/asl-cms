@@ -13,6 +13,10 @@ vi.mock('@/db/tenant-scope', () => ({
     }
   }),
 }))
+/** s42a : l'etat de l'invitation des adresses, relu par l'ecran. */
+vi.mock('@/db/repositories/member-invitation-state-repository', () => ({
+  getInvitationStatesByUserIdsDao: vi.fn(async () => []),
+}))
 vi.mock('@/db/repositories/member-profile-email-repository', () => ({
   deletePendingEmailsAddedByDao: vi.fn(),
   deleteMemberProfileEmailDao: vi.fn(),

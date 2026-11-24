@@ -72,13 +72,27 @@ vi.mock('@/services/association-settings-service', () => ({
   getAssociationSettingsService: vi.fn(),
 }))
 vi.mock('@/db/repositories/member-profile-email-repository', () => ({
+  getActiveEmailCarriersDao: vi.fn(),
   getMemberProfileEmailsByTokenHashDao: vi.fn(),
   updateMemberProfileEmailDao: vi.fn(),
+}))
+vi.mock('@/db/repositories/member-invitation-state-repository', () => ({
+  markInvitedTxnDao: vi.fn(),
+}))
+vi.mock('@/db/repositories/user-repository', () => ({
+  getUserByEmailDao: vi.fn(),
+  getUserByIdDao: vi.fn(),
+  getUserByStripeCustomerIdDao: vi.fn(),
+}))
+vi.mock('@/lib/better-auth/invitation-link', () => ({
+  issueInvitationLink: vi.fn(),
+  revokeInvitationLink: vi.fn(),
 }))
 vi.mock('@/db/repositories/member-profile-repository', () => ({
   getMemberProfilesByUserIdDao: vi.fn(),
 }))
 vi.mock('@/db/repositories/organization-repository', () => ({
+  getOrganizationByIdDao: vi.fn(),
   getUserOrganizationDao: vi.fn(),
 }))
 
@@ -96,20 +110,29 @@ import {
   refundReportableSendTxnDao,
 } from '@/db/repositories/email-send-budget-repository'
 import {markIncidentReportNotificationFailedDao} from '@/db/repositories/incident-report-repository'
+import {markInvitedTxnDao} from '@/db/repositories/member-invitation-state-repository'
 import {releaseStatusAlertByIdDao} from '@/db/repositories/member-invoice-repository'
 import {
+  getActiveEmailCarriersDao,
   getMemberProfileEmailsByTokenHashDao,
   updateMemberProfileEmailDao,
 } from '@/db/repositories/member-profile-email-repository'
 import {getMemberProfilesByUserIdDao} from '@/db/repositories/member-profile-repository'
 import {markMemberQuestionNotificationFailedDao} from '@/db/repositories/member-question-repository'
-import {getUserOrganizationDao} from '@/db/repositories/organization-repository'
+import {
+  getOrganizationByIdDao,
+  getUserOrganizationDao,
+} from '@/db/repositories/organization-repository'
+import {getUserByEmailDao} from '@/db/repositories/user-repository'
+import {issueInvitationLink} from '@/lib/better-auth/invitation-link'
 import {EmailTransportError, getEmailTransport} from '@/lib/emails/transport'
 import {logger} from '@/lib/logger'
 import {getAssociationSettingsService} from '@/services/association-settings-service'
 import {
   deliverDeferredEmailService,
   emailScheduledJobHandlers,
+  INVITATION_EXPIRY_PLACEHOLDER,
+  INVITATION_URL_PLACEHOLDER,
 } from '@/services/email-service'
 import {
   CONFIRMATION_EXPIRY_PLACEHOLDER,
@@ -833,5 +856,122 @@ describe('deliverDeferredEmailService — lien reporté refusé puis renvoyé (s
     expect(token).toBeDefined()
     expect(pendingRows.rows[0].confirmationTokenHash).toBe(sha256(token ?? ''))
     expect(store.rows.has(DEFERRED_ID)).toBe(false)
+  })
+})
+
+describe('deliverDeferredEmailService — invitation reportée, rejouée avec un lien neuf (s42a, ADR 071 §4)', () => {
+  const ASSOCIATION = {
+    id: ORG_ID,
+    name: 'Clos-Fleuri',
+    domain: 'clos-fleuri.test',
+  }
+  const ACCOUNT = {
+    id: 'user-jean',
+    email: 'jean.dubois@exemple.test',
+    role: 'user',
+    organizations: [{organizationId: ORG_ID}],
+  }
+  const NEW_TOKEN = 'NouveauJeton'.padEnd(32, 'N')
+  const NEW_URL = `http://clos-fleuri.test:3000/api/auth/magic-link/verify?token=${NEW_TOKEN}&callbackURL=http%3A%2F%2Fclos-fleuri.test%3A3000%2Flogin%2Fdestination`
+
+  beforeEach(() => {
+    store.rows = new Map([
+      [
+        DEFERRED_ID,
+        {
+          ...storedRow(),
+          nature: 'invitation',
+          recipient: 'jean.dubois@exemple.test',
+          subject: 'Clos-Fleuri — Votre espace membre vous attend',
+          textBody: `Ou recopiez ce lien :\n${INVITATION_URL_PLACEHOLDER}\n\n2. Ce lien vaut jusqu’au ${INVITATION_EXPIRY_PLACEHOLDER} et ne sert qu’une fois.`,
+          htmlBody: `<a href="${INVITATION_URL_PLACEHOLDER}">Ouvrir mon espace</a><li>Ce lien vaut jusqu’au ${INVITATION_EXPIRY_PLACEHOLDER}</li>`,
+          replyTo: null,
+          referenceType: null,
+          referenceId: null,
+        },
+      ],
+    ])
+    vi.mocked(getOrganizationByIdDao).mockResolvedValue(ASSOCIATION as never)
+    vi.mocked(getUserByEmailDao).mockResolvedValue(ACCOUNT as never)
+    vi.mocked(getActiveEmailCarriersDao).mockResolvedValue([
+      {id: 'email-1', memberProfileId: 'profile-1', role: 'holder'},
+    ] as never)
+    vi.mocked(issueInvitationLink).mockResolvedValue({
+      url: NEW_URL,
+      token: NEW_TOKEN,
+    })
+  })
+
+  it('régénère le lien sans requête sur l’association, à la durée du tenant, et remplace les marques', async () => {
+    const outcome = await deliverDeferredEmailService(jobOf(), NOW)
+
+    expect(outcome).toEqual({status: 'completed'})
+    expect(issueInvitationLink).toHaveBeenCalledWith({
+      organization: ASSOCIATION,
+      email: 'jean.dubois@exemple.test',
+      expiresInDays: 7,
+    })
+    expect(memoryTransport.messages).toHaveLength(1)
+    const [sent] = memoryTransport.messages
+    expect(sent.text).toContain(NEW_URL)
+    expect(sent.text).toContain('Ce lien vaut jusqu’au 22 novembre 2026')
+    expect(sent.html).toContain(`href="${NEW_URL.replaceAll('&', '&amp;')}"`)
+    expect(sent.text).not.toContain(INVITATION_URL_PLACEHOLDER)
+    expect(sent.html).not.toContain(INVITATION_EXPIRY_PLACEHOLDER)
+    expect(store.rows.has(DEFERRED_ID)).toBe(false)
+  })
+
+  it('écrit « invitée le » seulement une fois l’email parti', async () => {
+    await deliverDeferredEmailService(jobOf(), NOW)
+
+    expect(markInvitedTxnDao).toHaveBeenCalledWith({
+      organizationId: ORG_ID,
+      userId: 'user-jean',
+      at: NOW,
+    })
+  })
+
+  it('un envoi refusé n’écrit aucune trace', async () => {
+    vi.mocked(getEmailTransport).mockReturnValue({
+      send: vi.fn(async () => {
+        throw new EmailTransportError('brevo', 'refus', {refused: true})
+      }),
+    } as never)
+
+    await deliverDeferredEmailService(jobOf(), NOW)
+
+    expect(markInvitedTxnDao).not.toHaveBeenCalled()
+  })
+
+  it('adresse retirée entre-temps : rien ne part, aucun lien n’est émis, aucune trace', async () => {
+    vi.mocked(getActiveEmailCarriersDao).mockResolvedValue([])
+
+    const outcome = await deliverDeferredEmailService(jobOf(), NOW)
+
+    expect(outcome).toEqual({status: 'completed'})
+    expect(issueInvitationLink).not.toHaveBeenCalled()
+    expect(memoryTransport.messages).toHaveLength(0)
+    expect(markInvitedTxnDao).not.toHaveBeenCalled()
+    expect(store.rows.has(DEFERRED_ID)).toBe(false)
+    expect(refundReportableSendTxnDao).toHaveBeenCalled()
+  })
+
+  it('plus membre de l’association : rien ne part', async () => {
+    vi.mocked(issueInvitationLink).mockResolvedValue(null)
+
+    await deliverDeferredEmailService(jobOf(), NOW)
+
+    expect(memoryTransport.messages).toHaveLength(0)
+    expect(markInvitedTxnDao).not.toHaveBeenCalled()
+    expect(store.rows.has(DEFERRED_ID)).toBe(false)
+  })
+
+  it('compte introuvable : rien ne part', async () => {
+    vi.mocked(getUserByEmailDao).mockResolvedValue(undefined)
+
+    await deliverDeferredEmailService(jobOf(), NOW)
+
+    expect(issueInvitationLink).not.toHaveBeenCalled()
+    expect(memoryTransport.messages).toHaveLength(0)
   })
 })

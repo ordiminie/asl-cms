@@ -6,7 +6,6 @@ import {
   Head,
   Heading,
   Html,
-  Img,
   Link,
   Preview,
   Section,
@@ -15,17 +14,12 @@ import {
 
 import {MAGIC_LINK_EXPIRES_IN_MINUTES} from '@/lib/better-auth/magic-link-constants'
 import type {SupportedLocale} from '@/lib/helper/locale-helper'
-import type {AccentHue} from '@/services/types/domain/association-settings-types'
 
+import {AssociationHeader, type EmailAssociation} from './association-header'
 import {EMAIL_COLORS, EMAIL_FONTS, getEmailAccent} from './theme'
 
 /** L'association du domaine appele, telle que l'email la montre. */
-export type MagicLinkEmailAssociation = {
-  name: string
-  /** URL absolue d'un logo PNG ; absente, le nom seul (s03, manque n° 2). */
-  logoUrl?: string
-  hue: AccentHue
-}
+export type MagicLinkEmailAssociation = EmailAssociation
 
 export type MagicLinkMailProps = {
   url: string
@@ -39,7 +33,6 @@ export type MagicLinkMailProps = {
 }
 
 const EMAIL_WIDTH = 600
-const LOGO_SIZE = 36
 
 const bodyStyle: CSSProperties = {
   margin: 0,
@@ -94,7 +87,10 @@ export default async function MagicLinkMail({
               padding: '16px 40px',
             }}
           >
-            <AssociationHeader association={association} color={accent.foreground} />
+            <AssociationHeader
+              association={association}
+              color={accent.foreground}
+            />
           </Section>
 
           <Section style={{padding: '32px 40px'}}>
@@ -161,45 +157,6 @@ export default async function MagicLinkMail({
         </Container>
       </Body>
     </Html>
-  )
-}
-
-function AssociationHeader({
-  association,
-  color,
-}: {
-  association: MagicLinkEmailAssociation
-  color: string
-}) {
-  return (
-    <table role="presentation" cellPadding={0} cellSpacing={0}>
-      <tbody>
-        <tr>
-          {association.logoUrl && (
-            <td style={{paddingRight: '12px', verticalAlign: 'middle'}}>
-              <Img
-                src={association.logoUrl}
-                alt={association.name}
-                width={LOGO_SIZE}
-                height={LOGO_SIZE}
-                style={{display: 'block'}}
-              />
-            </td>
-          )}
-          <td
-            style={{
-              verticalAlign: 'middle',
-              fontFamily: EMAIL_FONTS.heading,
-              fontSize: '20px',
-              fontWeight: 600,
-              color,
-            }}
-          >
-            {association.name}
-          </td>
-        </tr>
-      </tbody>
-    </table>
   )
 }
 

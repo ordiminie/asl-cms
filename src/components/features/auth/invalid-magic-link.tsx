@@ -10,8 +10,12 @@ import {MAGIC_LINK_EXPIRES_IN_MINUTES} from '@/lib/better-auth/magic-link-consta
 /**
  * Lien expire ou deja utilise (s03, ecran C) : Better Auth renvoie la meme
  * erreur dans les deux cas, un seul ecran les couvre. Aucun code d'erreur.
+ * Lien d'une invitation (s42a, ecran 5) : seule l'explication change, avec
+ * la duree de l'invitation, reglage de l'association.
  */
-export function InvalidMagicLink() {
+export function InvalidMagicLink({
+  invitationDays,
+}: {invitationDays?: number} = {}) {
   const t = useTranslations('Auth.InvalidMagicLink')
 
   return (
@@ -30,7 +34,9 @@ export function InvalidMagicLink() {
         })}
       </p>
       <p className="text-base">
-        {t('explanation', {minutes: MAGIC_LINK_EXPIRES_IN_MINUTES})}
+        {invitationDays === undefined
+          ? t('explanation', {minutes: MAGIC_LINK_EXPIRES_IN_MINUTES})
+          : t('invitationExplanation', {days: invitationDays})}
       </p>
       <Button asChild className="h-14 w-full text-base sm:h-12">
         <Link href="/login">{t('action')}</Link>

@@ -30,6 +30,9 @@ vi.mock('@/app/dal/member-note-dal', () => ({
 vi.mock('@/app/dal/member-invoice-dal', () => ({
   getMemberInvoicesForBureauDal: vi.fn(),
 }))
+vi.mock('@/app/dal/association-settings-dal', () => ({
+  getAssociationSettingsDal: vi.fn(),
+}))
 vi.mock('@/app/dal/unsubscribe-dal', () => ({
   getMemberUnsubscribeForBureauDal: vi.fn(),
 }))
@@ -42,6 +45,7 @@ vi.mock('../notes-actions', () => ({
 vi.mock('../actions', () => ({
   attachParcelAction: vi.fn(),
   changeMemberRoleAction: vi.fn(),
+  inviteMemberProfileAction: vi.fn(),
   updateMemberProfileContactAction: vi.fn(),
 }))
 vi.mock('./actions', () => ({
@@ -53,6 +57,7 @@ vi.mock('./actions', () => ({
 }))
 
 import {render, screen, userEvent, within} from '@/__tests__/customRender'
+import {getAssociationSettingsDal} from '@/app/dal/association-settings-dal'
 import {getMemberInvoicesForBureauDal} from '@/app/dal/member-invoice-dal'
 import {getMemberNotesForBureauDal} from '@/app/dal/member-note-dal'
 import {
@@ -62,6 +67,10 @@ import {
 } from '@/app/dal/member-profile-dal'
 import {requireCurrentTenantDal} from '@/app/dal/tenant-dal'
 import {getMemberUnsubscribeForBureauDal} from '@/app/dal/unsubscribe-dal'
+import {
+  ASSOCIATION_SETTINGS_REGISTRY,
+  resolveSettings,
+} from '@/services/types/domain/association-settings-types'
 
 import BureauMemberProfilePage from './page'
 
@@ -130,6 +139,9 @@ beforeEach(() => {
   )
   vi.mocked(getMemberInvoicesForBureauDal).mockReturnValue(
     new Promise(() => {})
+  )
+  vi.mocked(getAssociationSettingsDal).mockResolvedValue(
+    resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, [])
   )
 })
 
@@ -418,5 +430,46 @@ describe('/bureau/proprietaires/[id] — carte « Factures » (s19, écran 2)', 
     await renderPage()
 
     expect(getMemberInvoicesForBureauDal).not.toHaveBeenCalled()
+  })
+})
+
+describe('/bureau/proprietaires/[id] — invitation (s42a, écran 2)', () => {
+  const invitable = {
+    ...profile,
+    mailOnly: false,
+    emails: [
+      {
+        id: 'email-1',
+        email: 'helene@exemple.fr',
+        role: 'holder' as const,
+        status: 'active' as const,
+        origin: 'site' as const,
+        addedByName: null,
+        expiresAt: null,
+        replacesEmailId: null,
+        boardRole: null,
+        otherProfiles: [],
+        invitation: {state: 'never' as const, at: null},
+      },
+    ],
+  }
+
+  it('dit la durée du lien lue dans les réglages de l’association du domaine', async () => {
+    vi.mocked(canManageCurrentMemberProfilesDal).mockResolvedValue(true)
+    vi.mocked(getMemberProfileForBureauDal).mockResolvedValue(invitable)
+    vi.mocked(getAssociationSettingsDal).mockResolvedValue(
+      resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, [
+        {key: 'invitation.link_days', value: '12'},
+      ])
+    )
+
+    await renderPage()
+
+    expect(getAssociationSettingsDal).toHaveBeenCalledWith(TENANT_ID)
+    const card = screen.getByRole('region', {name: 'Accès à l’espace membre'})
+    expect(
+      within(card).getByRole('button', {name: 'Envoyer l’invitation'})
+    ).toBeInTheDocument()
+    expect(card).toHaveTextContent('valable 12 jours')
   })
 })

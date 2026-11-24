@@ -9,12 +9,15 @@
  * Natures d'un envoi d'association. s29 et s42 y ajoutent la leur. s54 : le
  * lien de confirmation d'une adresse ajoutee ou modifiee par un membre
  * (ADR 056 §6), decompte et reporte au lendemain si le budget est epuise.
+ * s42a : l'invitation d'un membre (ADR 071 §4), reportable, rejouee avec un
+ * lien neuf.
  */
 export const TENANT_EMAIL_NATURES = [
   'login',
   'campaign',
   'board_notification',
   'member_email_confirmation',
+  'invitation',
 ] as const
 
 export type TenantEmailNature = (typeof TENANT_EMAIL_NATURES)[number]

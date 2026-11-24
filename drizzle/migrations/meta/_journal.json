@@ -554,6 +554,20 @@
       "when": 1795434587594,
       "tag": "0078_unpaid_reminder_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "7",
+      "when": 1795522022235,
+      "tag": "0079_polite_sunspot",
+      "breakpoints": true
+    },
+    {
+      "idx": 80,
+      "version": "7",
+      "when": 1795522052616,
+      "tag": "0080_member_invitation_state_rls",
+      "breakpoints": true
     }
   ]
 }

@@ -38,6 +38,7 @@ export type AssociationSettingSection =
   | 'billing'
   | 'reminder'
   | 'letter'
+  | 'invitation'
 
 /** Defaut constant (valeur brute, comme en base) ou reference a une autre cle. */
 export type AssociationSettingDefault = {value: string} | {fromKey: string}
@@ -263,6 +264,19 @@ export const EMAIL_LOGIN_RESERVE_SETTING_KEY = 'email.login_reserve'
  */
 export const MEMBER_EMAIL_CONFIRMATION_DAYS_SETTING_KEY =
   'member.email_confirmation_days'
+/**
+ * Texte de l'invitation d'un membre (s42a) : il s'affiche au-dessus du bouton
+ * de connexion. **Sans defaut** dans le registre : vide, l'email reprend le
+ * texte par defaut de `messages/fr.json`.
+ */
+export const INVITATION_TEXT_SETTING_KEY = 'invitation.text'
+/** Plafond du texte de l'invitation. */
+export const INVITATION_TEXT_MAX_LENGTH = 2000
+/**
+ * Jours de validite du lien d'une invitation (s42a, ADR 071) ; le lien
+ * demande depuis la page de connexion garde sa propre duree.
+ */
+export const INVITATION_LINK_DAYS_SETTING_KEY = 'invitation.link_days'
 /**
  * Code postal et commune du terrain par defaut (s55, ADR 058) : l'import les
  * ecrit au terrain d'une fiche **creee** sans adresse de terrain. **Sans
@@ -784,6 +798,37 @@ export const ASSOCIATION_SETTINGS_REGISTRY: AssociationSettingsRegistry = [
     page: 'settings',
     section: 'letter',
   })),
+  {
+    key: INVITATION_TEXT_SETTING_KEY,
+    type: 'text',
+    required: false,
+    maxLength: INVITATION_TEXT_MAX_LENGTH,
+    multiline: true,
+    labelKey: 'fields.invitationText.label',
+    helpKey: 'fields.invitationText.help',
+    whenEmptyKey: 'fields.invitationText.whenEmpty',
+    page: 'settings',
+    section: 'invitation',
+  },
+  {
+    key: INVITATION_LINK_DAYS_SETTING_KEY,
+    type: 'number',
+    required: false,
+    default: {value: '7'},
+    min: 1,
+    max: 30,
+    integer: true,
+    unitKey: 'units.days',
+    labelKey: 'fields.invitationLinkDays.label',
+    helpKey: 'fields.invitationLinkDays.help',
+    errorMessageKeys: {
+      invalidNumber: 'fields.invitationLinkDays.errors.outOfRange',
+      belowMin: 'fields.invitationLinkDays.errors.outOfRange',
+      aboveMax: 'fields.invitationLinkDays.errors.outOfRange',
+    },
+    page: 'settings',
+    section: 'invitation',
+  },
 ]
 
 const emailSchema = z.email()
@@ -1301,3 +1346,19 @@ export const getUnpaidReminderSettings = (
   }
   return {enabled: true, delaysWeeks, subject, body}
 }
+
+/**
+ * Texte de l'invitation d'un membre (s42a) : `null` quand le bureau ne l'a pas
+ * renseigne ; l'email reprend alors le texte par defaut de `messages/fr.json`.
+ */
+export const getInvitationText = (
+  settings: ResolvedAssociationSettings
+): string | null => textSettingOf(settings, INVITATION_TEXT_SETTING_KEY) ?? null
+
+/**
+ * Jours de validite du lien d'une invitation (s42a, ADR 071) : valeur du
+ * bureau, sinon defaut du registre.
+ */
+export const getInvitationLinkDays = (
+  settings: ResolvedAssociationSettings
+): number => numberSettingOf(settings, INVITATION_LINK_DAYS_SETTING_KEY)

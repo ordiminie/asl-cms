@@ -6,9 +6,17 @@ vi.mock('@/db/repositories/user-repository', () => ({
 vi.mock('@/services/facades/organization-service-facade', () => ({
   getOrganizationByDomainService: vi.fn(),
 }))
+vi.mock('@/services/member-invitation-service', () => ({
+  recordFirstSignIn: vi.fn(),
+}))
+vi.mock('@/lib/logger', () => ({
+  logger: {debug: vi.fn(), error: vi.fn(), info: vi.fn(), warn: vi.fn()},
+}))
 
 import {getUserByIdDao} from '@/db/repositories/user-repository'
+import {logger} from '@/lib/logger'
 import {getOrganizationByDomainService} from '@/services/facades/organization-service-facade'
+import {recordFirstSignIn} from '@/services/member-invitation-service'
 import type {Organization} from '@/services/types/domain/organization-types'
 
 import {
@@ -151,5 +159,94 @@ describe('associationSessionGuard — session.create.before (ADR 034)', () => {
 
   it('porte un identifiant de plugin stable', () => {
     expect(associationSessionGuard().id).toBe(ASSOCIATION_SESSION_GUARD_ID)
+  })
+})
+
+/** Le hook apres creation, tel que Better Auth l'enregistre depuis le plugin. */
+const sessionCreateAfter = () => {
+  const plugin = associationSessionGuard()
+  const hooks = plugin.init().options.databaseHooks
+  return hooks.session.create.after
+}
+
+const CREATED_AT = new Date('2026-11-26T18:40:00.000Z')
+const createdSession = (impersonatedBy: string | null = null) => ({
+  userId: 'user-1',
+  createdAt: CREATED_AT,
+  impersonatedBy,
+})
+
+describe('associationSessionGuard — session.create.after : première connexion (s42a)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(getOrganizationByDomainService).mockImplementation(
+      async (domain: string) => ASSOCIATIONS[domain]
+    )
+  })
+
+  it.each(MODES)(
+    '%s : écrit la première connexion d’un membre sur son association',
+    async (_, contextOf) => {
+      vi.mocked(getUserByIdDao).mockResolvedValue(accountOf('user', 'org-a'))
+
+      await sessionCreateAfter()(createdSession(), contextOf('asso-a.test'))
+
+      expect(recordFirstSignIn).toHaveBeenCalledWith({
+        organizationId: 'org-a',
+        userId: 'user-1',
+        at: CREATED_AT,
+      })
+    }
+  )
+
+  it('n’écrit rien pour une session ouverte à la place du membre (s48)', async () => {
+    vi.mocked(getUserByIdDao).mockResolvedValue(accountOf('user', 'org-a'))
+
+    await sessionCreateAfter()(
+      createdSession('superadmin-1'),
+      withHeaders('asso-a.test')
+    )
+
+    expect(recordFirstSignIn).not.toHaveBeenCalled()
+  })
+
+  it('n’écrit rien pour un SuperAdmin hors de l’association', async () => {
+    vi.mocked(getUserByIdDao).mockResolvedValue(accountOf('super_admin'))
+
+    await sessionCreateAfter()(createdSession(), withHeaders('asso-a.test'))
+
+    expect(recordFirstSignIn).not.toHaveBeenCalled()
+  })
+
+  it('n’écrit rien sur une autre association ni sur un hôte sans association', async () => {
+    vi.mocked(getUserByIdDao).mockResolvedValue(
+      accountOf('super_admin', 'org-a')
+    )
+    const after = sessionCreateAfter()
+
+    await after(createdSession(), withHeaders('asso-b.test'))
+    await after(createdSession(), withHeaders('plateforme.test'))
+    await after(createdSession(), null)
+
+    expect(recordFirstSignIn).not.toHaveBeenCalled()
+  })
+
+  it('avale un échec d’écriture : la connexion n’est jamais empêchée, l’erreur est journalisée sans adresse', async () => {
+    vi.mocked(getUserByIdDao).mockResolvedValue({
+      ...(accountOf('user', 'org-a') as object),
+      email: 'membre@exemple.test',
+    } as never)
+    vi.mocked(recordFirstSignIn).mockRejectedValue(
+      new Error('base indisponible')
+    )
+
+    await expect(
+      sessionCreateAfter()(createdSession(), withHeaders('asso-a.test'))
+    ).resolves.toBeUndefined()
+
+    expect(logger.error).toHaveBeenCalledTimes(1)
+    expect(JSON.stringify(vi.mocked(logger.error).mock.calls)).not.toContain(
+      'membre@exemple.test'
+    )
   })
 })
