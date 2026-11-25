@@ -1,162 +1,161 @@
 # Revue — Story s42b-lancement-invitations
 
-Tour 1 — commit `622c2139`, diff `git diff main...feature/s42b-lancement-invitations` (79 fichiers). Revue
-en contexte neuf (subagent `reviewer`), en lecture seule.
+Tour 2 — HEAD `e2f2d79b`, diff `git diff main...feature/s42b-lancement-invitations`. Revue en contexte
+neuf (subagent `reviewer`), en lecture seule. Le commit de correctif est relu comme du code neuf.
 
-Aucun constat critical ni major. Huit mineurs, à traiter au tour final des mineurs. Ship conditionné au
-job e2e vert en CI sur la PR (non exécuté en local, conformément aux consignes du dépôt).
+Aucun constat critical ni major. Le correctif `e2f2d79b` est juste et n'affaiblit aucun test. Ship
+conditionné au job e2e vert en CI sur la PR 85 après le push du correctif.
 
-## Résultats des tests
+## Historique
 
-Copie en disque local vérifiée identique au commit (`diff -rq` vide sur `src`, `e2e`, `messages`,
-`drizzle` ; `cmp` identique sur `package.json`, `vitest.config.ts`, `tsconfig.json`, `pnpm-lock.yaml`).
+**Tour 1** (commit `622c2139`) : `minor` / `yes` sous réserve du job e2e vert ; huit mineurs m1–m8, aucun
+correctif demandé.
 
-- `pnpm test --run` : `Test Files 462 passed (462)`, `Tests 6333 passed | 4 skipped (6337)`, 273,67 s,
-  sortie 0. Aucun timeout, aucun FAIL.
-- `pnpm exec tsc --noEmit` : sortie 0, aucune erreur (rien de masqué par `.next/types`).
-- `eslint` sur les `.ts`/`.tsx` ajoutés ou modifiés : sortie 0.
-- e2e : non exécuté. C10, l'isolation et C2/C3/C5/C6/C8 de bout en bout ne sont prouvés qu'une fois le job
-  e2e vert sur la PR.
+**CI de la PR 85** (run 45472355325) : 2 échecs, 9 tests non exécutés, 335 passés.
 
-## Ce qui a été vérifié
+- `e2e/campaigns.spec.ts:1601` (s27b, critère 5) : la page de désinscription liste 6 envois statutaires au
+  lieu de 4 (« Lancement du site », « Relance des invitations » en plus). Comportement voulu par s42b ;
+  spec périmée.
+- `e2e/member-invitation-launch.spec.ts:445` : attente jusqu'au timeout (360 s) du radio « Titulaire de
+  cette fiche », absent sur une fiche sans adresse.
+- Non exécutés (describes en `serial`) : les 6 tests restants de `member-invitation-launch.spec.ts` et 3
+  tests de `campaigns.spec.ts` (critère 6 de s27b, deux tests s30).
 
-**APIs réellement existantes** (cibles ouvertes, nom, signature, emplacement) : `issueInvitationLink` /
-`revokeInvitationLink` (`src/lib/better-auth/invitation-link.ts` ; `null` sans domaine ou hors
-association ; `deleteVerificationByIdentifier`), `claimRecipientForSendTxnDao`,
-`releaseRecipientClaimTxnDao`, `createCampaignWithRecipientsTxnDao` (`...input.content` étalé dans
-`.values(input)` : `letterText` persisté), `getInvitationStatesByUserIdsDao`, `markInvitedTxnDao`,
-`getCurrentParcelNumbersForMembersDao`, `claimDeferredEmailForSendTxnDao … .returning()` (rend
-`createdAt`), `createTranslator`, `uuid v5`, `runImmediateCampaignPass`, composants `alert-dialog`,
-`breadcrumb`, `table`, `badge`, `skeleton`. Aucune référence inventée.
+**Correctif `e2f2d79b`** (specs seulement) :
 
-**Ordre prise → émission → composition → envoi** (`campaign-service.ts`, `deliverInvitationToRecipient`) :
-conforme à l'ADR 072 §3. Prise perdue → `done` sans émission. Révocation et libération sur `deferred`,
-`skipped`, refus certain, échec de composition ; `to_verify` ne révoque pas. « Invitée le » au seul `sent`,
-dans le même `withTenant` que `markRecipientSentTxnDao`. Épinglé par `invocationCallOrder`
-(`member-invitation-delivery.test.ts`).
+- `campaigns.spec.ts:1606-1607` : ajout des deux libellés en fin de liste. Ordre réel :
+  `getStatutoryTemplateIds` (`association-settings-types.ts:1314`) filtre `CAMPAIGN_SEND_KINDS`
+  (`campaign-types.ts:33-38`) — composeur, `unpaid_reminder`, `member_invitation_launch`,
+  `member_invitation_reminder` ; seed statutaire `tenant-settings-seed.ts:98-104` ; libellés
+  `messages/fr.json:2333-2334`, 4560-4561. `toHaveText([...])` reste exact et ordonné.
+- `member-invitation-launch.spec.ts:446-448` : `{role: 'additional'}` au lieu de `'holder'`. Le
+  `RadioGroup` n'existe que si `currentHolderEmail` est non nul (`member-profile-email-dialogs.tsx:342`) ;
+  le helper attend toujours l'encart de partage puis confirme ; `roleForNewActiveEmail`
+  (`member-email-rules.ts:63-77`) rend `holder` à la première adresse active. C6 reste vérifié l. 492 et 506.
+- `neverSignedInText` (l. 347-349) : la pagination n'est lue que si `count() > 0` ; `AddressesPagination`
+  n'est rendue que si `totalPages > 1` (`member-invitations-overview.tsx:328`). Lu après la carte, même
+  frontière de rendu : pas de course, pas de masquage ; assertions de C7 inchangées.
+- `pdfTextOf` (l. 361-365) : fragments vides ignorés, comme `render-letters-pdf.test.ts:46-47` ; assertions
+  négatives (`/login`, `magic-link`, « Ouvrir mon espace ») intactes.
 
-**Écart « `issueInvitationLink` lève »** : ligne libérée, `failedAttemptOutcome`, borné par
-`sendMaxAttempts` ; rien ne bloque indéfiniment, aucun jeton rendu.
+## Relecture indépendante des 9 tests jamais exécutés
 
-**Écart « révocation en échec »** : jeton vivant mais jamais transmis, journalisé ni stocké ; il meurt à
-l'émission suivante pour l'adresse ou à échéance (m3).
+- **Libellés et rôles** retrouvés dans `messages/fr.json` (l. 5005-5131) et les composants : h2
+  « Lancement », « Relancer les jamais connectés », « Adresses jamais connectées » (aucune collision) ;
+  « Lancer les invitations » ; `alertdialog` avec `planMany` (rendu dès plus d'une part, garanti par le
+  plafond à 2), « Envoyer le lancement », « Envoyer la relance » ; « Lancement parti. » / « Relance
+  partie. » dans le seul `role="status"` de la carte ; « Lancement — {date} », « Même adresse sur {count}
+  fiches : un seul état », « Adresse du site : {domain} », « Invitations des membres » ;
+  `data-slot="card"` (`card.tsx:8`) ; `LaunchCard` garde son état après `router.refresh()` ; pagination
+  `?page=`.
+- **SQL contre les modèles Drizzle** : `member_profile`, `member_profile_email` (enums `holder`/`active`/
+  `site`), `organization_setting` (clé `(organization_id, key)`, `on conflict` valide),
+  `email_send_budget`, `scheduled_job` (`payload.campaignId`, `campaign-service.ts:818`), `campaign_part`,
+  `campaign_recipient`, `member_invitation_state`, `rate_limit_event` : colonnes réelles. Nettoyage en
+  cascade, aucune FK `restrict` touchée.
+- **Enchaînements** : campagne créée en `sending` ; à l'envoi seul le budget reportable compte (remis à 0
+  dans `beforeAll`) ; fiches de remplissage sans compte → `markClaimedRecipientFailed` sans échec de part ;
+  adresse ajoutée par le bureau → compte ouvert, atteinte par la relance ; rejeu Q7 par `page.request` ;
+  isolation testée avant `launchOn('b')`.
+- **C10 hors requête** : `associationOriginOf` ne lit aucun en-tête ; `nextCookies`
+  (`better-auth/dist/integrations/next-js.mjs:72-95`) sans effet hors requête ; la branche invitation ne
+  consomme pas de quota. Première émission de lien par le sous-processus du planificateur vérifiée en e2e :
+  seule la CI le prouvera.
+- **Autres specs** : barre du bureau, réglages et natures (critère 6 de s27b), détail de campagne (s30),
+  `member-invitations.spec.ts` (s42a) : aucune cause d'échec trouvée.
 
-**Aucun lien ni jeton conservé** : la campagne ne passe pas par `deferred_email` (`isDeferredByCaller`) ;
-`logFailure` / `revokeAndRelease` ne journalisent que `error.name` ; intercepteur
-`shouldLogDetails: () => false` ; `body_markdown` ne porte que le texte, `campaign_recipient` aucun lien ;
-test : aucune URL ni jeton dans les appels du logger ni dans les arguments des DAO.
+## Vérifications
 
-**Texte jamais interprété** : `invitationParagraphsOf` + nœuds texte React (`whiteSpace: pre-line`), ni
-`renderCampaignBodyHtml` ni `substituteVariables` ; version texte idem ; détail de campagne par
-`invitationParagraphsOf` ; PDF par `letterTextBlocksOf`. `**gras**`, `<b>`, `{nom}`, `[x](…)` ressortent
-littéralement (tests). Objet préfixé une seule fois par `finalSubject`.
-
-**C2, jugement rédactionnel** : le texte par défaut du courrier
-(`CampaignsBureau.letters.pdf.memberInvitation.defaultText`) annonce le site consultable sans inscription,
-les actualités et les analyses d'eau (pages livrées), et rappelle que le bureau continue d'écrire par la
-poste. Aucun lien, aucune promesse d'accès, aucune fonctionnalité non livrée. Le PDF imprime
-`letter_text`, jamais `bodyMarkdown` ; test : ni `/login` ni « Ouvrir mon espace ».
-
-**C5, C6, C7, C8** (`member-invitation-campaign-rules.ts`) : cible sur les seules adresses `active` ;
-dédoublonnage par adresse du moteur s53 ; couverture en fiches par `campaignChannelsOf` ; une adresse
-partagée = un seul état ; attentes échues masquées ; relance = adresses actives jamais connectées, sans
-compte comprises, jamais une ligne sans adresse ; `superseded` revérifié à la livraison. Tous les cas de
-la story testés.
-
-**C3** : `statutaire` → le désinscrit est servi ; `facultative` → `unsubscribed` sans lien émis. e2e sur
-les deux associations.
-
-**C9** : la part glisse par `deferPartOutcome`, jeton du report révoqué (test).
-
-**C10** : e2e par le vrai planificateur (`pnpm tsx src/db/scripts/run-scheduled-jobs.ts`) sur `localhost`
-et `127.0.0.1` ; part > 1, origine du lien, session ouverte, `first_signed_in_at`. Pas encore exécuté.
-
-**Correctif m5 de s42a** (`email-service.ts`, `invitedSince`) : `last_invited_at > deferred_email.created_at`
-→ `gone`, budget remboursé (`refundReportableSendTxnDao`), ligne supprimée ; le report seul ne déclenche
-pas le saut. Deux tests.
-
-**Autorisation et tenant** : `campaign.manage` par `canPerformAction` dans chaque service ;
-`canManageCurrentCampaignsDal` puis `BureauAccessDenied` dans la page ; `requireCurrentTenantDal` et
-`requireActionAuth` dans les actions ; DAO par `getDb()` sous `withTenant` ; `user` (sans RLS) lue
-seulement par jointure sur l'email ; aucun `withRlsBypass` dans le diff.
-
-**Migration `0081_reflective_sabra.sql`** : `ADD VALUE 'superseded'` et `ADD COLUMN letter_text`, rien
-d'autre ; journal idx 81, `prevId` = id de 0080, enum et colonne dans le snapshot. Aucune table nouvelle.
-
-**`docs/architecture.md`** (tableau réaligné par Prettier) : comparé en normalisant les espaces, seuls deux
-contenus changent, voulus (ligne `campaign_recipient` avec `settled`, `superseded`, `letter_text` ; phrase
-de l'ex-ligne 615 sur les liens rebasés sur l'association).
-
-**`docs/design-system.md`** : §5.6 (préfixe posé une fois), §6.1 aligné, gaps du design versés au §9.
-
-**Nature d'un tenant non seedé** : `facultative`, défaut du registre — même patron que `unpaid_reminder`,
-`reminder`, etc. ; seed du premier tenant sur TechCorp ; conforme à l'ADR 010 (m6 pour la production).
+- `git diff --stat 989cc075 e2f2d79b` : seulement `e2e/campaigns.spec.ts` (+2) et
+  `e2e/member-invitation-launch.spec.ts` (+9/−6) ; `git diff 622c2139 HEAD -- src messages drizzle
+  package.json` vide. Suite unitaire du tour 1 toujours valable, non relancée : `Test Files 462 passed
+  (462)`, `Tests 6333 passed | 4 skipped (6337)`.
+- Copie en disque local resynchronisée (`diff -rq` vide sur `src`, `e2e`, `messages`, `drizzle` ; `cmp`
+  identique sur `package.json`, `tsconfig.json`, `pnpm-lock.yaml`, `eslint.config.mjs`, `vitest.config.ts`).
+- `pnpm exec tsc --noEmit` : sortie 0.
+- `eslint` sur les deux specs et `e2e/support/{database,outbox,scheduler}.ts` : sortie 0 ; `prettier
+  --check` conforme.
+- Ni e2e ni build en local.
 
 ## Constats
 
 Aucun critical, aucun major.
 
+### Mineurs du tour 1, toujours ouverts (aucun correctif demandé)
+
 **m1 — Le lancement écarte aussi les adresses connectées avant sa création**
 
-- `src/services/rules/member-invitation-campaign-rules.ts:91-104` (`invitationSkipOf`), appelé par
-  `deliverInvitationToRecipient`.
-- `firstSignedInAt` non nul suffit à rendre `superseded`, quelle qu'en soit la date ; le plan (Q4) parle
-  d'une adresse « connectée depuis la création ». Une adresse connectée par une invitation s42a avant le
-  lancement est comptée dans « N adresses » (écran 1a, dialogue) mais ne reçoit rien (« Écartée à
-  l'envoi »). Défendable, mais non écrit pour le lancement.
-- Correctif : l'écrire dans l'ADR 072 §5 et dans la phrase du dialogue, ou comparer
-  `firstSignedInAt > campaignCreatedAt` si l'intention est « depuis la création ».
+- `src/services/rules/member-invitation-campaign-rules.ts:90-103` (`invitationSkipOf`) : `firstSignedInAt`
+  non nul suffit à `superseded`, quelle qu'en soit la date ; le plan (Q4) parle de « connectée depuis la
+  création ». L'adresse est comptée dans « N adresses » (écran 1a, dialogue) mais ne reçoit rien.
+- Correctif : écrire le choix dans l'ADR 072 §5 et la phrase du dialogue, ou comparer
+  `firstSignedInAt > campaignCreatedAt`.
 
 **m2 — L'ADR 072 §4 ne décrit pas l'issue « le générateur lève »**
 
-- `campaign-service.ts`, `catch` autour de `issueInvitationLink` : la part s'arrête avec une tentative
-  comptée ; l'ADR dit « seul un échec de composition ou de transport arrête la part ».
-- Correctif : compléter l'ADR (non encore fusionnée).
+- `campaign-service.ts`, `catch` autour de `issueInvitationLink` : la part s'arrête, une tentative comptée.
+- Correctif : compléter l'ADR.
 
 **m3 — Un jeton non envoyé peut survivre quand la révocation échoue**
 
-- `campaign-service.ts`, `revokeAndRelease`. Valide jusqu'à échéance si l'adresse n'est plus invitée ;
-  détenu par personne. Même parti que s42a (`revokeUnsentInvitationLink`).
-- Correctif : aucun ce cycle ; le noter dans l'ADR comme risque résiduel.
+- `campaign-service.ts`, `revokeAndRelease` ; détenu par personne, même parti que s42a.
+- Correctif : noter le risque résiduel dans l'ADR.
 
 **m4 — « valable N jours » du détail de campagne lit le réglage actuel**
 
-- `src/app/[locale]/(bureau)/bureau/campagnes/[id]/page.tsx`, `campaign-detail.tsx` (`invitationAdded`).
-- Si la durée change après l'envoi, l'archive affiche une durée qui n'était pas celle des liens partis.
+- `bureau/campagnes/[id]/page.tsx`, `campaign-detail.tsx` (`invitationAdded`).
 - Correctif : figer la durée sur la campagne, ou reformuler sans le nombre de jours.
 
 **m5 — Écrans et dérive de plan déclarés**
 
-- État 1c simplifié (« Lancement parti. » sans le détail jour par jour du design) ; ajouts hors plan
-  `getCampaignsByTemplateIdsDao` et statut `nobody` (nécessaires, testés) ; TDD pas toujours tenu (tâche 4,
-  composants de la tâche 9 jamais vus rouges) — écart de processus, les tests existent et passent.
-- Correctif : réaligner 1c sur le design ou noter la simplification dans le design de la story.
+- État 1c simplifié ; ajouts hors plan `getCampaignsByTemplateIdsDao`, statut `nobody` (nécessaires,
+  testés) ; TDD pas toujours tenu (tâche 4, composants de la tâche 9).
+- Correctif : réaligner 1c ou noter la simplification dans le design.
 
 **m6 — En production, les deux natures valent `facultative` tant qu'elles ne sont pas réglées**
 
-- `src/db/scripts/tenant-settings-seed.ts` (TechCorp seulement). Conforme au patron et à l'ADR 010, mais
-  tant que La Fourche n'a pas ses natures, la relance n'atteint pas les désinscrits et les fiches
-  entièrement désinscrites ne reçoivent ni email ni courrier au lancement.
-- Correctif : ajouter aux points de mise en production (régler les deux natures avant le lancement) et au
-  rappel de déploiement de la PR.
+- `tenant-settings-seed.ts` (TechCorp seulement), conforme à l'ADR 010.
+- Correctif : point de mise en production (régler les deux natures avant le lancement) et rappel dans la PR.
 
 **m7 — Preuve d'isolation e2e faible**
 
-- `e2e/member-invitation-launch.spec.ts:594-625` : la session du bureau de A, posée sur `localhost`, est
-  rejouée sur `127.0.0.1` ; le cookie n'est pas envoyé, le test prouve surtout le cloisonnement des cookies.
-  Le refus sur un `organizationId` étranger est couvert en unitaire.
-- Correctif : acceptable ; preuve plus forte avec un compte membre des deux associations, empêchée par m4
-  de s42a — au deuxième client.
+- `e2e/member-invitation-launch.spec.ts:594-625` : prouve surtout le cloisonnement des cookies ; refus sur
+  un `organizationId` étranger couvert en unitaire. Acceptable ; au deuxième client.
 
 **m8 — Nettoyage e2e incomplet**
 
-- `e2e/member-invitation-launch.spec.ts`, `cleanUp` : le lancement écrit `last_invited_at` pour les comptes
-  du seed de TechCorp et Marketing Pro ; seules les traces `%-RUN@example.test` sont supprimées. Aucune spec
-  actuelle n'en dépend. Helpers `e2e/support/` sans migration des specs existantes (acceptable).
-- Correctif : supprimer aussi les traces écrites par la campagne nettoyée, ou restaurer celles du seed.
+- `cleanUp` ne supprime que les traces `%-RUN@example.test` ; `last_invited_at` écrit sur les comptes du
+  seed reste. Aucune spec actuelle n'en dépend.
+
+### Nouveaux
+
+**m9 — `shared.role` mêle confirmation de partage et choix du rôle**
+
+- `e2e/member-invitation-launch.spec.ts:448`, `e2e/support/member-email-card.ts:41-57` : `{role:
+  'additional'}` alors que l'adresse devient titulaire ; aucune assertion ne lit le rôle obtenu (couvert en
+  unitaire).
+- Correctif : `shared?: {role?: …}`, ou vérifier « Titulaire » sur la ligne de l'adresse.
+
+**m10 — Fragilité de budget et de résidus en nouvelle tentative CI**
+
+- Lancement puis relance ≈ 2N emails reportables chez TechCorp pour une marge de 200 ; à une nouvelle
+  tentative, `RUN` est régénéré et `cleanUp` (filtré par `RUN`) laisse les fiches de la tentative
+  précédente, qui redeviennent destinataires. Si N approche 100, une part est reportée à chaque passage et
+  `deliverAll` échoue après 20 passages (l. 290). Non observé.
+- Correctif : nettoyer par motif (`s42b-%`), ou remettre `reportable_count` à 0 avant la relance.
+
+**m11 — JSDoc périmée**
+
+- `association-settings-types.ts:1310-1313` : « puis la relance automatique (s29) » ne cite pas les deux
+  types de s42b.
+
+**m12 — Correctif à pousser**
+
+- La PR 85 affiche encore `Tests e2e (build de production) fail` ; les 9 tests listés ci-dessus seront
+  exécutés pour la première fois au prochain job.
 
 Note hors constat : les comptes connectés avant s42a n'ont aucune trace ; ils seront comptés « jamais
-connectés » et relancés. Inscrit dans la DoD du plan (prévenir le bureau).
+connectés » et relancés (DoD du plan : prévenir le bureau).
 
 Max severity: minor
 Ship allowed: yes
