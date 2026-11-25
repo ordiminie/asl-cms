@@ -62,6 +62,11 @@ const NAV_GROUPS: {labelKey: string; items: NavItem[]}[] = [
         matchesSubroutes: true,
       },
       {
+        href: '/bureau/modeles-documents',
+        labelKey: 'documentTemplates',
+        matchesSubroutes: true,
+      },
+      {
         href: '/bureau/groupes',
         labelKey: 'recipientGroups',
         matchesSubroutes: true,

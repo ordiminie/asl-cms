@@ -122,6 +122,8 @@ type MemberProfileDetailProps = MemberNoteActions &
     /** Un document vient d'etre depose ou retire : le dire une fois (2e). */
     documentNotice?: MemberDocumentNotice
     removeDocumentAction: RemoveMemberDocumentAction
+    /** Le compte porte `document.template.manage` : « Generer un document » (s36). */
+    canGenerateDocument?: boolean
     /** « Facturation » : l'identifiant client Pennylane de la fiche (s20). */
     updatePennylaneIdAction: MemberBillingFormAction
     /** « Envoyer l'invitation » (s42a, ecran 2). */
@@ -180,6 +182,7 @@ export function MemberProfileDetail({
   documentsPromise,
   documentNotice,
   removeDocumentAction,
+  canGenerateDocument = false,
   updatePennylaneIdAction,
   inviteAction,
   invitationLinkDays,
@@ -344,6 +347,7 @@ export function MemberProfileDetail({
         documentsPromise={documentsPromise}
         notice={documentNotice}
         removeAction={removeDocumentAction}
+        canGenerateDocument={canGenerateDocument}
       />
 
       <MemberNotesCard

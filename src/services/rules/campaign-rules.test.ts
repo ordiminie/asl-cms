@@ -1023,3 +1023,25 @@ describe('computeCampaignTarget — nature de l’envoi (s27b, critère 3)', () 
     )
   })
 })
+
+describe('substituteVariables — variables en plus (s36, ADR 074 §2)', () => {
+  const values = {
+    nom: 'Bernard Lefèvre',
+    parcelle: '12 et 13',
+    date: '25/11/2026',
+  }
+
+  it('remplace aussi les variables passées en plus', () => {
+    expect(
+      substituteVariables('{nom} — {association}', values, (v) => v, {
+        association: 'Clos-Fleuri',
+      })
+    ).toBe('Bernard Lefèvre — Clos-Fleuri')
+  })
+
+  it('sans variables en plus, {association} reste telle quelle', () => {
+    expect(substituteVariables('{association}', values, (v) => v)).toBe(
+      '{association}'
+    )
+  })
+})

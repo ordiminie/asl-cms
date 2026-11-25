@@ -274,7 +274,7 @@ export const getCampaignLetterContextService = async (
   }
 }
 
-type LetterAssociation = {
+export type LetterAssociation = {
   name: string
   /** Le domaine public de l'association, lu a la generation (s42b). */
   domain: string | null
@@ -290,7 +290,12 @@ const textSettingOf = (
   return typeof value === 'string' && value.trim() !== '' ? value.trim() : null
 }
 
-const readLetterAssociation = async (
+/**
+ * Le nom affiche de l'association, ses mentions legales et ses reglages, tels
+ * que les imprime une lettre. Lue aussi par les documents generes depuis un
+ * modele (s36, ADR 074) ; l'appelant a deja verifie son action.
+ */
+export const readLetterAssociation = async (
   organizationId: string
 ): Promise<LetterAssociation> => {
   const [settings, organization] = await Promise.all([

@@ -4,6 +4,7 @@ import {getTranslations, setRequestLocale} from 'next-intl/server'
 import {Suspense} from 'react'
 
 import {getAssociationSettingsDal} from '@/app/dal/association-settings-dal'
+import {canManageCurrentDocumentTemplatesDal} from '@/app/dal/document-template-dal'
 import {getMemberDocumentsOfProfileForBureauDal} from '@/app/dal/member-document-dal'
 import {getMemberInvoicesForBureauDal} from '@/app/dal/member-invoice-dal'
 import {getMemberNotesForBureauDal} from '@/app/dal/member-note-dal'
@@ -157,9 +158,10 @@ async function MemberProfileSection({
     tenant.id,
     memberProfileId
   )
-  const [parcels, settings] = await Promise.all([
+  const [parcels, settings, canGenerateDocument] = await Promise.all([
     getMemberParcelsForBureauDal(tenant.id, memberProfileId),
     getAssociationSettingsDal(tenant.id),
+    canManageCurrentDocumentTemplatesDal(),
   ])
 
   // Lue apres la session, donc au rendu de la requete : la date proposee au
@@ -185,6 +187,7 @@ async function MemberProfileSection({
       documentsPromise={documentsPromise}
       documentNotice={documentNotice}
       removeDocumentAction={removeMemberDocumentAction}
+      canGenerateDocument={canGenerateDocument}
       updatePennylaneIdAction={updateMemberProfilePennylaneIdAction}
       addNoteAction={addMemberNoteAction}
       addExchangeAction={addMemberExchangeAction}

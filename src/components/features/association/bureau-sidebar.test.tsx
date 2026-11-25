@@ -182,6 +182,7 @@ describe('BureauSidebar — « Propriétaires » (s12)', () => {
       'Questions des membres',
       'Documents',
       'Documents nominatifs',
+      'Modèles de documents',
       'Groupes',
       'Campagnes',
       'Relances',
@@ -425,5 +426,36 @@ describe('BureauSidebar — « Documents nominatifs » (s32)', () => {
     expect(screen.getByRole('link', {name: 'Documents'})).not.toHaveAttribute(
       'aria-current'
     )
+  })
+})
+
+describe('BureauSidebar — « Modèles de documents » (s36)', () => {
+  it('suit « Documents nominatifs » dans le groupe « L’association », sans icône', () => {
+    renderSidebarAt('/bureau/modeles-documents')
+
+    const entry = screen.getByRole('link', {name: 'Modèles de documents'})
+    expect(entry).toHaveAttribute('href', '/bureau/modeles-documents')
+    expect(entry).toHaveAttribute('aria-current', 'page')
+    expect(entry.querySelector('svg')).toBeNull()
+
+    const group = entry.closest('[data-sidebar="group"]')
+    const labels = Array.from(group?.querySelectorAll('a') ?? []).map(
+      (anchor) => anchor.textContent
+    )
+    expect(labels.indexOf('Modèles de documents')).toBe(
+      labels.indexOf('Documents nominatifs') + 1
+    )
+  })
+
+  it.each([
+    '/bureau/modeles-documents/nouveau',
+    '/bureau/modeles-documents/lot',
+    '/bureau/modeles-documents/3c1e',
+  ])('reste actif sur %s', (pathname) => {
+    renderSidebarAt(pathname)
+
+    expect(
+      screen.getByRole('link', {name: 'Modèles de documents'})
+    ).toHaveAttribute('aria-current', 'page')
   })
 })

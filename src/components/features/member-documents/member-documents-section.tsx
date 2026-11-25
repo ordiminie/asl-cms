@@ -1,10 +1,11 @@
 'use client'
 
-import {CircleCheck, Upload} from 'lucide-react'
+import {CircleCheck, FileText, Upload} from 'lucide-react'
 import Link from 'next/link'
 import {useTranslations} from 'next-intl'
 import {Suspense, use} from 'react'
 
+import {generateDocumentPathOf} from '@/components/features/document-templates/document-template-paths'
 import {DetailCard} from '@/components/features/member-profile/member-profile-detail-card'
 import {Alert, AlertDescription} from '@/components/ui/alert'
 import {Button} from '@/components/ui/button'
@@ -43,6 +44,8 @@ type MemberDocumentsCardProps = {
   /** L'alerte d'arrivee, lue dans l'URL (2e). */
   notice?: MemberDocumentNotice
   removeAction: RemoveMemberDocumentAction
+  /** Le compte porte `document.template.manage` (s36, 3a). */
+  canGenerateDocument?: boolean
 }
 
 /**
@@ -89,6 +92,7 @@ export function MemberDocumentsCard({
   documents,
   notice,
   removeAction,
+  canGenerateDocument = false,
 }: MemberDocumentsCardProps) {
   const t = useTranslations('BureauMemberDocuments')
 
@@ -96,16 +100,30 @@ export function MemberDocumentsCard({
     <DetailCard
       title={t('section.title')}
       action={
-        <Button
-          asChild
-          variant="outline"
-          className="h-14 w-full sm:h-11 sm:w-auto"
-        >
-          <Link href={newMemberDocumentPathOf(memberProfileId)}>
-            <Upload aria-hidden="true" />
-            {t('section.deposit')}
-          </Link>
-        </Button>
+        <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+          {canGenerateDocument && (
+            <Button
+              asChild
+              variant="outline"
+              className="h-14 w-full sm:h-11 sm:w-auto"
+            >
+              <Link href={generateDocumentPathOf(memberProfileId)}>
+                <FileText aria-hidden="true" />
+                {t('section.generate')}
+              </Link>
+            </Button>
+          )}
+          <Button
+            asChild
+            variant="outline"
+            className="h-14 w-full sm:h-11 sm:w-auto"
+          >
+            <Link href={newMemberDocumentPathOf(memberProfileId)}>
+              <Upload aria-hidden="true" />
+              {t('section.deposit')}
+            </Link>
+          </Button>
+        </div>
       }
     >
       {notice && <NoticeAlert notice={notice} documents={documents} />}

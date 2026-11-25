@@ -53,6 +53,12 @@ export type RenderLettersInput = {
   bodyBlocks?: LetterBlock[]
   /** Jour d'envoi de la campagne (`YYYY-MM-DD`), valeur de `{date}`. */
   sendDate: string
+  /**
+   * Des variables en plus de celles des campagnes, remplacees dans l'objet et
+   * le corps : `{association}` des documents (s36, ADR 074 §2). Aucune par
+   * defaut.
+   */
+  extraValues?: Readonly<Record<string, string>>
   letters: readonly CampaignLetter[]
   offset: AddressOffsetMm
   texts: {
@@ -541,7 +547,8 @@ const drawLetter = (
   drawHeader(doc, input.association.name)
   drawAddressBlock(doc, letter.address.lines, input.offset)
   drawDateLine(doc, input.texts.dateLine)
-  const subject = substituteVariables(input.subject, values, (v) => v)
+  const extra = input.extraValues ?? {}
+  const subject = substituteVariables(input.subject, values, (v) => v, extra)
   const subjectBottom = drawSubject(
     doc,
     `${input.texts.subjectLabel} ${subject}`
@@ -549,7 +556,11 @@ const drawLetter = (
   drawBody(
     doc,
     input.bodyBlocks ??
-      letterBodyBlocksOf(letter.bodyMarkdown ?? input.bodyMarkdown, values),
+      letterBodyBlocksOf(
+        letter.bodyMarkdown ?? input.bodyMarkdown,
+        values,
+        extra
+      ),
     subjectBottom
   )
   drawContinuationPages(doc, input, letter.name, firstPage)

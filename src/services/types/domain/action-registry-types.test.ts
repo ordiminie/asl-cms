@@ -255,3 +255,28 @@ describe('ACTION_REGISTRY — documents nominatifs (s32, ADR 073)', () => {
     expect(Object.values(ActionIdConst)).not.toContain('member.document.read')
   })
 })
+
+describe('ACTION_REGISTRY — modèles de documents (s36, ADR 074)', () => {
+  it('document.template.manage autorise la Présidente et le bureau, refuse un membre simple', () => {
+    expect(ActionIdConst.DOCUMENT_TEMPLATE_MANAGE).toBe(
+      'document.template.manage'
+    )
+    for (const role of ['owner', 'board'] as const) {
+      expect(
+        isActionAllowedForRole(
+          ACTION_REGISTRY,
+          ActionIdConst.DOCUMENT_TEMPLATE_MANAGE,
+          role
+        ),
+        role
+      ).toBe(true)
+    }
+    expect(
+      isActionAllowedForRole(
+        ACTION_REGISTRY,
+        ActionIdConst.DOCUMENT_TEMPLATE_MANAGE,
+        'member'
+      )
+    ).toBe(false)
+  })
+})

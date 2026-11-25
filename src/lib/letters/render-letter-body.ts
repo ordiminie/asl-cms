@@ -33,6 +33,9 @@ type MarkdownNode = {
 
 type RunStyle = {bold: boolean; italic: boolean}
 
+/** Remplace les variables d'un noeud texte, valeurs brutes. */
+type Substitute = (text: string) => string
+
 const PLAIN: RunStyle = {bold: false, italic: false}
 
 const ALLOWED_TAGS = new Set<string>(RESTRICTED_SANITIZE_SCHEMA.tagNames)
@@ -66,7 +69,7 @@ const textOfRuns = (runs: readonly LetterRun[]): string =>
 const runsOf = (
   nodes: readonly MarkdownNode[],
   style: RunStyle,
-  values: CampaignVariableValues
+  substitute: Substitute
 ): LetterRun[] =>
   nodes.flatMap((node): LetterRun[] => {
     switch (node.type) {
@@ -74,42 +77,40 @@ const runsOf = (
       case 'inlineCode':
         return [
           {
-            text: substituteVariables(node.value ?? '', values, (v) => v),
+            text: substitute(node.value ?? ''),
             ...style,
           },
         ]
       case 'break':
         return [{text: '\n', ...style}]
       case 'strong':
-        return runsOf(node.children ?? [], {...style, bold: true}, values)
+        return runsOf(node.children ?? [], {...style, bold: true}, substitute)
       case 'emphasis':
-        return runsOf(node.children ?? [], {...style, italic: true}, values)
+        return runsOf(node.children ?? [], {...style, italic: true}, substitute)
       case 'link':
-        return linkRunsOf(node, style, values)
+        return linkRunsOf(node, style, substitute)
       case 'html':
       case 'image':
       case 'imageReference':
         return []
       default:
-        return runsOf(node.children ?? [], style, values)
+        return runsOf(node.children ?? [], style, substitute)
     }
   })
 
 const linkRunsOf = (
   node: MarkdownNode,
   style: RunStyle,
-  values: CampaignVariableValues
+  substitute: Substitute
 ): LetterRun[] => {
-  const runs = runsOf(node.children ?? [], style, values)
+  const runs = runsOf(node.children ?? [], style, substitute)
   const url = ALLOWED_TAGS.has('a') ? printableUrlOf(node.url) : null
   if (!url || textOfRuns(runs) === url) return runs
   return [...runs, {text: ` (${url})`, ...style}]
 }
 
-const paragraphOf = (
-  node: MarkdownNode,
-  values: CampaignVariableValues
-): LetterRun[] => mergeRuns(runsOf(node.children ?? [], PLAIN, values))
+const paragraphOf = (node: MarkdownNode, substitute: Substitute): LetterRun[] =>
+  mergeRuns(runsOf(node.children ?? [], PLAIN, substitute))
 
 const headingLevelOf = (depth: number | undefined): 2 | 3 | null =>
   (depth === 2 || depth === 3) && ALLOWED_TAGS.has(`h${depth}`) ? depth : null
@@ -117,17 +118,17 @@ const headingLevelOf = (depth: number | undefined): 2 | 3 | null =>
 /** Les lignes d'un element de liste ; une liste imbriquee suit a plat. */
 const listItemsOf = (
   item: MarkdownNode,
-  values: CampaignVariableValues
+  substitute: Substitute
 ): LetterRun[][] => {
   const own: LetterRun[] = []
   const nested: LetterRun[][] = []
   for (const child of item.children ?? []) {
     if (child.type === 'list') {
       for (const sub of child.children ?? []) {
-        nested.push(...listItemsOf(sub, values))
+        nested.push(...listItemsOf(sub, substitute))
       }
     } else {
-      const runs = paragraphOf(child, values)
+      const runs = paragraphOf(child, substitute)
       if (own.length > 0 && runs.length > 0) own.push({text: ' ', ...PLAIN})
       own.push(...runs)
     }
@@ -136,13 +137,10 @@ const listItemsOf = (
   return [...(merged.length > 0 ? [merged] : []), ...nested]
 }
 
-const blockOf = (
-  node: MarkdownNode,
-  values: CampaignVariableValues
-): LetterBlock[] => {
+const blockOf = (node: MarkdownNode, substitute: Substitute): LetterBlock[] => {
   switch (node.type) {
     case 'heading': {
-      const runs = paragraphOf(node, values)
+      const runs = paragraphOf(node, substitute)
       const level = headingLevelOf(node.depth)
       if (runs.length === 0) return []
       return level
@@ -151,7 +149,7 @@ const blockOf = (
     }
     case 'list': {
       const items = (node.children ?? []).flatMap((item) =>
-        listItemsOf(item, values)
+        listItemsOf(item, substitute)
       )
       return items.length > 0
         ? [{kind: 'list', ordered: node.ordered === true, items}]
@@ -159,7 +157,7 @@ const blockOf = (
     }
     case 'blockquote': {
       const paragraphs = (node.children ?? [])
-        .flatMap((child) => blockOf(child, values))
+        .flatMap((child) => blockOf(child, substitute))
         .map((block) => runsOfBlock(block))
         .filter((runs) => runs.length > 0)
       return paragraphs.length > 0 ? [{kind: 'quote', paragraphs}] : []
@@ -167,7 +165,7 @@ const blockOf = (
     case 'code': {
       const runs = mergeRuns([
         {
-          text: substituteVariables(node.value ?? '', values, (v) => v),
+          text: substitute(node.value ?? ''),
           ...PLAIN,
         },
       ])
@@ -178,7 +176,7 @@ const blockOf = (
     case 'definition':
       return []
     default: {
-      const runs = paragraphOf(node, values)
+      const runs = paragraphOf(node, substitute)
       return runs.length > 0 && textOfRuns(runs).trim() !== ''
         ? [{kind: 'paragraph', runs}]
         : []
@@ -202,13 +200,19 @@ const runsOfBlock = (block: LetterBlock): LetterRun[] => {
   }
 }
 
-/** Le corps d'une lettre, en blocs, variables du destinataire remplacees. */
+/**
+ * Le corps d'une lettre, en blocs, variables du destinataire remplacees ;
+ * `extra` en remplace d'autres (s36, ADR 074 §2), vide par defaut.
+ */
 export const letterBodyBlocksOf = (
   markdown: string,
-  values: CampaignVariableValues
+  values: CampaignVariableValues,
+  extra: Readonly<Record<string, string>> = {}
 ): LetterBlock[] => {
+  const substitute: Substitute = (text) =>
+    substituteVariables(text, values, (v) => v, extra)
   const root = remark().parse(markdown) as unknown as MarkdownNode
-  return (root.children ?? []).flatMap((node) => blockOf(node, values))
+  return (root.children ?? []).flatMap((node) => blockOf(node, substitute))
 }
 
 /** Le texte d'un bloc, lignes separees par un retour : pour mesurer et tester. */
