@@ -344,10 +344,9 @@ const neverSignedInText = async (page: Page, base: string) => {
       .getByRole('heading', {level: 2, name: 'Adresses jamais connectées'})
       .locator('xpath=ancestor::*[@data-slot="card"][1]')
     text += (await card.textContent()) ?? ''
-    const position = await card
-      .getByRole('navigation')
-      .textContent()
-      .catch(() => null)
+    const pagination = card.getByRole('navigation')
+    const position =
+      (await pagination.count()) > 0 ? await pagination.textContent() : null
     const total = Number(position?.match(/Page \d+ sur (\d+)/)?.[1] ?? 1)
     if (number >= total) break
   }
@@ -360,7 +359,9 @@ const pdfTextOf = async (pdf: Buffer): Promise<string> => {
   for (let number = 1; number <= document.numPages; number += 1) {
     const content = await (await document.getPage(number)).getTextContent()
     text += content.items
-      .map((item) => ('str' in item ? item.str : ''))
+      .flatMap((item) =>
+        'str' in item && item.str.trim() !== '' ? [item.str] : []
+      )
       .join(' ')
   }
   return text
@@ -442,7 +443,9 @@ test.describe('Lancement des invitations — s42b', () => {
         await createProfile(bureau, base, {
           name: nameOf(`Zz Voisin bis ${key}`),
         })
-        await addProfileEmail(bureau, emails.shared, {role: 'holder'})
+        // Fiche sans adresse : la fenêtre ne propose aucun rôle, l'adresse
+        // partagée y devient titulaire d'office (règle de la première adresse).
+        await addProfileEmail(bureau, emails.shared, {role: 'additional'})
         await createProfile(bureau, base, {name: nameOf(`Zz Courrier ${key}`)})
 
         await bureau.goto(`${base}${PAGE_ROUTE}`, {waitUntil: 'networkidle'})
