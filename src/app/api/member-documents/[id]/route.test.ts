@@ -1,12 +1,16 @@
-import {beforeEach, describe, expect, it, vi} from 'vitest'
+import {beforeAll, beforeEach, describe, expect, it, vi} from 'vitest'
 
 vi.mock('server-only', () => ({}))
 vi.mock('@/app/dal/tenant-dal', () => ({getCurrentTenantDal: vi.fn()}))
 vi.mock('@/services/facades/member-document-service-facade', () => ({
   readMemberDocumentFileService: vi.fn(),
 }))
+vi.mock('@/services/authentication/auth-service', () => ({
+  getAuthUser: vi.fn(),
+}))
 
 import {getCurrentTenantDal} from '@/app/dal/tenant-dal'
+import {getAuthUser} from '@/services/authentication/auth-service'
 import {AuthorizationError} from '@/services/errors/authorization-error'
 import {NotFoundError} from '@/services/errors/not-found-error'
 import {UnauthenticatedError} from '@/services/errors/unauthenticated-error'
@@ -41,6 +45,15 @@ const expectNoDetail = async (response: Response) => {
   expect(response.headers.get('Cache-Control')).toBe('no-store')
   expect(await response.text()).toBe('')
 }
+
+type Facade = typeof import('@/services/facades/member-document-service-facade')
+let realFacade: Facade
+
+beforeAll(async () => {
+  realFacade = await vi.importActual<Facade>(
+    '@/services/facades/member-document-service-facade'
+  )
+}, 60_000)
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -105,6 +118,25 @@ describe('GET /api/member-documents/[id] — document nominatif (s32, ADR 073 §
     expect(response.status).toBe(status)
     await expectNoDetail(response)
   })
+
+  it.each([
+    ['non uuid', 'abc'],
+    ['traversée', '..%2F..%2Fetc'],
+    ['valide', DOCUMENT_ID],
+  ])(
+    'sans session, identifiant %s : 401, quel que soit l identifiant (ADR 073 §5)',
+    async (_, id) => {
+      vi.mocked(readMemberDocumentFileService).mockImplementation(
+        realFacade.readMemberDocumentFileService
+      )
+      vi.mocked(getAuthUser).mockResolvedValue(undefined)
+
+      const response = await call(id)
+
+      expect(response.status).toBe(401)
+      await expectNoDetail(response)
+    }
+  )
 
   it('laisse remonter une erreur inattendue', async () => {
     vi.mocked(readMemberDocumentFileService).mockRejectedValue(

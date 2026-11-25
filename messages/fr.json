@@ -5563,6 +5563,7 @@
       "reasons": {
         "no_reference_in_name": "Le nom ne commence pas par un identifiant client Pennylane.",
         "unknown_reference": "Aucune fiche ne porte l’identifiant {reference}.",
+        "ambiguous_reference": "Plusieurs fiches portent l’identifiant {reference} : le fichier n’a été rattaché à aucune.",
         "invalid_file": "Ce fichier n’est pas un PDF.",
         "too_large": "Ce fichier pèse {weight} : le plafond est de {maxSize} Mo.",
         "invalid_input": "Le titre, la catégorie ou la date n’a pas été accepté.",

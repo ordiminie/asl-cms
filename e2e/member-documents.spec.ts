@@ -175,8 +175,10 @@ const invoiceCategoryOf = (profileId: string) =>
   })
 
 /**
- * Un document posé directement en base, pour les cas où seule la lecture
- * compte (liste, refus) : sa clé suit la forme du serveur, sans fichier.
+ * Un document posé directement en base, **sans fichier**, pour le seul cas où
+ * rien ne doit être servi (refus) : sa clé suit la forme du serveur. Un
+ * document qu'un membre doit pouvoir télécharger passe par le dépôt du bureau
+ * (`depositThroughBoard`).
  */
 const insertDocument = async (input: {
   profileId: string
@@ -213,8 +215,10 @@ const documentRowsTitled = (title: string) =>
       id: string
       member_profile_id: string
       file_key: string
+      document_date: string
     }>(
-      `select id, member_profile_id, file_key from member_document where title = $1`,
+      `select id, member_profile_id, file_key, document_date::text as document_date
+         from member_document where title = $1`,
       [title]
     )
     return result.rows
@@ -277,6 +281,54 @@ const newMemberSession = async (
 
 const myDocuments = (page: Page) => page.getByRole('region', {name: CARD_NAME})
 
+/**
+ * Un document déposé par le bureau depuis la fiche, **avec son fichier** :
+ * le chemin réel du serveur, qui écrit le PDF dans le dossier de la fiche.
+ * `documentDate` au format affiché `jj/mm/aaaa` ; défaut : le jour du dépôt.
+ */
+const depositThroughBoard = async (
+  board: Page,
+  input: {profileId: string; title: string; pdf: Buffer; documentDate?: string}
+) => {
+  await board.goto(
+    `${TENANT_A}/bureau/proprietaires/${input.profileId}/documents/nouveau`,
+    {waitUntil: 'load'}
+  )
+  await expect(
+    board.getByRole('heading', {level: 1, name: 'Déposer un document'})
+  ).toBeVisible({timeout: 20_000})
+  await board.getByRole('textbox', {name: 'Titre'}).fill(input.title)
+  await board.getByRole('combobox', {name: 'Catégorie'}).click()
+  await board.getByRole('option', {name: 'Facture'}).click()
+  if (input.documentDate) {
+    const date = board.getByLabel('Date du document', {exact: true})
+    await date.fill(input.documentDate)
+    await expect(date).toHaveValue(input.documentDate)
+  }
+  await board.getByLabel('Fichier', {exact: true}).setInputFiles({
+    name: 'facture.pdf',
+    mimeType: 'application/pdf',
+    buffer: input.pdf,
+  })
+  await board.getByRole('button', {name: 'Déposer le document'}).click()
+  await board.waitForURL(/\?documents=depose/, {timeout: 60_000})
+  const section = board.getByRole('region', {name: 'Documents'})
+  await expect(
+    section.getByRole('status').filter({hasText: `« ${input.title} »`})
+  ).toBeVisible({timeout: 20_000})
+}
+
+/** Le document est servi en PDF, et ses octets sont exactement `expected`. */
+const expectServedBytes = async (page: Page, url: string, expected: Buffer) => {
+  const served = await page.request.get(url)
+  expect(served.status(), url).toBe(200)
+  expect(served.headers()['content-type']).toContain('application/pdf')
+  expect(
+    Buffer.from(await served.body()).equals(expected),
+    `les octets servis par ${url} sont ceux du PDF déposé`
+  ).toBe(true)
+}
+
 /** L'identifiant lu dans l'adresse du lien : `/api/member-documents/{id}`. */
 const documentIdIn = async (page: Page, title: string): Promise<string> => {
   const href = await page
@@ -319,27 +371,11 @@ test.describe('Documents nominatifs — dépôt, lecture, cloisonnement (s32)', 
   }) => {
     const board = await newBoardSession(browser, TENANT_A, OWNER_A)
     try {
-      await board.goto(
-        `${TENANT_A}/bureau/proprietaires/${LEFEVRE.profileIds[0]}/documents/nouveau`,
-        {waitUntil: 'load'}
-      )
-      await expect(
-        board.getByRole('heading', {level: 1, name: 'Déposer un document'})
-      ).toBeVisible({timeout: 20_000})
-      await board.getByRole('textbox', {name: 'Titre'}).fill(title)
-      await board.getByRole('combobox', {name: 'Catégorie'}).click()
-      await board.getByRole('option', {name: 'Facture'}).click()
-      await board.getByLabel('Fichier', {exact: true}).setInputFiles({
-        name: 'facture.pdf',
-        mimeType: 'application/pdf',
-        buffer: pdf,
+      await depositThroughBoard(board, {
+        profileId: LEFEVRE.profileIds[0],
+        title,
+        pdf,
       })
-      await board.getByRole('button', {name: 'Déposer le document'}).click()
-      await board.waitForURL(/\?documents=depose/, {timeout: 60_000})
-      const section = board.getByRole('region', {name: 'Documents'})
-      await expect(
-        section.getByRole('status').filter({hasText: `« ${title} »`})
-      ).toBeVisible({timeout: 20_000})
     } finally {
       await board.context().close()
     }
@@ -441,16 +477,27 @@ test.describe('Documents nominatifs — dépôt, lecture, cloisonnement (s32)', 
     const titles = [1, 2].map(
       (rank) => `${TITLE_PREFIX} Convocation ${rank} ${RUN}`
     )
-    await insertDocument({
-      profileId: LEFEVRE.profileIds[1],
-      title: titles[0],
-      documentDate: '2026-02-01',
-    })
-    await insertDocument({
-      profileId: LEFEVRE.profileIds[2],
-      title: titles[1],
-      documentDate: '2026-01-15',
-    })
+    const pdfs = [
+      pdfFixture(`${titles[0]} fiche 2`),
+      pdfFixture(`${titles[1]} fiche 3, terrain 63`),
+    ]
+    const board = await newBoardSession(browser, TENANT_A, OWNER_A)
+    try {
+      await depositThroughBoard(board, {
+        profileId: LEFEVRE.profileIds[1],
+        title: titles[0],
+        pdf: pdfs[0],
+        documentDate: '01/02/2026',
+      })
+      await depositThroughBoard(board, {
+        profileId: LEFEVRE.profileIds[2],
+        title: titles[1],
+        pdf: pdfs[1],
+        documentDate: '15/01/2026',
+      })
+    } finally {
+      await board.context().close()
+    }
 
     const member = await newMemberSession(browser, TENANT_A, LEFEVRE.email)
     try {
@@ -469,6 +516,21 @@ test.describe('Documents nominatifs — dépôt, lecture, cloisonnement (s32)', 
       await expect(
         card.getByRole('listitem').filter({hasText: titles[1]})
       ).toContainText('Au nom de SCI Les Chênes')
+
+      for (const [index, profileId] of [
+        [0, LEFEVRE.profileIds[1]],
+        [1, LEFEVRE.profileIds[2]],
+      ] as const) {
+        const [row] = await documentRowsTitled(titles[index])
+        expect(row.member_profile_id).toBe(profileId)
+        const id = await documentIdIn(member, titles[index])
+        expect(id).toBe(row.id)
+        await expectServedBytes(
+          member,
+          `${TENANT_A}/api/member-documents/${id}`,
+          pdfs[index]
+        )
+      }
     } finally {
       await member.context().close()
     }
@@ -478,11 +540,22 @@ test.describe('Documents nominatifs — dépôt, lecture, cloisonnement (s32)', 
     browser,
   }) => {
     const saleTitle = `${TITLE_PREFIX} Facture 2019 ${RUN}`
-    const saleDocumentId = await insertDocument({
-      profileId: MOREAU.profileId,
-      title: saleTitle,
-      documentDate: '2019-06-01',
-    })
+    const salePdf = pdfFixture(`${saleTitle} Moreau, parcelle 9 avant la vente`)
+    const board = await newBoardSession(browser, TENANT_A, OWNER_A)
+    try {
+      await depositThroughBoard(board, {
+        profileId: MOREAU.profileId,
+        title: saleTitle,
+        pdf: salePdf,
+        documentDate: '01/06/2019',
+      })
+    } finally {
+      await board.context().close()
+    }
+    const [saleRow] = await documentRowsTitled(saleTitle)
+    expect(saleRow.member_profile_id).toBe(MOREAU.profileId)
+    expect(saleRow.document_date).toBe('2019-06-01')
+    const saleDocumentId = saleRow.id
 
     const seller = await newMemberSession(browser, TENANT_A, MOREAU.email)
     try {
@@ -491,6 +564,12 @@ test.describe('Documents nominatifs — dépôt, lecture, cloisonnement (s32)', 
         .filter({hasText: saleTitle})
       await expect(line).toBeVisible({timeout: 20_000})
       await expect(line).toContainText(/Terrain : Parcelles? (.* )?9\b/)
+      expect(await documentIdIn(seller, saleTitle)).toBe(saleDocumentId)
+      await expectServedBytes(
+        seller,
+        `${TENANT_A}/api/member-documents/${saleDocumentId}`,
+        salePdf
+      )
     } finally {
       await seller.context().close()
     }
@@ -591,6 +670,24 @@ test.describe('Documents nominatifs — dépôt, lecture, cloisonnement (s32)', 
       return result.rows
     })
 
+    /** Un fichier par fiche, octets et tailles distincts : un croisement se verrait. */
+    const expected = [
+      {
+        fileName: `${references[0]}_facture.pdf`,
+        profileId: BATCH_PROFILE_IDS[0],
+        pdf: pdfFixture(`lot fiche ${BATCH_PROFILE_IDS[0]}`),
+      },
+      {
+        fileName: `${references[1].toUpperCase()}_facture.pdf`,
+        profileId: BATCH_PROFILE_IDS[1],
+        pdf: pdfFixture(
+          `lot fiche ${BATCH_PROFILE_IDS[1]}, fichier plus long que le premier`
+        ),
+      },
+    ]
+    expect(expected[0].pdf.length).not.toBe(expected[1].pdf.length)
+    const unknownFileName = `${randomUUID()}_facture.pdf`
+
     try {
       const board = await newBoardSession(browser, TENANT_A, OWNER_A)
       try {
@@ -607,19 +704,19 @@ test.describe('Documents nominatifs — dépôt, lecture, cloisonnement (s32)', 
         await board.getByRole('option', {name: 'Facture'}).click()
         await board.getByLabel('Fichiers', {exact: true}).setInputFiles([
           {
-            name: `${references[0]}_facture.pdf`,
+            name: expected[0].fileName,
             mimeType: 'application/pdf',
-            buffer: pdfFixture('lot 1'),
+            buffer: expected[0].pdf,
           },
           {
-            name: `${randomUUID()}_facture.pdf`,
+            name: unknownFileName,
             mimeType: 'application/pdf',
             buffer: pdfFixture('lot inconnu'),
           },
           {
-            name: `${references[1].toUpperCase()}_facture.pdf`,
+            name: expected[1].fileName,
             mimeType: 'application/pdf',
-            buffer: pdfFixture('lot 2'),
+            buffer: expected[1].pdf,
           },
         ])
         await board
@@ -633,18 +730,41 @@ test.describe('Documents nominatifs — dépôt, lecture, cloisonnement (s32)', 
           name: 'Rapport du lot, fichiers écartés en tête',
         })
         await expect(report.locator('tbody tr').first()).toContainText('Écarté')
+        await expect(
+          report.locator('tbody tr').filter({hasText: unknownFileName})
+        ).toContainText('Écarté')
+        for (const line of expected) {
+          const reportRow = report
+            .locator('tbody tr')
+            .filter({hasText: line.fileName})
+          await expect(reportRow).toContainText('Déposé')
+          await expect(reportRow.getByRole('link')).toHaveAttribute(
+            'href',
+            `/bureau/proprietaires/${line.profileId}`
+          )
+        }
+
+        const rows = await documentRowsTitled(batchTitle)
+        expect(rows).toHaveLength(2)
+        for (const line of expected) {
+          const onProfile = rows.filter(
+            (row) => row.member_profile_id === line.profileId
+          )
+          expect(
+            onProfile,
+            `un seul document sur la fiche ${line.profileId}`
+          ).toHaveLength(1)
+          expect(onProfile[0].file_key).toContain(
+            `/member-documents/${line.profileId}/`
+          )
+          await expectServedBytes(
+            board,
+            `${TENANT_A}/api/member-documents/${onProfile[0].id}`,
+            line.pdf
+          )
+        }
       } finally {
         await board.context().close()
-      }
-
-      const rows = await documentRowsTitled(batchTitle)
-      expect(rows.map((row) => row.member_profile_id).sort()).toEqual(
-        [...BATCH_PROFILE_IDS].sort()
-      )
-      for (const row of rows) {
-        expect(row.file_key).toContain(
-          `/member-documents/${row.member_profile_id}/`
-        )
       }
     } finally {
       await asMaintenance(async (client) => {

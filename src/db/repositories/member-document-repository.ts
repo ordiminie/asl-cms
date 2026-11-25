@@ -193,15 +193,16 @@ export const deleteMemberDocumentDao = async (
 }
 
 /**
- * La fiche de l'association dont l'identifiant client Pennylane est
- * **exactement** cette reference, sans casse (ADR 073 §8). Rien sans
- * correspondance, et rien si deux fiches se la disputaient : un lot ne
- * rattache jamais un document a une fiche par defaut.
+ * Les fiches de l'association dont l'identifiant client Pennylane est
+ * **exactement** cette reference, sans casse (ADR 073 §8) : aucune sans
+ * correspondance, **deux au plus** quand plusieurs se la disputent. Le service
+ * n'en retient une que si elle est seule : un lot ne rattache jamais un
+ * document a une fiche par defaut.
  */
-export const getMemberProfileIdByPennylaneReferenceDao = async (
+export const getMemberProfileIdsByPennylaneReferenceDao = async (
   organizationId: string,
   reference: string
-): Promise<string | undefined> => {
+): Promise<string[]> => {
   const rows = await getDb()
     .select({id: memberProfile.id})
     .from(memberProfile)
@@ -212,7 +213,7 @@ export const getMemberProfileIdByPennylaneReferenceDao = async (
       )
     )
     .limit(2)
-  return rows.length === 1 ? rows[0].id : undefined
+  return rows.map(({id}) => id)
 }
 
 /** Combien de fiches de l'association un lot ne peut atteindre. */

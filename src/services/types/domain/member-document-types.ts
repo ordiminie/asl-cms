@@ -108,6 +108,7 @@ export type MemberDocumentRemoveResult = {
 export const MemberDocumentBatchRejectionConst = {
   NO_REFERENCE_IN_NAME: 'no_reference_in_name',
   UNKNOWN_REFERENCE: 'unknown_reference',
+  AMBIGUOUS_REFERENCE: 'ambiguous_reference',
   INVALID_FILE: 'invalid_file',
   TOO_LARGE: 'too_large',
   INVALID_INPUT: 'invalid_input',

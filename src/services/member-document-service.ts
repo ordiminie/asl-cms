@@ -8,7 +8,7 @@ import {
   createMemberDocumentDao,
   deleteMemberDocumentDao,
   getMemberDocumentByIdDao,
-  getMemberProfileIdByPennylaneReferenceDao,
+  getMemberProfileIdsByPennylaneReferenceDao,
   listMemberDocumentsByProfileDao,
   listMemberDocumentsByProfilesDao,
   listMemberDocumentsForBureauDao,
@@ -565,24 +565,25 @@ export const getMyMemberDocumentsService = async (
  * 3. coherence cle ↔ fiche : la cle lue en base vit dans le dossier de
  *    **cette** fiche, et le stockage est ouvert sur ce dossier.
  *
- * Sans session : `UnauthenticatedError` (401). Tout autre refus :
+ * Sans session : `UnauthenticatedError` (401), avant meme de valider
+ * l'identifiant. Tout autre refus :
  * `NotFoundError` (404) — un membre n'apprend pas qu'un document existe.
  */
 export const readMemberDocumentFileService = async (
   organizationId: string,
   documentId: string
 ): Promise<MemberDocumentFile> => {
+  const authUser = await getAuthUser()
+  if (!authUser) {
+    throw new UnauthenticatedError()
+  }
+
   const parsed = memberDocumentReferenceServiceSchema.safeParse({
     organizationId,
     documentId,
   })
   if (!parsed.success) {
     throw new ValidationParsedZodError(parsed.error)
-  }
-
-  const authUser = await getAuthUser()
-  if (!authUser) {
-    throw new UnauthenticatedError()
   }
 
   const orgId = parsed.data.organizationId
@@ -671,21 +672,24 @@ export const depositMemberDocumentBatchLineService = async (input: {
     }
   }
 
-  const memberProfileId = await withTenant(fields.organizationId, () =>
-    getMemberProfileIdByPennylaneReferenceDao(fields.organizationId, reference)
+  const memberProfileIds = await withTenant(fields.organizationId, () =>
+    getMemberProfileIdsByPennylaneReferenceDao(fields.organizationId, reference)
   )
-  if (!memberProfileId) {
+  if (memberProfileIds.length !== 1) {
     return {
       status: 'rejected',
       fileName,
-      reason: MemberDocumentBatchRejectionConst.UNKNOWN_REFERENCE,
+      reason:
+        memberProfileIds.length === 0
+          ? MemberDocumentBatchRejectionConst.UNKNOWN_REFERENCE
+          : MemberDocumentBatchRejectionConst.AMBIGUOUS_REFERENCE,
       reference,
     }
   }
 
   const profile = await readTargetProfile(
     fields.organizationId,
-    memberProfileId
+    memberProfileIds[0]
   )
   const deposit = await depositIntoProfile(fields, profile, input.file)
   if (deposit.status === 'rejected') {

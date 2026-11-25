@@ -26,7 +26,7 @@ vi.mock('@/db/repositories/member-document-repository', () => ({
   listMemberDocumentsForBureauDao: vi.fn(),
   countMemberDocumentsByCategoryDao: vi.fn(),
   deleteMemberDocumentDao: vi.fn(),
-  getMemberProfileIdByPennylaneReferenceDao: vi.fn(),
+  getMemberProfileIdsByPennylaneReferenceDao: vi.fn(),
   countMemberProfilesWithoutReferenceDao: vi.fn(),
 }))
 vi.mock('@/db/repositories/member-profile-repository', () => ({
@@ -54,7 +54,7 @@ import {
   createMemberDocumentDao,
   deleteMemberDocumentDao,
   getMemberDocumentByIdDao,
-  getMemberProfileIdByPennylaneReferenceDao,
+  getMemberProfileIdsByPennylaneReferenceDao,
   listMemberDocumentsByProfileDao,
   listMemberDocumentsByProfilesDao,
   listMemberDocumentsForBureauDao,
@@ -880,6 +880,22 @@ describe('readMemberDocumentFileService — trois contrôles indépendants (ADR 
   it.each([
     ['non uuid', 'abc'],
     ['traversée', '..%2F..%2Fetc'],
+    ['vide', ''],
+  ])(
+    '[SANS SESSION] identifiant %s : UnauthenticatedError avant toute validation (ADR 073 §5)',
+    async (_, id) => {
+      setupAuthUserMocked(undefined)
+
+      await expect(readMemberDocumentFileService(ORG_ID, id)).rejects.toThrow(
+        UnauthenticatedError
+      )
+      expect(getMemberDocumentByIdDao).not.toHaveBeenCalled()
+    }
+  )
+
+  it.each([
+    ['non uuid', 'abc'],
+    ['traversée', '..%2F..%2Fetc'],
   ])(
     'identifiant %s : ValidationParsedZodError, sans rien lire',
     async (_, id) => {
@@ -908,11 +924,11 @@ const batchInput = (overrides: Record<string, unknown> = {}) => ({
 
 describe('depositMemberDocumentBatchLineService — dépôt en lot (critère 7)', () => {
   beforeEach(() => {
-    vi.mocked(getMemberProfileIdByPennylaneReferenceDao).mockImplementation(
+    vi.mocked(getMemberProfileIdsByPennylaneReferenceDao).mockImplementation(
       async (_org, reference) =>
-        ({[REFERENCE_A]: PROFILE_ID, [REFERENCE_B]: OTHER_PROFILE_ID})[
+        ({[REFERENCE_A]: [PROFILE_ID], [REFERENCE_B]: [OTHER_PROFILE_ID]})[
           reference
-        ]
+        ] ?? []
     )
     vi.mocked(getMemberProfileByIdDao).mockImplementation(async (id) =>
       profileRow({
@@ -936,16 +952,16 @@ describe('depositMemberDocumentBatchLineService — dépôt en lot (critère 7)'
       setupAuthUserMocked(user)
       let lookedUpUnder: string | undefined
       vi.mocked(
-        getMemberProfileIdByPennylaneReferenceDao
+        getMemberProfileIdsByPennylaneReferenceDao
       ).mockImplementationOnce(async () => {
         lookedUpUnder = scope.current
-        return PROFILE_ID
+        return [PROFILE_ID]
       })
 
       const result = await depositMemberDocumentBatchLineService(batchInput())
 
       expect(lookedUpUnder).toBe(ORG_ID)
-      expect(getMemberProfileIdByPennylaneReferenceDao).toHaveBeenCalledWith(
+      expect(getMemberProfileIdsByPennylaneReferenceDao).toHaveBeenCalledWith(
         ORG_ID,
         REFERENCE_A
       )
@@ -1019,7 +1035,7 @@ describe('depositMemberDocumentBatchLineService — dépôt en lot (critère 7)'
         fileName,
         reason: 'no_reference_in_name',
       })
-      expect(getMemberProfileIdByPennylaneReferenceDao).not.toHaveBeenCalled()
+      expect(getMemberProfileIdsByPennylaneReferenceDao).not.toHaveBeenCalled()
       expect(storage.upload).not.toHaveBeenCalled()
       expect(createMemberDocumentDao).not.toHaveBeenCalled()
     }
@@ -1027,9 +1043,7 @@ describe('depositMemberDocumentBatchLineService — dépôt en lot (critère 7)'
 
   it("référence d'une fiche de l'autre association : invisible sous le tenant, écartée (unknown_reference)", async () => {
     setupAuthUserMocked(withRole('owner'))
-    vi.mocked(getMemberProfileIdByPennylaneReferenceDao).mockResolvedValue(
-      undefined
-    )
+    vi.mocked(getMemberProfileIdsByPennylaneReferenceDao).mockResolvedValue([])
 
     const result = await depositMemberDocumentBatchLineService(
       batchInput({fileName: 'c9999_facture.pdf'})
@@ -1046,6 +1060,26 @@ describe('depositMemberDocumentBatchLineService — dépôt en lot (critère 7)'
     expect(createMemberDocumentDao).not.toHaveBeenCalled()
   })
 
+  it('deux fiches portent la référence à la casse près : écartée (ambiguous_reference), rattachée à aucune', async () => {
+    setupAuthUserMocked(withRole('owner'))
+    vi.mocked(getMemberProfileIdsByPennylaneReferenceDao).mockResolvedValue([
+      PROFILE_ID,
+      OTHER_PROFILE_ID,
+    ])
+
+    const result = await depositMemberDocumentBatchLineService(batchInput())
+
+    expect(result).toEqual({
+      status: 'rejected',
+      fileName: `${REFERENCE_A}_facture-2026.pdf`,
+      reason: 'ambiguous_reference',
+      reference: REFERENCE_A,
+    })
+    expect(getMemberProfileByIdDao).not.toHaveBeenCalled()
+    expect(storage.upload).not.toHaveBeenCalled()
+    expect(createMemberDocumentDao).not.toHaveBeenCalled()
+  })
+
   it('aucun dépôt sans correspondance exacte : un préfixe de référence ne suffit pas', async () => {
     setupAuthUserMocked(withRole('owner'))
 
@@ -1054,7 +1088,7 @@ describe('depositMemberDocumentBatchLineService — dépôt en lot (critère 7)'
     )
 
     expect(result.status).toBe('rejected')
-    expect(getMemberProfileIdByPennylaneReferenceDao).toHaveBeenCalledWith(
+    expect(getMemberProfileIdsByPennylaneReferenceDao).toHaveBeenCalledWith(
       ORG_ID,
       REFERENCE_A.slice(0, 8)
     )
@@ -1092,7 +1126,7 @@ describe('depositMemberDocumentBatchLineService — dépôt en lot (critère 7)'
     await expect(
       depositMemberDocumentBatchLineService(batchInput())
     ).rejects.toThrow(AuthorizationError)
-    expect(getMemberProfileIdByPennylaneReferenceDao).not.toHaveBeenCalled()
+    expect(getMemberProfileIdsByPennylaneReferenceDao).not.toHaveBeenCalled()
     expect(storage.upload).not.toHaveBeenCalled()
   })
 

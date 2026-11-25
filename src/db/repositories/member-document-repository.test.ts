@@ -25,7 +25,7 @@ import {
   createMemberDocumentDao,
   deleteMemberDocumentDao,
   getMemberDocumentByIdDao,
-  getMemberProfileIdByPennylaneReferenceDao,
+  getMemberProfileIdsByPennylaneReferenceDao,
   listMemberDocumentsByProfileDao,
   listMemberDocumentsByProfilesDao,
   listMemberDocumentsForBureauDao,
@@ -184,11 +184,11 @@ describe('deleteMemberDocumentDao', () => {
   })
 })
 
-describe('getMemberProfileIdByPennylaneReferenceDao — rapprochement du lot', () => {
+describe('getMemberProfileIdsByPennylaneReferenceDao — rapprochement du lot', () => {
   it('compare sans casse à la référence, dans l’association', async () => {
     responses.current = [[[PROFILE_A]]]
 
-    const id = await getMemberProfileIdByPennylaneReferenceDao(
+    const ids = await getMemberProfileIdsByPennylaneReferenceDao(
       ORG_ID,
       REFERENCE
     )
@@ -200,23 +200,25 @@ describe('getMemberProfileIdByPennylaneReferenceDao — rapprochement du lot', (
       'lower("member_profile"."pennylane_customer_id") = lower('
     )
     expect(params).toEqual(expect.arrayContaining([ORG_ID, REFERENCE]))
-    expect(id).toBe(PROFILE_A)
+    expect(ids).toEqual([PROFILE_A])
   })
 
   it('ne rend rien sans correspondance', async () => {
     responses.current = [[]]
 
     expect(
-      await getMemberProfileIdByPennylaneReferenceDao(ORG_ID, REFERENCE)
-    ).toBeUndefined()
+      await getMemberProfileIdsByPennylaneReferenceDao(ORG_ID, REFERENCE)
+    ).toEqual([])
   })
 
-  it('ne rend rien si deux fiches se disputent la référence : jamais un choix par défaut', async () => {
+  it('rend les deux fiches qui se disputent la référence, au plus deux : le service en fait une ambiguïté', async () => {
     responses.current = [[[PROFILE_A], [PROFILE_B]]]
 
     expect(
-      await getMemberProfileIdByPennylaneReferenceDao(ORG_ID, REFERENCE)
-    ).toBeUndefined()
+      await getMemberProfileIdsByPennylaneReferenceDao(ORG_ID, REFERENCE)
+    ).toEqual([PROFILE_A, PROFILE_B])
+    const [{sql}] = sent
+    expect(sql).toContain('limit')
   })
 })
 

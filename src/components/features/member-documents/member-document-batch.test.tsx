@@ -213,6 +213,33 @@ describe('MemberDocumentBatch — écran 5 du design s32 (critère 7)', () => {
     ).toBeInTheDocument()
   })
 
+  it('référence portée par plusieurs fiches : la ligne est écartée avec sa raison, sans fiche', async () => {
+    const user = userEvent.setup()
+    batchAction.mockImplementation(async (formData: FormData) => ({
+      status: 'rejected',
+      fileName: (formData.get('file') as File).name,
+      reason: 'ambiguous_reference',
+      reference: REF_A,
+    }))
+    renderBatch()
+
+    await fillCommonFields(user)
+    await user.upload(screen.getByLabelText('Fichiers'), [
+      pdf(`${REF_A}_facture.pdf`),
+    ])
+    await user.click(screen.getByRole('button', {name: /Déposer/}))
+
+    const table = await screen.findByRole('table', {
+      name: 'Rapport du lot, fichiers écartés en tête',
+    })
+    const [row] = within(table).getAllByRole('row').slice(1)
+    expect(row).toHaveTextContent('Écarté')
+    expect(row).toHaveTextContent(
+      `Plusieurs fiches portent l’identifiant ${REF_A} : le fichier n’a été rattaché à aucune.`
+    )
+    expect(within(row).queryByRole('link')).not.toBeInTheDocument()
+  })
+
   it('un envoi en échec n’arrête pas le lot : la ligne est dite, les suivantes partent', async () => {
     const user = userEvent.setup()
     batchAction

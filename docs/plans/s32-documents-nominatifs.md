@@ -126,6 +126,18 @@ carte membre suit s31 (frontière de l'espace membre), sans frontière propre.
     `docs/design-system.md` : formes retenues par s32 (rapport de lot, garde de sortie) ; manque n° 3 et n° 7
     consignés.
 
+12. [x] **Correctifs de revue (tour 1, arbitrage du 25/11/2026 : corriger avant de livrer).**
+    Majeur 1 — bloc SQL `member_document` dans `e2e/tenant-isolation.spec.ts` sur le patron de `shared_document`
+    (hors scope → 0 ligne, scope A → lignes de A seules, écriture pour B refusée). Majeur 2 — test « lot » de
+    `e2e/member-documents.spec.ts` : fixtures distinctes (tailles ou octets) et assertion **par fichier** sur la
+    fiche attendue. Majeur 3 — critères 3 et 5 : documents écrits **avec leur fichier** (par le dépôt du bureau,
+    ou fichier posé dans le dossier de la fiche), et téléchargement réel par le vendeur de son document de 2019
+    (octets identiques) ; l'acquéreur reçoit 404 sur ce même identifiant. Mineur 4 — `readMemberDocumentFileService` :
+    contrôle de session avant la validation de l'identifiant (401 sans session, quel que soit l'id), test unitaire et
+    de route. Mineur 5 — raison `ambiguous_reference` quand plusieurs fiches partagent une référence à la casse près
+    (rapport et libellé), test unitaire ; ADR 073 §8 n'est pas modifié (immuable), la précision est consignée dans
+    `docs/reviews/s32-documents-nominatifs.md`.
+
 ## Files touched
 
 - `src/services/types/domain/member-document-types.ts`, `action-registry-types.ts`,
