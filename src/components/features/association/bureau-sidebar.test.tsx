@@ -181,6 +181,7 @@ describe('BureauSidebar — « Propriétaires » (s12)', () => {
       'Propriétaires',
       'Questions des membres',
       'Documents',
+      'Documents nominatifs',
       'Groupes',
       'Campagnes',
       'Relances',
@@ -388,6 +389,41 @@ describe('BureauSidebar — entrée « Invitations » (s42b)', () => {
     )
     expect(links.indexOf('/bureau/envois')).toBe(
       links.indexOf('/bureau/invitations') + 1
+    )
+  })
+})
+
+describe('BureauSidebar — « Documents nominatifs » (s32)', () => {
+  it('suit « Documents » dans le groupe « L’association », sans icône, active sur sa route', () => {
+    renderSidebarAt('/bureau/documents-nominatifs')
+
+    const entry = screen.getByRole('link', {name: 'Documents nominatifs'})
+    expect(entry).toHaveAttribute('href', '/bureau/documents-nominatifs')
+    expect(entry).toHaveAttribute('aria-current', 'page')
+    expect(entry.querySelector('svg')).toBeNull()
+    expect(screen.getByRole('link', {name: 'Documents'})).not.toHaveAttribute(
+      'aria-current'
+    )
+
+    const links = screen
+      .getAllByRole('link')
+      .map((link) => link.getAttribute('href'))
+    expect(links.indexOf('/bureau/documents-nominatifs')).toBe(
+      links.indexOf('/bureau/documents') + 1
+    )
+  })
+
+  it.each([
+    '/bureau/documents-nominatifs/lot',
+    '/bureau/documents-nominatifs/categories',
+  ])('reste active sur %s', (pathname) => {
+    renderSidebarAt(pathname)
+
+    expect(
+      screen.getByRole('link', {name: 'Documents nominatifs'})
+    ).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', {name: 'Documents'})).not.toHaveAttribute(
+      'aria-current'
     )
   })
 })

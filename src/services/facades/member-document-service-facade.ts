@@ -1,0 +1,20 @@
+import memberDocumentServiceInterceptor from './interceptors/member-document-service-logger-interceptor'
+
+export const canManageMemberDocumentsService =
+  memberDocumentServiceInterceptor.canManageMemberDocumentsService
+export const depositMemberDocumentService =
+  memberDocumentServiceInterceptor.depositMemberDocumentService
+export const getMemberDocumentsForBureauService =
+  memberDocumentServiceInterceptor.getMemberDocumentsForBureauService
+export const getMemberDocumentsOfProfileForBureauService =
+  memberDocumentServiceInterceptor.getMemberDocumentsOfProfileForBureauService
+export const removeMemberDocumentService =
+  memberDocumentServiceInterceptor.removeMemberDocumentService
+export const getMyMemberDocumentsService =
+  memberDocumentServiceInterceptor.getMyMemberDocumentsService
+export const readMemberDocumentFileService =
+  memberDocumentServiceInterceptor.readMemberDocumentFileService
+export const depositMemberDocumentBatchLineService =
+  memberDocumentServiceInterceptor.depositMemberDocumentBatchLineService
+export const getMemberDocumentBatchReachService =
+  memberDocumentServiceInterceptor.getMemberDocumentBatchReachService

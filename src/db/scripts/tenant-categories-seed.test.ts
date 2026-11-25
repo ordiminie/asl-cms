@@ -122,3 +122,25 @@ describe('TEST_TENANT_CATEGORIES — catégories des documents partagés (s31, A
     expect(a).not.toContain(b[0].name)
   })
 })
+
+describe('TEST_TENANT_CATEGORIES — catégories des documents nominatifs (s32, ADR 073)', () => {
+  it.each(['techcorp-solutions', 'marketing-pro'])(
+    'donne à %s « Facture » et « Convocation », sans adresse de routage',
+    (slug) => {
+      expect(categoriesOf(slug, 'member_document')).toEqual([
+        {
+          organizationSlug: slug,
+          domain: 'member_document',
+          name: 'Facture',
+          routingEmail: null,
+        },
+        {
+          organizationSlug: slug,
+          domain: 'member_document',
+          name: 'Convocation',
+          routingEmail: null,
+        },
+      ])
+    }
+  )
+})

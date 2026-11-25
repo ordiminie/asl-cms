@@ -22,6 +22,7 @@ import {Skeleton} from '@/components/ui/skeleton'
 import {formatContentDate} from '@/lib/cms/format-content-date'
 import {lastOwnershipDayOf} from '@/services/rules/parcel-ownership-rules'
 import type {MyIncidentReportDTO} from '@/services/types/domain/incident-report-types'
+import type {MyMemberDocumentDTO} from '@/services/types/domain/member-document-types'
 import type {MyEmailsDTO} from '@/services/types/domain/member-email-types'
 import {isOwnershipBeforeImport} from '@/services/types/domain/member-import-types'
 import type {
@@ -39,6 +40,10 @@ import {MyContactCard} from './my-contact-card'
 import {MyEmailsCard, MyEmailsCardLoading} from './my-emails-card'
 import type {MyEmailActions} from './my-emails-validation'
 import {MyInvoicesCard, MyInvoicesCardLoading} from './my-invoices-card'
+import {
+  MyMemberDocumentsCard,
+  MyMemberDocumentsCardLoading,
+} from './my-member-documents-card'
 import {MyQuestionCard} from './my-question-card'
 import {MyReportsCard, MyReportsCardLoading} from './my-reports-card'
 import {
@@ -75,6 +80,7 @@ export function MemberSpace({
   invoicesPromise,
   openInvoicePdfAction,
   sharedDocumentsPromise,
+  memberDocumentsPromise,
 }: {
   landsPromise: Promise<MyLandsDTO | undefined>
   contactPromise: Promise<MyContactDTO | undefined>
@@ -92,6 +98,11 @@ export function MemberSpace({
   openInvoicePdfAction: MyInvoicePdfAction
   /** « Documents de l'association » (s31), lue a part, sans etre attendue. */
   sharedDocumentsPromise: Promise<SharedDocumentDTO[] | undefined>
+  /**
+   * « Mes documents » (s32), lue a part, sans etre attendue ; rendue dans
+   * les etats « complet » et « sans parcelle », jamais sans fiche.
+   */
+  memberDocumentsPromise: Promise<MyMemberDocumentDTO[] | undefined>
 }) {
   const lands = use(landsPromise)
   const contact = use(contactPromise)
@@ -107,10 +118,18 @@ export function MemberSpace({
     return <MemberSpaceWithoutProfile>{documents}</MemberSpaceWithoutProfile>
   }
 
+  const memberDocuments = (
+    <MyMemberDocuments
+      promise={memberDocumentsPromise}
+      landCount={lands?.lands.length || 1}
+    />
+  )
+
   if (!lands || !hasParcels) {
     return (
       <MemberSpaceWithoutParcels>
         <MyContactCard contact={contact} action={contactAction} />
+        {memberDocuments}
         {documents}
         <MyEmails emailsPromise={emailsPromise} actions={emailActions} />
         <MyReports reportsPromise={reportsPromise} sent={reportSent} />
@@ -130,6 +149,7 @@ export function MemberSpace({
         invoicesPromise={invoicesPromise}
         openPdfAction={openInvoicePdfAction}
       />
+      {memberDocuments}
       {documents}
       <MyContactCard contact={contact} action={contactAction} />
       <MyEmails emailsPromise={emailsPromise} actions={emailActions} />
@@ -261,6 +281,38 @@ function MySharedDocumentsList({
   if (!documents) return null
 
   return <MySharedDocumentsCard documents={documents} />
+}
+
+/**
+ * « Mes documents » (s32) : lue a part, derriere son propre `<Suspense>` ;
+ * rien si la lecture ne rend rien. Une panne remonte a la frontiere de
+ * l'espace membre, comme « Documents de l'association » (s31).
+ */
+function MyMemberDocuments({
+  promise,
+  landCount,
+}: {
+  promise: Promise<MyMemberDocumentDTO[] | undefined>
+  landCount: number
+}) {
+  return (
+    <Suspense fallback={<MyMemberDocumentsCardLoading />}>
+      <MyMemberDocumentsList promise={promise} landCount={landCount} />
+    </Suspense>
+  )
+}
+
+function MyMemberDocumentsList({
+  promise,
+  landCount,
+}: {
+  promise: Promise<MyMemberDocumentDTO[] | undefined>
+  landCount: number
+}) {
+  const documents = use(promise)
+  if (!documents) return null
+
+  return <MyMemberDocumentsCard documents={documents} landCount={landCount} />
 }
 
 const LOADING_LINES = [0, 1, 2]

@@ -1,5 +1,6 @@
 import {Suspense} from 'react'
 
+import {getMyMemberDocumentsDal} from '@/app/dal/member-document-dal'
 import {
   getMyContactDal,
   getMyEmailsDal,
@@ -59,7 +60,8 @@ type DashboardPageProps = WithAuthProps & {
  * signalements » (s22) se lit a part ; apres une declaration,
  * `?signalement=envoye` le dit dans la carte (A5). Apres une question au
  * bureau (s23), `?question=envoyee` le dit dans sa carte (A2). « Documents
- * de l'association » (s31) se lit a part, dans les trois etats de l'espace.
+ * de l'association » (s31) se lit a part, dans les trois etats de l'espace ;
+ * « Mes documents » (s32) aussi, sauf pour un compte sans fiche.
  */
 async function Page({user, searchParams}: DashboardPageProps) {
   const landsPromise = getMyLandsDal()
@@ -68,6 +70,7 @@ async function Page({user, searchParams}: DashboardPageProps) {
   const reportsPromise = getMyIncidentReportsDal()
   const invoicesPromise = getMyInvoicesDal()
   const sharedDocumentsPromise = getMySharedDocumentsDal()
+  const memberDocumentsPromise = getMyMemberDocumentsDal()
   const {role, signalement, question} = await searchParams
 
   return (
@@ -86,6 +89,7 @@ async function Page({user, searchParams}: DashboardPageProps) {
           invoicesPromise={invoicesPromise}
           openInvoicePdfAction={openMyInvoicePdfAction}
           sharedDocumentsPromise={sharedDocumentsPromise}
+          memberDocumentsPromise={memberDocumentsPromise}
         />
       </Suspense>
     </div>

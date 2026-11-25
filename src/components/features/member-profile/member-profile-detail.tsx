@@ -15,6 +15,9 @@ import {
 } from 'react'
 import {FormProvider, useForm} from 'react-hook-form'
 
+import type {MemberDocumentNotice} from '@/components/features/member-documents/member-document-paths'
+import {MemberDocumentsSection} from '@/components/features/member-documents/member-documents-section'
+import type {RemoveMemberDocumentAction} from '@/components/features/member-documents/remove-member-document-button'
 import {MemberInvoicesSection} from '@/components/features/member-invoice/member-invoices-card'
 import {Alert, AlertDescription} from '@/components/ui/alert'
 import {
@@ -38,6 +41,7 @@ import {
 } from '@/components/ui/table'
 import {lastOwnershipDayOf} from '@/services/rules/parcel-ownership-rules'
 import type {MemberUnsubscribeDTO} from '@/services/types/domain/campaign-types'
+import type {BureauMemberDocumentDTO} from '@/services/types/domain/member-document-types'
 import {isOwnershipBeforeImport} from '@/services/types/domain/member-import-types'
 import type {BoardMemberInvoicesDTO} from '@/services/types/domain/member-invoice-types'
 import type {MemberNotesPageDTO} from '@/services/types/domain/member-note-types'
@@ -110,6 +114,14 @@ type MemberProfileDetailProps = MemberNoteActions &
     invoicesPromise: Promise<BoardMemberInvoicesDTO | undefined>
     /** Une facture vient d'etre enregistree : le dire une fois (3c). */
     invoiceSaved: boolean
+    /**
+     * Les documents nominatifs de la fiche (s32), lus sans etre attendus ;
+     * rien pour un compte qui ne les gere pas.
+     */
+    documentsPromise: Promise<BureauMemberDocumentDTO[] | undefined>
+    /** Un document vient d'etre depose ou retire : le dire une fois (2e). */
+    documentNotice?: MemberDocumentNotice
+    removeDocumentAction: RemoveMemberDocumentAction
     /** « Facturation » : l'identifiant client Pennylane de la fiche (s20). */
     updatePennylaneIdAction: MemberBillingFormAction
     /** « Envoyer l'invitation » (s42a, ecran 2). */
@@ -165,6 +177,9 @@ export function MemberProfileDetail({
   unsubscribePromise,
   invoicesPromise,
   invoiceSaved,
+  documentsPromise,
+  documentNotice,
+  removeDocumentAction,
   updatePennylaneIdAction,
   inviteAction,
   invitationLinkDays,
@@ -320,6 +335,15 @@ export function MemberProfileDetail({
         memberName={profile.name}
         invoicesPromise={invoicesPromise}
         saved={invoiceSaved}
+      />
+
+      <MemberDocumentsSection
+        memberProfileId={profile.id}
+        memberName={profile.name}
+        hasAccount={profile.account.status === 'open'}
+        documentsPromise={documentsPromise}
+        notice={documentNotice}
+        removeAction={removeDocumentAction}
       />
 
       <MemberNotesCard

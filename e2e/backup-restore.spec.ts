@@ -235,6 +235,7 @@ type Fixture = {
   waterIds: string[]
   sharedDocumentIds: string[]
   documentCategoryIds: string[]
+  memberDocumentIds: string[]
   files: string[]
 }
 
@@ -261,6 +262,7 @@ const seedFixture = async (tenants: string[]): Promise<Fixture> =>
         waterIds: [],
         sharedDocumentIds: [],
         documentCategoryIds: [],
+        memberDocumentIds: [],
         files: [],
       }
       const run = randomUUID().slice(0, 8)
@@ -349,6 +351,35 @@ const seedFixture = async (tenants: string[]): Promise<Fixture> =>
           [tenant, categoryRow.rows[0].id, file('document.pdf')]
         )
         fixture.sharedDocumentIds.push(documentRow.rows[0].id)
+
+        const memberCategoryRow = await client.query<{id: string}>(
+          `insert into association_category (organization_id, domain, name)
+           values ($1, 'member_document', $2) returning id`,
+          [tenant, `Sauvegarde s12c ${run}`]
+        )
+        fixture.documentCategoryIds.push(memberCategoryRow.rows[0].id)
+        const profileRow = await client.query<{id: string}>(
+          `select id from member_profile where organization_id = $1 order by id limit 1`,
+          [tenant]
+        )
+        const profileId = profileRow.rows[0].id
+        const memberDocumentId = randomUUID()
+        const memberDocumentKey = writeStoredFile(
+          `${tenant}/member-documents/${profileId}/${memberDocumentId}-${randomUUID()}.pdf`
+        )
+        fixture.files.push(memberDocumentKey)
+        await client.query(
+          `insert into member_document (id, organization_id, member_profile_id, title, category_id, document_date, file_key, file_bytes)
+           values ($1, $2, $3, 'Sauvegarde s12c', $4, current_date, $5, 10)`,
+          [
+            memberDocumentId,
+            tenant,
+            profileId,
+            memberCategoryRow.rows[0].id,
+            memberDocumentKey,
+          ]
+        )
+        fixture.memberDocumentIds.push(memberDocumentId)
       }
 
       return fixture
@@ -381,6 +412,10 @@ const removeFixture = async (fixture: Fixture) => {
       await client.query(
         `delete from shared_document where id = any($1::uuid[])`,
         [fixture.sharedDocumentIds]
+      )
+      await client.query(
+        `delete from member_document where id = any($1::uuid[])`,
+        [fixture.memberDocumentIds]
       )
       await client.query(
         `delete from association_category where id = any($1::uuid[])`,
