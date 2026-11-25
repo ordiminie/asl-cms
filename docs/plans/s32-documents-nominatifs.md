@@ -138,6 +138,14 @@ carte membre suit s31 (frontière de l'espace membre), sans frontière propre.
     (rapport et libellé), test unitaire ; ADR 073 §8 n'est pas modifié (immuable), la précision est consignée dans
     `docs/reviews/s32-documents-nominatifs.md`.
 
+13. [x] **Correctif CI (PR 86, 25/11/2026).** `e2e/member-documents.spec.ts` (`insertDocument`, l. 191) :
+    `$1` sert à la fois de `uuid` (colonne `id`) et de texte (concaténation de la clé) → Postgres refuse
+    (« inconsistent types deduced for parameter $1 »), le critère 6 échoue et les 2 tests suivants du mode série
+    ne tournent pas. Typer explicitement chaque usage (ou passer la clé construite côté spec), et relire **toutes**
+    les requêtes SQL brutes de `e2e/member-documents.spec.ts` et du bloc `member_document` de
+    `e2e/tenant-isolation.spec.ts` pour le même motif (paramètre réutilisé sous deux types, `date` passée en
+    texte, etc.).
+
 ## Files touched
 
 - `src/services/types/domain/member-document-types.ts`, `action-registry-types.ts`,

@@ -192,8 +192,8 @@ const insertDocument = async (input: {
       `insert into member_document
          (id, organization_id, member_profile_id, title, category_id,
           document_date, file_key, file_bytes)
-       select $1, p.organization_id, p.id, $3, $4, $5,
-              p.organization_id || '/member-documents/' || p.id || '/' || $1 || '-' || $6 || '.pdf',
+       select $1::uuid, p.organization_id, p.id, $3::text, $4::uuid, $5::date,
+              p.organization_id::text || '/member-documents/' || p.id::text || '/' || $1::uuid::text || '-' || $6::text || '.pdf',
               10
          from member_profile p where p.id = $2`,
       [
