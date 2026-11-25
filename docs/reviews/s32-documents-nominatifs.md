@@ -1,4 +1,8 @@
-# Revue — Story s32-documents-nominatifs (tour 2)
+# Revue — Story s32-documents-nominatifs (tour 3)
+
+> Le tour 3 (correctif CI 85f7cbba) est en fin de rapport ; les tours 1 et 2 restent ci-dessous.
+
+## Tour 2
 
 > Regard neuf (subagent reviewer). Diff relu : `git diff main...feature/s32-documents-nominatifs`, deux commits
 > (8df83d1d, puis le correctif 945bdbb4 relu comme du code neuf : 11 fichiers, +478/−96).
@@ -70,6 +74,29 @@ Aucun.
 
 Observation : aucun e2e n'appelle la route sans session ; le test unitaire de route sur la vraie façade couvre
 le 401.
+
+
+## Tour 3 — correctif CI (85f7cbba, tâche 13 du plan)
+
+La CI de la PR 86 a échoué : 354 e2e passés, 1 en échec, 2 non lancés (mode série). Le critère 6 échouait sur
+`insertDocument` (`inconsistent types deduced for parameter $1` : `$1` servait de `uuid` et de texte).
+
+- **Typage corrigé** : `$1::uuid` pour `id`, `$1::uuid::text` dans la concaténation, `$3::text`, `$4::uuid`,
+  `$5::date`, `$6::text` ; types vérifiés contre `member-document-model.ts`. Validé par l'implementer contre
+  Postgres (ancienne requête : erreur identique à la CI ; nouvelle : une ligne insérée, clé acceptée par
+  `isMemberDocumentKeyOf`, en transactions annulées).
+- **Clé conforme** à `buildMemberDocumentFileKey` (`{org}/member-documents/{fiche}/{id}-{uuid}.pdf`, uuid
+  canoniques en minuscules).
+- **Périmètre** : la requête et la tâche 13 du plan, rien d'autre.
+- **Audit** des autres requêtes brutes de `e2e/member-documents.spec.ts` et du bloc `member_document` de
+  `e2e/tenant-isolation.spec.ts` : aucun autre paramètre à double type.
+- **Tests jamais lancés en CI** (fin du critère 6, « critère 7 — lot », « retrait ») relus contre le code et
+  `messages/fr.json` : sélecteurs, libellés ICU, ordre du rapport, redirection `?documents=retire`, nettoyage —
+  rien qui n'échouerait qu'à l'exécution.
+- `tsc --noEmit` et `eslint` propres. Suite unitaire non relancée : aucun changement hors e2e et docs.
+
+Constats du tour 3 : aucun critique, aucun majeur, aucun mineur nouveau. Restent ouverts pour le tour final :
+N1, N2 et les mineurs 6 à 10 du tour 1, inchangés.
 
 Max severity: minor
 Ship allowed: yes
