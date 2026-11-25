@@ -6,10 +6,11 @@ import type {ReactNode} from 'react'
 import {Alert, AlertDescription, AlertTitle} from '@/components/ui/alert'
 import {Card} from '@/components/ui/card'
 import {joinParcelNumbers} from '@/services/rules/campaign-rules'
-import type {
-  CampaignLetterContextDTO,
-  CampaignLetterContextResult,
-  CampaignLetterProfileRefDTO,
+import {
+  type CampaignLetterContextDTO,
+  type CampaignLetterContextResult,
+  type CampaignLetterProfileRefDTO,
+  MEMBER_INVITATION_LAUNCH_SEND_KIND,
 } from '@/services/types/domain/campaign-types'
 
 import {memberProfilePathOf} from '../member-profile/member-profile-paths'
@@ -20,6 +21,8 @@ import {CAMPAIGN_LETTERS_ANCHOR} from './campaign-paths'
 type CampaignLetterCardProps = {
   campaignId: string
   result: CampaignLetterContextResult
+  /** Le type d'envoi : le lancement des invitations a sa phrase (s42b). */
+  templateId?: string | null
 }
 
 const data = (chunks: ReactNode) => (
@@ -34,6 +37,7 @@ const data = (chunks: ReactNode) => (
 export function CampaignLetterCard({
   campaignId,
   result,
+  templateId = null,
 }: CampaignLetterCardProps) {
   const t = useTranslations('CampaignsBureau.letters')
   if (result.status === 'not_found') return null
@@ -47,7 +51,15 @@ export function CampaignLetterCard({
         {t('title')}
       </h2>
       {result.status === 'ready' ? (
-        <ReadyLetters campaignId={campaignId} context={result.context} />
+        <ReadyLetters
+          campaignId={campaignId}
+          context={result.context}
+          usageKey={
+            templateId === MEMBER_INVITATION_LAUNCH_SEND_KIND
+              ? 'launchUsage'
+              : 'usage'
+          }
+        />
       ) : (
         <Alert role="status" className="bg-muted">
           <AlertDescription className="text-foreground text-[17px]">
@@ -62,9 +74,11 @@ export function CampaignLetterCard({
 function ReadyLetters({
   campaignId,
   context,
+  usageKey,
 }: {
   campaignId: string
   context: CampaignLetterContextDTO
+  usageKey: 'usage' | 'launchUsage'
 }) {
   const t = useTranslations('CampaignsBureau.letters')
   const counter: [string, ReactNode][] = [
@@ -75,7 +89,7 @@ function ReadyLetters({
 
   return (
     <>
-      <p className="text-[17px]">{t('usage')}</p>
+      <p className="text-[17px]">{t(usageKey)}</p>
       <dl className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-4">
         {counter.map(([term, value]) => (
           <div

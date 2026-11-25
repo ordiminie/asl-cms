@@ -1,0 +1,8 @@
+import memberInvitationCampaignServiceInterceptor from './interceptors/member-invitation-campaign-service-logger-interceptor'
+
+export const launchMemberInvitationsService =
+  memberInvitationCampaignServiceInterceptor.launchMemberInvitationsService
+export const remindNeverSignedInService =
+  memberInvitationCampaignServiceInterceptor.remindNeverSignedInService
+export const getMemberInvitationsOverviewService =
+  memberInvitationCampaignServiceInterceptor.getMemberInvitationsOverviewService

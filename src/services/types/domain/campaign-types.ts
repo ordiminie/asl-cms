@@ -19,16 +19,38 @@ export type CampaignTemplateId = (typeof CAMPAIGN_TEMPLATE_IDS)[number]
 /** La relance automatique d'un impaye (s29, ADR 070) : jamais un choix du composeur. */
 export const UNPAID_REMINDER_SEND_KIND = 'unpaid_reminder'
 
+/** Le lancement des invitations (s42b, ADR 072) : un par association. */
+export const MEMBER_INVITATION_LAUNCH_SEND_KIND = 'member_invitation_launch'
+
+/** La relance des adresses jamais connectees (s42b, ADR 072). */
+export const MEMBER_INVITATION_REMINDER_SEND_KIND = 'member_invitation_reminder'
+
 /**
- * Les types d'envoi qui portent une nature (s27b, ADR 064 ; s29, ADR 070 §8) :
- * les modeles du composeur, puis la relance automatique. Seuls les modeles se
- * choisissent en redigeant.
+ * Les types d'envoi qui portent une nature (s27b, ADR 064 ; s29, ADR 070 §8 ;
+ * s42b, ADR 072 §1) : les modeles du composeur, puis les envois du systeme.
+ * Seuls les modeles se choisissent en redigeant.
  */
 export const CAMPAIGN_SEND_KINDS = [
   ...CAMPAIGN_TEMPLATE_IDS,
   UNPAID_REMINDER_SEND_KIND,
+  MEMBER_INVITATION_LAUNCH_SEND_KIND,
+  MEMBER_INVITATION_REMINDER_SEND_KIND,
 ] as const
 export type CampaignSendKind = (typeof CAMPAIGN_SEND_KINDS)[number]
+
+export type MemberInvitationSendKind =
+  | typeof MEMBER_INVITATION_LAUNCH_SEND_KIND
+  | typeof MEMBER_INVITATION_REMINDER_SEND_KIND
+
+/**
+ * Un envoi dont chaque destinataire recoit son propre lien de connexion,
+ * ne a sa livraison (ADR 072 §3) : le lancement ou sa relance.
+ */
+export const isMemberInvitationKind = (
+  templateId: string | null | undefined
+): templateId is MemberInvitationSendKind =>
+  templateId === MEMBER_INVITATION_LAUNCH_SEND_KIND ||
+  templateId === MEMBER_INVITATION_REMINDER_SEND_KIND
 
 /**
  * La nature d'un type d'envoi (s27b, ADR 064) : un envoi `statutaire` atteint
@@ -79,6 +101,7 @@ export const CAMPAIGN_RECIPIENT_STATUSES = [
   'failed',
   'unsubscribed',
   'settled',
+  'superseded',
 ] as const
 export type CampaignRecipientStatus =
   (typeof CAMPAIGN_RECIPIENT_STATUSES)[number]
@@ -154,6 +177,11 @@ export type CampaignRecipientCountsDTO = {
    * rien n'est parti ; ni recues, ni a verifier, ni en echec.
    */
   settled: number
+  /**
+   * Lignes d'une invitation ecartees a l'envoi (s42b, ADR 072 §5) : adresse
+   * deja connectee ou reinvitee depuis la creation ; rien n'est parti.
+   */
+  superseded: number
 }
 
 /** Une part d'envoi telle que le bureau la lit. */

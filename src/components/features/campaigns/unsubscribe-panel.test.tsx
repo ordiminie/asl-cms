@@ -107,3 +107,19 @@ describe('UnsubscribePanel — ce que le membre continuera de recevoir (s27b, cr
     expect(screen.queryByText(NOTHING_MORE)).toBeNull()
   })
 })
+
+describe('UnsubscribePanel — lancement et relance des invitations (s42b)', () => {
+  it('statutaires, ils sont listés sous leurs libellés des réglages', () => {
+    renderPanel('confirm', [
+      'unpaid_reminder',
+      'member_invitation_launch',
+      'member_invitation_reminder',
+    ])
+
+    expect(listedTypes()).toEqual([
+      'Relance automatique',
+      'Lancement du site',
+      'Relance des invitations',
+    ])
+  })
+})

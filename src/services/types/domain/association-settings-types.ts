@@ -273,6 +273,13 @@ export const INVITATION_TEXT_SETTING_KEY = 'invitation.text'
 /** Plafond du texte de l'invitation. */
 export const INVITATION_TEXT_MAX_LENGTH = 2000
 /**
+ * Texte du courrier de lancement (s42b, ADR 072 §6), envoye par la poste aux
+ * membres sans adresse email : ni lien de connexion, ni promesse d'acces.
+ * **Sans defaut** dans le registre : vide, le courrier reprend le texte par
+ * defaut de `messages/fr.json`.
+ */
+export const INVITATION_LETTER_TEXT_SETTING_KEY = 'invitation.letter_text'
+/**
  * Jours de validite du lien d'une invitation (s42a, ADR 071) ; le lien
  * demande depuis la page de connexion garde sa propre duree.
  */
@@ -382,8 +389,8 @@ export const getAccentHueName = (hue: AccentHue): AccentHueName =>
 
 /**
  * Cle de la nature d'un type d'envoi (s27b, ADR 064) : une par valeur de
- * `CAMPAIGN_SEND_KINDS` (modeles du composeur, relance automatique de s29).
- * s42 ajoutera la sienne.
+ * `CAMPAIGN_SEND_KINDS` (modeles du composeur, relance automatique de s29,
+ * lancement et relance des invitations de s42b).
  */
 export const campaignNatureSettingKeyOf = (
   templateId: CampaignSendKind
@@ -807,6 +814,18 @@ export const ASSOCIATION_SETTINGS_REGISTRY: AssociationSettingsRegistry = [
     labelKey: 'fields.invitationText.label',
     helpKey: 'fields.invitationText.help',
     whenEmptyKey: 'fields.invitationText.whenEmpty',
+    page: 'settings',
+    section: 'invitation',
+  },
+  {
+    key: INVITATION_LETTER_TEXT_SETTING_KEY,
+    type: 'text',
+    required: false,
+    maxLength: INVITATION_TEXT_MAX_LENGTH,
+    multiline: true,
+    labelKey: 'fields.invitationLetterText.label',
+    helpKey: 'fields.invitationLetterText.help',
+    whenEmptyKey: 'fields.invitationLetterText.whenEmpty',
     page: 'settings',
     section: 'invitation',
   },
@@ -1362,3 +1381,13 @@ export const getInvitationText = (
 export const getInvitationLinkDays = (
   settings: ResolvedAssociationSettings
 ): number => numberSettingOf(settings, INVITATION_LINK_DAYS_SETTING_KEY)
+
+/**
+ * Texte du courrier de lancement (s42b, ADR 072 §6) : `null` quand le bureau
+ * ne l'a pas renseigne ; le courrier reprend alors le texte par defaut de
+ * `messages/fr.json`.
+ */
+export const getInvitationLetterText = (
+  settings: ResolvedAssociationSettings
+): string | null =>
+  textSettingOf(settings, INVITATION_LETTER_TEXT_SETTING_KEY) ?? null

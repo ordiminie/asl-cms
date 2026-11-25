@@ -197,3 +197,32 @@ describe('CampaignLetterCard — la carte « Courrier postal » (s28)', () => {
     )
   })
 })
+
+describe('CampaignLetterCard — courrier du lancement des invitations (s42b, écran 6)', () => {
+  it('dit que le courrier annonce le site, sans lien de connexion ; jamais « au même contenu que l’email »', () => {
+    render(
+      <CampaignLetterCard
+        campaignId={CAMPAIGN_ID}
+        result={{status: 'ready', context: contextOf()}}
+        templateId="member_invitation_launch"
+      />
+    )
+
+    expect(card()).toHaveTextContent(
+      'Les membres sans adresse email reçoivent par la poste le courrier de lancement : il annonce le site, sans lien de connexion.'
+    )
+    expect(card()).not.toHaveTextContent('au même contenu que l’email')
+  })
+
+  it('une campagne ordinaire garde sa phrase', () => {
+    render(
+      <CampaignLetterCard
+        campaignId={CAMPAIGN_ID}
+        result={{status: 'ready', context: contextOf()}}
+        templateId="free"
+      />
+    )
+
+    expect(card()).toHaveTextContent('au même contenu que l’email')
+  })
+})

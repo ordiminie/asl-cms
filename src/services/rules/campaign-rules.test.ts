@@ -348,6 +348,7 @@ describe('toCampaignDto — liste blanche', () => {
       failed: 0,
       unsubscribed: 1,
       settled: 0,
+      superseded: 0,
     })
     expect(
       Object.values(dto.recipientCounts).reduce((sum, n) => sum + n, 0)
@@ -376,6 +377,33 @@ describe('toCampaignDto — liste blanche', () => {
       toVerify: 0,
       failed: 0,
       settled: 4,
+    })
+    expect(dto.displayState).toBe('sent')
+  })
+
+  it('une ligne d’invitation écartée à l’envoi est comptée à part : ni reçue, ni à vérifier, ni en échec (s42b, ADR 072 §5)', () => {
+    const supersededCounts = [
+      {
+        campaignId: row().id,
+        partId: parts[0].id,
+        status: 'superseded' as const,
+        total: 3,
+      },
+      {
+        campaignId: row().id,
+        partId: parts[0].id,
+        status: 'sent' as const,
+        total: 7,
+      },
+    ]
+    const dto = toCampaignDto(row({status: 'sent'}), parts, supersededCounts)
+
+    expect(dto.recipientCounts).toMatchObject({
+      received: 7,
+      toVerify: 0,
+      failed: 0,
+      settled: 0,
+      superseded: 3,
     })
     expect(dto.displayState).toBe('sent')
   })

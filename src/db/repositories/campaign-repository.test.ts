@@ -33,6 +33,7 @@ import {
   getCampaignPartDao,
   getCampaignPartsDao,
   getCampaignRecipientsPageDao,
+  getCampaignsByTemplateIdsDao,
   getCampaignsPageDao,
   getCampaignTargetRowsDao,
   getCurrentParcelNumbersForMembersDao,
@@ -42,9 +43,11 @@ import {
   getSlidableCampaignPartsDao,
   lockCampaignScheduleTxnDao,
   markCampaignPartDeferredTxnDao,
+  markClaimedRecipientFailedTxnDao,
   markRecipientFailedTxnDao,
   markRecipientSentTxnDao,
   markRecipientSettledTxnDao,
+  markRecipientSupersededTxnDao,
   markRecipientToVerifyTxnDao,
   markRecipientUnsubscribedTxnDao,
   markSendingRecipientsToVerifyTxnDao,
@@ -1374,5 +1377,46 @@ describe('getPendingPartRecipientsDao — les fiches que la ligne représente (s
     const [row] = await getPendingPartRecipientsDao(PART_1)
 
     expect(row.memberProfileIds).toEqual([PROFILE_A, PROFILE_B])
+  })
+})
+
+describe('lignes d’une invitation (s42b, ADR 072 §4, §5)', () => {
+  it('markClaimedRecipientFailedTxnDao passe en échec la seule ligne prise (sending)', async () => {
+    responses.current = [[[RECIPIENT_ID]]]
+
+    const row = await markClaimedRecipientFailedTxnDao(RECIPIENT_ID)
+
+    expect(sent[0].sql).toMatch(
+      /^update "campaign_recipient" set "status" = \$1/
+    )
+    expect(sent[0].params).toEqual(['failed', RECIPIENT_ID, 'sending'])
+    expect(row).toEqual({id: RECIPIENT_ID})
+  })
+
+  it('markRecipientSupersededTxnDao écarte la seule ligne en attente, sans rien envoyer', async () => {
+    responses.current = [[[RECIPIENT_ID]]]
+
+    const row = await markRecipientSupersededTxnDao(RECIPIENT_ID)
+
+    expect(sent[0].params).toEqual(['superseded', RECIPIENT_ID, 'pending'])
+    expect(row).toEqual({id: RECIPIENT_ID})
+  })
+})
+
+describe('getCampaignsByTemplateIdsDao (s42b)', () => {
+  it('lit les campagnes de ces types dans l’association, la plus ancienne d’abord', async () => {
+    await getCampaignsByTemplateIdsDao(ORG_ID, [
+      'member_invitation_launch',
+      'member_invitation_reminder',
+    ])
+
+    expect(sent[0].sql).toContain('"campaign"."organization_id" = $1')
+    expect(sent[0].sql).toMatch(/"campaign"\."template_id" in \(\$2, \$3\)/)
+    expect(sent[0].sql).toMatch(/order by "campaign"\."created_at" asc/)
+    expect(sent[0].params).toEqual([
+      ORG_ID,
+      'member_invitation_launch',
+      'member_invitation_reminder',
+    ])
   })
 })

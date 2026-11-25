@@ -14,6 +14,7 @@ import {withTenant} from '@/db/tenant-scope'
 import {PRODUCT_LOCALE} from '@/lib/helper/locale-helper'
 import {letterAddressFitsWindow} from '@/lib/letters/letter-address-measure.server'
 import {renderCalibrationPdf} from '@/lib/letters/render-calibration-pdf'
+import {letterTextBlocksOf} from '@/lib/letters/render-letter-body'
 import {renderLettersPdf} from '@/lib/letters/render-letters-pdf'
 
 import {getAssociationSettingsService} from './association-settings-service'
@@ -45,7 +46,10 @@ import type {
   CampaignLettersPdfResult,
   CampaignLetterUnavailableStatus,
 } from './types/domain/campaign-types'
-import {UNPAID_REMINDER_SEND_KIND} from './types/domain/campaign-types'
+import {
+  MEMBER_INVITATION_LAUNCH_SEND_KIND,
+  UNPAID_REMINDER_SEND_KIND,
+} from './types/domain/campaign-types'
 import {
   readReminderInvoices,
   type ReminderInvoicesOf,
@@ -129,6 +133,8 @@ type FrozenLetters =
       sendDate: string
       subject: string
       bodyMarkdown: string
+      /** Le texte du courrier d'un lancement des invitations (s42b), ou rien. */
+      letterText: string | null
       profiles: LetterProfileRow[]
     }
 
@@ -160,6 +166,7 @@ const readFrozenLetters = (
       sendDate: campaign.sendDate,
       subject: campaign.subject,
       bodyMarkdown: campaign.bodyMarkdown,
+      letterText: campaign.letterText,
       profiles,
     }
   })
@@ -269,6 +276,8 @@ export const getCampaignLetterContextService = async (
 
 type LetterAssociation = {
   name: string
+  /** Le domaine public de l'association, lu a la generation (s42b). */
+  domain: string | null
   legalMentions: string | null
   settings: ResolvedAssociationSettings
 }
@@ -295,10 +304,32 @@ const readLetterAssociation = async (
   ].filter((text): text is string => text !== null)
   return {
     name: organization.name,
+    domain: organization.domain ?? null,
     legalMentions: mentions.length > 0 ? mentions.join(' · ') : null,
     settings,
   }
 }
+
+type PdfTranslator = Awaited<ReturnType<typeof getTranslations>>
+
+/**
+ * Le courrier du lancement des invitations (s42b, C2, ADR 072 §6) : un objet
+ * fixe, le texte du courrier fige sur la campagne (jamais le corps de
+ * l'email), puis l'adresse publique du site. Aucun lien de connexion.
+ */
+const launchLetterOf = (
+  letterText: string | null,
+  association: LetterAssociation,
+  t: PdfTranslator
+) => ({
+  subject: t('memberInvitation.subject', {name: association.name}),
+  bodyBlocks: letterTextBlocksOf(
+    letterText ?? t('memberInvitation.defaultText'),
+    association.domain
+      ? t('memberInvitation.siteLine', {domain: association.domain})
+      : null
+  ),
+})
 
 /**
  * Le PDF du courrier (criteres 1 a 4) : une lettre par fiche figee, ou par
@@ -344,13 +375,18 @@ export const generateCampaignLettersService = async (
     locale: PRODUCT_LOCALE,
     namespace: PDF_NAMESPACE,
   })
+  const launch =
+    frozen.templateId === MEMBER_INVITATION_LAUNCH_SEND_KIND
+      ? launchLetterOf(frozen.letterText, association, t)
+      : null
   const rendered = await renderLettersPdf({
     association: {
       name: association.name,
       legalMentions: association.legalMentions,
     },
-    subject: frozen.subject,
+    subject: launch?.subject ?? frozen.subject,
     bodyMarkdown: frozen.bodyMarkdown,
+    ...(launch ? {bodyBlocks: launch.bodyBlocks} : {}),
     sendDate: frozen.sendDate,
     letters,
     offset: getLetterAddressOffset(association.settings),

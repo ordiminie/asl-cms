@@ -25,13 +25,15 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import {renderRestrictedMarkdown} from '@/lib/cms/render-page-block'
+import {invitationParagraphsOf} from '@/lib/emails/invitation-content'
 import {finalSubject} from '@/services/rules/campaign-rules'
-import type {
-  CampaignDTO,
-  CampaignLetterContextResult,
-  CampaignPartDTO,
-  CampaignRecipientFilter,
-  CampaignRecipientsPageDTO,
+import {
+  type CampaignDTO,
+  type CampaignLetterContextResult,
+  type CampaignPartDTO,
+  type CampaignRecipientFilter,
+  type CampaignRecipientsPageDTO,
+  isMemberInvitationKind,
 } from '@/services/types/domain/campaign-types'
 
 import {CardHeading} from './campaign-card-heading'
@@ -67,6 +69,11 @@ type CampaignDetailProps = {
   associationName: string
   /** Le plafond quotidien des campagnes de l'association (Resume). */
   dailySendCap: number
+  /**
+   * La duree d'un lien d'invitation, en jours (s42b) : « Contenu envoye »
+   * d'un lancement ou d'une relance la cite.
+   */
+  invitationLinkDays: number
   /** Arrivee depuis l'envoi (`?envoi=1`) : « Campagne lancee » s'affiche. */
   justSent: boolean
 }
@@ -91,6 +98,7 @@ export function CampaignDetail({
   statistics,
   associationName,
   dailySendCap,
+  invitationLinkDays,
   justSent,
 }: CampaignDetailProps) {
   return (
@@ -108,10 +116,18 @@ export function CampaignDetail({
       {campaign.parts.length > 1 && <PartsCard campaign={campaign} />}
       <RecipientsCard campaign={campaign} recipients={recipients} />
       {letters && (
-        <CampaignLetterCard campaignId={campaign.id} result={letters} />
+        <CampaignLetterCard
+          campaignId={campaign.id}
+          result={letters}
+          templateId={campaign.templateId}
+        />
       )}
       <Summary campaign={campaign} dailySendCap={dailySendCap} />
-      <SentContent campaign={campaign} associationName={associationName} />
+      <SentContent
+        campaign={campaign}
+        associationName={associationName}
+        invitationLinkDays={invitationLinkDays}
+      />
 
       <BackToCampaigns />
     </CampaignFrame>
@@ -652,11 +668,14 @@ function Summary({
 function SentContent({
   campaign,
   associationName,
+  invitationLinkDays,
 }: {
   campaign: CampaignDTO
   associationName: string
+  invitationLinkDays: number
 }) {
   const t = useTranslations('CampaignsBureau.detail')
+  const invitation = isMemberInvitationKind(campaign.templateId)
 
   return (
     <Card className="gap-4 px-4 py-6 shadow-none sm:px-6">
@@ -671,12 +690,31 @@ function SentContent({
           {t('preheaderLine', {preheader: campaign.preheader})}
         </p>
       )}
-      <div
-        className="page-block border-border rounded-md border px-4 py-4 text-[17px] leading-[1.6]"
-        dangerouslySetInnerHTML={{
-          __html: renderRestrictedMarkdown(campaign.bodyMarkdown),
-        }}
-      />
+      {invitation ? (
+        <>
+          <div className="border-border flex flex-col gap-4 rounded-md border px-4 py-4 text-[17px] leading-[1.6]">
+            {invitationParagraphsOf(campaign.bodyMarkdown).map(
+              (paragraph, index) => (
+                <p key={index} className="whitespace-pre-line">
+                  {paragraph}
+                </p>
+              )
+            )}
+          </div>
+          <Alert role="note" className="bg-muted">
+            <AlertDescription className="text-foreground text-[17px]">
+              <p>{t('invitationAdded', {days: invitationLinkDays})}</p>
+            </AlertDescription>
+          </Alert>
+        </>
+      ) : (
+        <div
+          className="page-block border-border rounded-md border px-4 py-4 text-[17px] leading-[1.6]"
+          dangerouslySetInnerHTML={{
+            __html: renderRestrictedMarkdown(campaign.bodyMarkdown),
+          }}
+        />
+      )}
       <p className="text-muted-foreground text-[15px]">{t('contentNote')}</p>
     </Card>
   )

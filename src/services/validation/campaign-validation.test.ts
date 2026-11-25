@@ -34,6 +34,16 @@ describe('createSendCampaignServiceSchema', () => {
     expect(parse({}).success).toBe(true)
   })
 
+  it('refuse les types d’envoi du système : relance d’impayé, lancement et relance des invitations (s42b)', () => {
+    for (const templateId of [
+      'unpaid_reminder',
+      'member_invitation_launch',
+      'member_invitation_reminder',
+    ]) {
+      expect(parse({templateId}).success, templateId).toBe(false)
+    }
+  })
+
   it('exige une cible connue ; un groupe désigné par un uuid (s27)', () => {
     expect(parse({target: {kind: 'unpaid_members'}}).success).toBe(true)
     expect(

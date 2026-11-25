@@ -1,6 +1,8 @@
 import {substituteVariables} from '@/services/rules/campaign-rules'
 import type {CampaignVariableValues} from '@/services/types/domain/campaign-types'
 
+import type {InvitationPlainContent} from './invitation-content'
+
 /** Les phrases du pied, partagees par le gabarit HTML et la version texte. */
 export type CampaignFooterTexts = {
   associationName: string
@@ -23,6 +25,11 @@ export type CampaignTextInput = {
   values: CampaignVariableValues
   footer: CampaignFooterTexts
   unsubscribeUrl: string
+  /**
+   * Le contenu d'une invitation (s42b) : present, il remplace le titre et le
+   * corps, ecrits comme texte.
+   */
+  invitation?: InvitationPlainContent
 }
 
 const plainTextOf = (markdown: string): string =>
@@ -48,10 +55,16 @@ export const renderCampaignText = ({
   values,
   footer,
   unsubscribeUrl,
+  invitation,
 }: CampaignTextInput): string => {
-  const body = plainTextOf(
-    substituteVariables(bodyMarkdown, values, (value) => value)
-  )
+  const head = invitation
+    ? invitationTextBlocksOf(invitation)
+    : [
+        heading,
+        plainTextOf(
+          substituteVariables(bodyMarkdown, values, (value) => value)
+        ),
+      ]
   const footerBlocks = [
     [footer.associationName, footer.legalName, footer.legalMentions]
       .filter(isFilled)
@@ -61,5 +74,14 @@ export const renderCampaignText = ({
     `${footer.unsubscribeLabel} : ${unsubscribeUrl}`,
     footer.notice,
   ]
-  return [heading, body, '--', ...footerBlocks].join('\n\n')
+  return [...head, '--', ...footerBlocks].join('\n\n')
 }
+
+const invitationTextBlocksOf = (
+  invitation: InvitationPlainContent
+): string[] => [
+  invitation.title,
+  ...invitation.paragraphs,
+  `${invitation.action} : ${invitation.url}`,
+  invitation.steps.map((step, index) => `${index + 1}. ${step}`).join('\n'),
+]

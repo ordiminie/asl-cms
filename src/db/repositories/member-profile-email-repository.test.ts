@@ -23,6 +23,7 @@ import {
   deleteMemberProfileEmailDao,
   deletePendingEmailsAddedByDao,
   getActiveEmailCarriersDao,
+  getInvitationAddressesDao,
   getMemberProfileEmailsByTokenHashDao,
   getMemberProfileEmailsDao,
   insertMemberProfileEmailDao,
@@ -152,5 +153,65 @@ describe('deletePendingEmailsAddedByDao (revue s54, C1)', () => {
     expect(sql).toContain('"member_profile_email"."added_by_user_id" = $2')
     expect(sql).toContain('"member_profile_email"."status" = $3')
     expect(params).toEqual([PROFILE_ID, USER_ID, 'pending'])
+  })
+})
+
+describe('getInvitationAddressesDao (s42b, suivi des invitations)', () => {
+  const OTHER_PROFILE = '55555555-5555-4555-8555-555555555555'
+  const CREATED = new Date('2026-11-20T08:00:00Z')
+
+  it('lit toutes les adresses de l’association, actives et en attente, avec leur fiche et ses parcelles actuelles', async () => {
+    responses.current = [
+      [
+        [
+          'anne@example.fr',
+          'active',
+          CREATED.toISOString(),
+          null,
+          PROFILE_ID,
+          'Anne Aubry',
+        ],
+        [
+          'paul@example.fr',
+          'pending',
+          CREATED.toISOString(),
+          NOW.toISOString(),
+          OTHER_PROFILE,
+          'Paul Renaud',
+        ],
+      ],
+      [
+        [PROFILE_ID, '12'],
+        [PROFILE_ID, '14'],
+      ],
+    ]
+
+    const rows = await getInvitationAddressesDao(ORG_ID)
+
+    expect(sent[0].sql).toMatch(/from "member_profile_email"/)
+    expect(sent[0].sql).toMatch(/inner join "member_profile"/)
+    expect(sent[0].sql).not.toMatch(/"status" = /)
+    expect(sent[0].params).toEqual([ORG_ID])
+    expect(sent[1].sql).toMatch(/from "parcel_ownership"/)
+    expect(rows).toEqual([
+      {
+        email: 'anne@example.fr',
+        status: 'active',
+        createdAt: CREATED,
+        expiresAt: null,
+        memberProfileId: PROFILE_ID,
+        name: 'Anne Aubry',
+        parcelNumbers: ['12', '14'],
+      },
+      {
+        email: 'paul@example.fr',
+        status: 'pending',
+        createdAt: CREATED,
+        expiresAt: NOW,
+        memberProfileId: OTHER_PROFILE,
+        name: 'Paul Renaud',
+        parcelNumbers: [],
+      },
+    ])
   })
 })

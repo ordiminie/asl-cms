@@ -111,5 +111,7 @@ export function RecipientState({recipient}: {recipient: CampaignRecipientDTO}) {
       return <DoneBadge label={t('unsubscribed')} />
     case 'settled':
       return <DoneBadge label={t('settled')} />
+    case 'superseded':
+      return <DoneBadge label={t('superseded')} />
   }
 }

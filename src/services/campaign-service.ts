@@ -26,9 +26,11 @@ import {
   getSlidableCampaignPartsDao,
   lockCampaignScheduleTxnDao,
   markCampaignPartDeferredTxnDao,
+  markClaimedRecipientFailedTxnDao,
   markRecipientFailedTxnDao,
   markRecipientSentTxnDao,
   markRecipientSettledTxnDao,
+  markRecipientSupersededTxnDao,
   markRecipientToVerifyTxnDao,
   markRecipientUnsubscribedTxnDao,
   markSendingRecipientsToVerifyTxnDao,
@@ -40,6 +42,10 @@ import {
   startCampaignPartTxnDao,
   type UnpaidReminderRankInput,
 } from '@/db/repositories/campaign-repository'
+import {
+  getInvitationStatesByEmailsDao,
+  markInvitedTxnDao,
+} from '@/db/repositories/member-invitation-state-repository'
 import {getOrganizationByIdDao} from '@/db/repositories/organization-repository'
 import {
   getRecipientGroupByIdDao,
@@ -49,11 +55,20 @@ import {
 import {enqueueScheduledJobTxnDao} from '@/db/repositories/scheduled-job-repository'
 import {withTenant} from '@/db/tenant-scope'
 import {associationOriginOf} from '@/lib/better-auth/association-origin'
+import {
+  type InvitationLink,
+  issueInvitationLink,
+  revokeInvitationLink,
+} from '@/lib/better-auth/invitation-link'
 import CampaignMail, {
   type CampaignEmailAssociation,
   getCampaignFooterTexts,
 } from '@/lib/emails/campaign-email'
 import {renderCampaignText} from '@/lib/emails/campaign-text'
+import {
+  getInvitationContentTexts,
+  invitationPlainContentOf,
+} from '@/lib/emails/invitation-content'
 import {pngLogoUrlOf} from '@/lib/emails/logo-url'
 import {renderCampaignBodyHtml} from '@/lib/emails/render-campaign-body'
 import {isEmailTransportError} from '@/lib/emails/transport/email-transport'
@@ -111,6 +126,12 @@ import {
   deferredSendOn,
 } from './rules/email-budget-rules'
 import {
+  invitationEmailKeyOf,
+  invitationSkipOf,
+  type InvitationStates,
+  invitationStatesOf,
+} from './rules/member-invitation-campaign-rules'
+import {
   getInvoiceStatusClassification,
   unpaidProfileIdsOf,
 } from './rules/member-invoice-rules'
@@ -125,6 +146,7 @@ import {
   getCampaignDailySendCap,
   getCampaignNature,
   getCampaignSendMaxAttempts,
+  getInvitationLinkDays,
   type ResolvedAssociationSettings,
 } from './types/domain/association-settings-types'
 import {
@@ -149,6 +171,7 @@ import {
   CampaignTarget,
   CampaignTargetCountsDTO,
   CampaignVariableValues,
+  isMemberInvitationKind,
   PreviewCampaignInput,
   PreviewCampaignResult,
   SendCampaignInput,
@@ -381,10 +404,15 @@ type CampaignEmail = {
   text: string
 }
 
+/** Le lien d'un destinataire d'une invitation et son echeance ecrite. */
+type RecipientInvitation = {url: string; expiresOn: string}
+
 /**
  * Un envoi pour un destinataire : objet final, gabarit, version texte. Le pied
  * suit la nature recue (s27b) : celle du modele pour l'apercu, celle figee
- * sur la campagne pour la livraison.
+ * sur la campagne pour la livraison. Une invitation (s42b, ADR 072 §6, §7)
+ * porte son lien : son texte fige est lu comme **texte**, jamais comme
+ * Markdown, et aucune variable n'y est remplacee.
  */
 const buildCampaignEmail = async (
   association: CampaignAssociation,
@@ -395,8 +423,18 @@ const buildCampaignEmail = async (
     nature: CampaignNature
   },
   values: CampaignVariableValues,
-  unsubscribeUrl: string
+  unsubscribeUrl: string,
+  invitation?: RecipientInvitation
 ): Promise<CampaignEmail> => {
+  if (invitation) {
+    return buildInvitationEmail(
+      association,
+      content,
+      values,
+      unsubscribeUrl,
+      invitation
+    )
+  }
   const plain = (value: string) => value
   const heading = substituteVariables(content.subject, values, plain)
   const preheader = content.preheader
@@ -425,6 +463,53 @@ const buildCampaignEmail = async (
       values,
       footer,
       unsubscribeUrl,
+    }),
+  }
+}
+
+/** L'email d'un destinataire d'une invitation : son lien, son echeance. */
+const buildInvitationEmail = async (
+  association: CampaignAssociation,
+  content: {
+    subject: string
+    preheader: string | null
+    bodyMarkdown: string
+    nature: CampaignNature
+  },
+  values: CampaignVariableValues,
+  unsubscribeUrl: string,
+  invitation: RecipientInvitation
+): Promise<CampaignEmail> => {
+  const footer = await getCampaignFooterTexts(
+    PRODUCT_LOCALE,
+    association,
+    content.nature
+  )
+  const texts = getInvitationContentTexts(PRODUCT_LOCALE, {
+    associationName: association.name,
+    text: content.bodyMarkdown,
+    expiresOn: invitation.expiresOn,
+  })
+  return {
+    subject: finalSubject(association.name, content.subject),
+    preheader: content.preheader,
+    template: CampaignMail({
+      locale: PRODUCT_LOCALE,
+      association,
+      heading: content.subject,
+      preheader: content.preheader,
+      bodyHtml: '',
+      unsubscribeUrl,
+      nature: content.nature,
+      invitation: {...invitation, text: content.bodyMarkdown},
+    }),
+    text: renderCampaignText({
+      heading: content.subject,
+      bodyMarkdown: '',
+      values,
+      footer,
+      unsubscribeUrl,
+      invitation: invitationPlainContentOf(texts, invitation.url),
     }),
   }
 }
@@ -610,7 +695,7 @@ export const sendCampaignService = async (
     status: 'created',
     campaignId: created.campaignId,
     deliver: created.created
-      ? () => runImmediatePass(data.organizationId)
+      ? () => runImmediateCampaignPass(data.organizationId)
       : null,
   }
 }
@@ -621,6 +706,11 @@ export type CampaignCreationContent = {
   subject: string
   preheader: string | null
   bodyMarkdown: string
+  /**
+   * Texte du courrier d'un lancement des invitations (s42b, ADR 072 §6),
+   * fige avec la campagne ; absent, rien.
+   */
+  letterText?: string | null
   templateId: CampaignSendKind
   targetKind: string
   authorUserId: string | null
@@ -906,14 +996,16 @@ const composeRecipientEmail = async (
     nature: CampaignNature
   },
   sendDate: string,
-  recipient: PendingRecipientRowModel & {email: string; name: string}
+  recipient: PendingRecipientRowModel & {email: string; name: string},
+  invitation?: RecipientInvitation
 ): Promise<SendEmailPayload> => {
   const address = addressValuesOf(recipient)
   const email = await buildCampaignEmail(
     association,
     campaign,
     valuesOf(address.name, address.parcelNumbers, sendDate),
-    unsubscribeUrlOf(association.origin, recipient.unsubscribeToken)
+    unsubscribeUrlOf(association.origin, recipient.unsubscribeToken),
+    invitation
   )
   return {
     to: recipient.email,
@@ -946,9 +1038,12 @@ export const canManageCampaignsService = async (
 
 /**
  * Le passage immediat des taches dues de l'association, pose dans `after()`
- * par l'action : la premiere part n'attend pas la minuterie.
+ * par l'action : la premiere part n'attend pas la minuterie. Partage avec le
+ * lancement des invitations (s42b).
  */
-const runImmediatePass = async (organizationId: string): Promise<void> => {
+export const runImmediateCampaignPass = async (
+  organizationId: string
+): Promise<void> => {
   await runDueScheduledJobsService({
     handlers: campaignScheduledJobHandlers,
     now: new Date(),
@@ -963,8 +1058,13 @@ type CampaignContent = {
   bodyMarkdown: string
   /** Nature figee a la creation (s27b, ADR 064), jamais relue des reglages. */
   nature: CampaignNature
-  /** Le type d'envoi : `unpaid_reminder` relit ses factures (s29). */
+  /**
+   * Le type d'envoi : `unpaid_reminder` relit ses factures (s29), une
+   * invitation emet un lien par destinataire (s42b).
+   */
   templateId: string | null
+  /** Creation de la campagne : une invitation partie depuis l'ecarte (s42b). */
+  createdAt: Date
 }
 
 type PartToDeliver = {
@@ -1075,6 +1175,193 @@ const deliverToRecipient = async (
     return result.status
   }
   await inTenant(() => markRecipientSentTxnDao(recipient.recipientId))
+  return 'done'
+}
+
+/** L'echeance d'un lien d'invitation, en toutes lettres (« 1 décembre 2026 »). */
+const INVITATION_EXPIRY_FORMAT = new Intl.DateTimeFormat('fr', {
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+  timeZone: 'Europe/Paris',
+})
+
+const DAY_MS = 24 * 60 * 60 * 1000
+
+/**
+ * Ce qu'une part d'invitation relit avant de servir ses destinataires (ADR
+ * 072 §3) : l'association, la duree d'un lien et les traces de chaque
+ * adresse, relues a la livraison.
+ */
+type InvitationDelivery = {
+  organization: {id: string; domain: string | null}
+  expiresInDays: number
+  states: InvitationStates
+  now: Date
+}
+
+/** Rend `null` hors du lancement et de sa relance. */
+const readInvitationDelivery = async (
+  organizationId: string,
+  campaign: {templateId: string | null},
+  settings: ResolvedAssociationSettings,
+  recipients: readonly {email: string | null}[],
+  now: Date
+): Promise<InvitationDelivery | null> => {
+  if (!isMemberInvitationKind(campaign.templateId)) return null
+  const organization = await getOrganizationByIdDao(organizationId)
+  if (!organization) throw new NotFoundError(ASSOCIATION_NOT_FOUND)
+  const emails = recipients.flatMap((recipient) =>
+    recipient.email ? [recipient.email] : []
+  )
+  const states = await withTenant(organizationId, () =>
+    getInvitationStatesByEmailsDao(organizationId, emails)
+  )
+  return {
+    organization: {id: organization.id, domain: organization.domain},
+    expiresInDays: getInvitationLinkDays(settings),
+    states: invitationStatesOf(states),
+    now,
+  }
+}
+
+/**
+ * Revoque le lien emis d'une ligne qui n'est pas partie, puis la rend en
+ * attente. Une revocation impossible est journalisee sans le jeton : la
+ * ligne est rendue quand meme, et le prochain lien revoquera celui-ci.
+ */
+const revokeAndRelease = async (
+  organizationId: string,
+  recipientId: string,
+  link: InvitationLink
+): Promise<void> => {
+  try {
+    await revokeInvitationLink(link.token)
+  } catch (error) {
+    logger.error("[CAMPAIGN] Lien d'invitation non revoque", {
+      error: error instanceof Error ? error.name : 'unknown',
+    })
+  }
+  await withTenant(organizationId, () =>
+    releaseRecipientClaimTxnDao(recipientId)
+  )
+}
+
+/**
+ * Un destinataire d'une invitation (s42b, ADR 072 §3 a §5). Ordre propre a
+ * ce type, distinct des campagnes : ecart eventuel sans envoi (desinscrit
+ * d'un envoi facultatif ; adresse connectee ou reinvitee depuis la creation),
+ * **prise** de la ligne, **emission** du lien par le seul generateur,
+ * composition, envoi. Une prise perdue n'emet rien. Un lien non emis passe la
+ * ligne en echec, la part continue. Le jeton emis est revoque sur toute issue
+ * qui n'est pas partie (report, envois coupes, refus certain, composition),
+ * jamais sur une issue inconnue. « Invitee le » s'ecrit au depart reel. Ni
+ * l'URL ni le jeton ne sont journalises ni conserves.
+ */
+const deliverInvitationToRecipient = async (
+  organizationId: string,
+  association: CampaignAssociation,
+  sent: CampaignContent,
+  part: PartToDeliver,
+  recipient: PendingRecipientRowModel,
+  invitation: InvitationDelivery
+): Promise<RecipientDelivery> => {
+  const inTenant = <T>(callback: () => Promise<T>) =>
+    withTenant(organizationId, callback)
+  const {recipientId} = recipient
+
+  if (recipient.unsubscribed && sent.nature !== 'statutaire') {
+    await inTenant(() => markRecipientUnsubscribedTxnDao(recipientId))
+    return 'done'
+  }
+  const {email, name} = recipient
+  if (!email || name === null) {
+    await inTenant(() => markRecipientFailedTxnDao(recipientId))
+    return 'done'
+  }
+  const state = invitation.states.get(invitationEmailKeyOf(email))
+  if (invitationSkipOf(state, sent.createdAt)) {
+    await inTenant(() => markRecipientSupersededTxnDao(recipientId))
+    return 'done'
+  }
+  if (!(await inTenant(() => claimRecipientForSendTxnDao(recipientId)))) {
+    return 'done'
+  }
+  const logFailure = (error: unknown) =>
+    logger.error("[CAMPAIGN] Envoi d'une part interrompu", {
+      campaignId: sent.id,
+      partId: part.id,
+      refused: isCertainRefusal(error),
+      error: error instanceof Error ? error.name : 'unknown',
+    })
+
+  let link: InvitationLink | null
+  try {
+    link = state
+      ? await issueInvitationLink({
+          organization: invitation.organization,
+          email: state.email,
+          expiresInDays: invitation.expiresInDays,
+        })
+      : null
+  } catch (error) {
+    logFailure(error)
+    await inTenant(() => releaseRecipientClaimTxnDao(recipientId))
+    return 'failed'
+  }
+  if (!state || !link) {
+    await inTenant(() => markClaimedRecipientFailedTxnDao(recipientId))
+    return 'done'
+  }
+
+  let payload: SendEmailPayload
+  try {
+    payload = await composeRecipientEmail(
+      association,
+      sent,
+      part.scheduledFor,
+      {...recipient, email, name},
+      {
+        url: link.url,
+        expiresOn: INVITATION_EXPIRY_FORMAT.format(
+          new Date(invitation.now.getTime() + invitation.expiresInDays * DAY_MS)
+        ),
+      }
+    )
+  } catch (error) {
+    logFailure(error)
+    await revokeAndRelease(organizationId, recipientId, link)
+    return 'failed'
+  }
+
+  let result: EmailSendResult
+  try {
+    result = await sendEmailService(
+      payload,
+      {scope: 'tenant', organizationId, nature: 'campaign'},
+      {recipientType: 'client'}
+    )
+  } catch (error) {
+    logFailure(error)
+    if (isCertainRefusal(error)) {
+      await revokeAndRelease(organizationId, recipientId, link)
+    } else {
+      await inTenant(() => markRecipientToVerifyTxnDao(recipientId))
+    }
+    return 'failed'
+  }
+  if (result.status !== 'sent') {
+    await revokeAndRelease(organizationId, recipientId, link)
+    return result.status
+  }
+  await inTenant(async () => {
+    await markRecipientSentTxnDao(recipientId)
+    await markInvitedTxnDao({
+      organizationId,
+      userId: state.userId,
+      at: invitation.now,
+    })
+  })
   return 'done'
 }
 
@@ -1251,15 +1538,42 @@ export const deliverCampaignPartService = async (
     return failedAttemptOutcome(job, now, part, association.sendMaxAttempts)
   }
 
-  for (const recipient of recipients) {
-    const delivery = await deliverToRecipient(
+  let invitation: InvitationDelivery | null
+  try {
+    invitation = await readInvitationDelivery(
       organizationId,
-      association,
       campaign,
-      part,
-      recipient,
-      invoicesOf
+      settings,
+      recipients,
+      now
     )
+  } catch (error) {
+    logger.error("[CAMPAIGN] Traces de l'invitation illisibles", {
+      campaignId: campaign.id,
+      partId: part.id,
+      error: error instanceof Error ? error.name : 'unknown',
+    })
+    return failedAttemptOutcome(job, now, part, association.sendMaxAttempts)
+  }
+
+  for (const recipient of recipients) {
+    const delivery = invitation
+      ? await deliverInvitationToRecipient(
+          organizationId,
+          association,
+          campaign,
+          part,
+          recipient,
+          invitation
+        )
+      : await deliverToRecipient(
+          organizationId,
+          association,
+          campaign,
+          part,
+          recipient,
+          invoicesOf
+        )
     if (delivery === 'failed') {
       return failedAttemptOutcome(job, now, part, association.sendMaxAttempts)
     }

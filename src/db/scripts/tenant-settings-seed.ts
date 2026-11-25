@@ -95,6 +95,16 @@ export const TEST_TENANT_SETTINGS: readonly TestTenantSetting[] = [
   },
   {
     organizationSlug: 'techcorp-solutions',
+    key: 'campaign.nature.member_invitation_launch',
+    value: 'statutaire',
+  },
+  {
+    organizationSlug: 'techcorp-solutions',
+    key: 'campaign.nature.member_invitation_reminder',
+    value: 'statutaire',
+  },
+  {
+    organizationSlug: 'techcorp-solutions',
     key: 'billing.reminder.enabled',
     value: 'true',
   },

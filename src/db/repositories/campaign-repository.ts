@@ -491,6 +491,25 @@ export const getAllottedRecipientsByDayDao = async (
   return allotted
 }
 
+/**
+ * Les campagnes de ces types d'envoi dans l'association, la plus ancienne
+ * d'abord : le lancement des invitations et ses relances (s42b).
+ */
+export const getCampaignsByTemplateIdsDao = async (
+  organizationId: string,
+  templateIds: readonly string[]
+): Promise<CampaignModel[]> =>
+  getDb()
+    .select()
+    .from(campaign)
+    .where(
+      and(
+        eq(campaign.organizationId, organizationId),
+        inArray(campaign.templateId, [...templateIds])
+      )
+    )
+    .orderBy(asc(campaign.createdAt))
+
 export const getCampaignByIdDao = async (
   organizationId: string,
   campaignId: string
@@ -976,6 +995,46 @@ export const markRecipientFailedTxnDao = async (
   const [row] = await getDb()
     .update(campaignRecipient)
     .set({status: 'failed'})
+    .where(
+      and(
+        eq(campaignRecipient.id, recipientId),
+        eq(campaignRecipient.status, 'pending')
+      )
+    )
+    .returning({id: campaignRecipient.id})
+  return row
+}
+
+/**
+ * Passe en echec une ligne **deja prise** (`sending`) : une invitation dont le
+ * lien n'a pas pu naitre (s42b, ADR 072 §4). La part continue.
+ */
+export const markClaimedRecipientFailedTxnDao = async (
+  recipientId: string
+): Promise<{id: string} | undefined> => {
+  const [row] = await getDb()
+    .update(campaignRecipient)
+    .set({status: 'failed'})
+    .where(
+      and(
+        eq(campaignRecipient.id, recipientId),
+        eq(campaignRecipient.status, 'sending')
+      )
+    )
+    .returning({id: campaignRecipient.id})
+  return row
+}
+
+/**
+ * Ecarte une ligne d'invitation encore en attente, sans rien envoyer :
+ * adresse deja connectee ou reinvitee depuis la creation (s42b, ADR 072 §5).
+ */
+export const markRecipientSupersededTxnDao = async (
+  recipientId: string
+): Promise<{id: string} | undefined> => {
+  const [row] = await getDb()
+    .update(campaignRecipient)
+    .set({status: 'superseded'})
     .where(
       and(
         eq(campaignRecipient.id, recipientId),

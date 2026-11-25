@@ -46,6 +46,11 @@ export type RenderLettersInput = {
   /** Objet et corps de la campagne, tels qu'ecrits (variables non remplacees). */
   subject: string
   bodyMarkdown: string
+  /**
+   * Le corps deja mis en blocs, a la place de `bodyMarkdown` : le courrier du
+   * lancement des invitations (s42b, ADR 072 §6), texte sans variable.
+   */
+  bodyBlocks?: LetterBlock[]
   /** Jour d'envoi de la campagne (`YYYY-MM-DD`), valeur de `{date}`. */
   sendDate: string
   letters: readonly CampaignLetter[]
@@ -543,7 +548,8 @@ const drawLetter = (
   )
   drawBody(
     doc,
-    letterBodyBlocksOf(letter.bodyMarkdown ?? input.bodyMarkdown, values),
+    input.bodyBlocks ??
+      letterBodyBlocksOf(letter.bodyMarkdown ?? input.bodyMarkdown, values),
     subjectBottom
   )
   drawContinuationPages(doc, input, letter.name, firstPage)

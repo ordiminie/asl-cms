@@ -69,6 +69,7 @@ describe('enums de campagne (ADR 051)', () => {
       'to_verify',
       'unsubscribed',
       'settled',
+      'superseded',
     ])
   })
 
@@ -156,8 +157,14 @@ describe('campaign (ADR 051)', () => {
         'stats_unique_opens',
         'stats_unique_clicks',
         'stats_read_at',
+        'letter_text',
       ].sort()
     )
+  })
+
+  it('fige le texte du courrier de lancement (s42b, ADR 072 §6) : texte nullable', () => {
+    expect(t.column('letter_text')?.getSQLType()).toBe('text')
+    expect(t.column('letter_text')?.notNull).toBe(false)
   })
 
   it('statistiques (s30, ADR 068) : suivi non nul, faux par défaut ; relevé nullable', () => {

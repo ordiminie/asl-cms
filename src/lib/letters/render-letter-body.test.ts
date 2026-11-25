@@ -1,6 +1,10 @@
 import {describe, expect, it} from 'vitest'
 
-import {letterBodyBlocksOf, plainTextOfBlock} from './render-letter-body'
+import {
+  letterBodyBlocksOf,
+  letterTextBlocksOf,
+  plainTextOfBlock,
+} from './render-letter-body'
 
 const values = {
   nom: 'Marcel Laurent',
@@ -107,5 +111,52 @@ describe('letterBodyBlocksOf — le corps d’une lettre (ADR 066 §2)', () => {
 
     expect(blocks.map(plainTextOfBlock)).toEqual(['Grand titre', 'Fin'])
     expect(blocks[0].kind).toBe('paragraph')
+  })
+})
+
+describe('letterTextBlocksOf — le courrier du lancement (s42b, ADR 072 §6)', () => {
+  it('des paragraphes **texte**, puis l’encart de l’adresse du site', () => {
+    const blocks = letterTextBlocksOf(
+      'Bonjour {nom},\r\n\r\n**gras** et # titre\n[x](https://piege.test) <b>b</b>\n\n\n',
+      'Adresse du site : clos-fleuri.test'
+    )
+
+    expect(blocks).toEqual([
+      {
+        kind: 'paragraph',
+        runs: [{text: 'Bonjour {nom},', bold: false, italic: false}],
+      },
+      {
+        kind: 'paragraph',
+        runs: [
+          {
+            text: '**gras** et # titre\n[x](https://piege.test) <b>b</b>',
+            bold: false,
+            italic: false,
+          },
+        ],
+      },
+      {
+        kind: 'quote',
+        paragraphs: [
+          [
+            {
+              text: 'Adresse du site : clos-fleuri.test',
+              bold: false,
+              italic: false,
+            },
+          ],
+        ],
+      },
+    ])
+  })
+
+  it('sans adresse de site, aucun encart', () => {
+    expect(letterTextBlocksOf('Bonjour,', null).map((b) => b.kind)).toEqual([
+      'paragraph',
+    ])
+    expect(plainTextOfBlock(letterTextBlocksOf('Bonjour,', null)[0])).toBe(
+      'Bonjour,'
+    )
   })
 })

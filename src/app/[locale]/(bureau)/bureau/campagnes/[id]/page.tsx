@@ -25,7 +25,10 @@ import {
   CampaignStatisticsCard,
   CampaignStatisticsCardFallback,
 } from '@/components/features/campaigns/campaign-statistics-card'
-import {getCampaignDailySendCap} from '@/services/types/domain/association-settings-types'
+import {
+  getCampaignDailySendCap,
+  getInvitationLinkDays,
+} from '@/services/types/domain/association-settings-types'
 import type {
   CampaignDTO,
   CampaignRecipientFilter,
@@ -122,6 +125,7 @@ async function CampaignSection({
         </Suspense>
       }
       dailySendCap={getCampaignDailySendCap(settings)}
+      invitationLinkDays={getInvitationLinkDays(settings)}
       associationName={tenant.name}
       justSent={justSent}
     />

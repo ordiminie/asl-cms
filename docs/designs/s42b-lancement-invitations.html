@@ -1,0 +1,687 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>s42b — Lancement des invitations (maquette de référence)</title>
+<style>
+  /* Tokens copiés de docs/design-system.md §1.1 et §1.9 — clair seul (ADR 033). Rien d'autre.
+     Seules exceptions : les sept jumelles sombres de l'email (§5.2), dans .mail.dark. */
+  :root {
+    --radius: 0.5rem;
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.22 0.015 250);
+    --card: oklch(1 0 0);
+    --muted: oklch(0.972 0.005 240);
+    --muted-foreground: oklch(0.45 0.02 245);
+    --border: oklch(0.9 0.008 245);
+    --input: oklch(0.66 0.014 245);
+    --ring: oklch(0.55 0.11 235);
+    --primary: oklch(0.35 0.06 240);
+    --primary-foreground: oklch(0.985 0.003 240);
+    --secondary: oklch(0.965 0.006 240);
+    --secondary-foreground: oklch(0.3 0.02 245);
+    --destructive: oklch(0.48 0.17 27);
+    --destructive-text: oklch(0.48 0.17 27);
+    --link: oklch(0.45 0.13 250);
+    --warning: oklch(0.94 0.06 75);
+    --warning-border: oklch(0.6 0.13 65);
+    --warning-foreground: oklch(0.3 0.08 60);
+    --accent-hue: 195;
+    --accent: oklch(0.958 0.024 var(--accent-hue));
+    --accent-foreground: oklch(0.38 0.08 var(--accent-hue));
+    --accent-solid: oklch(0.55 0.1 var(--accent-hue));
+    --sidebar: oklch(0.985 0.004 250);
+    --sidebar-accent: oklch(0.93 0.012 245);
+    --sidebar-border: oklch(0.91 0.008 245);
+    --table-stripe: oklch(0.99 0.002 250);
+    --font-sans: 'Public Sans', ui-sans-serif, system-ui, sans-serif;
+    --font-serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--muted); color: var(--foreground); font-family: var(--font-sans); font-size: 17px; line-height: 1.6; }
+  a { color: var(--link); text-decoration: underline; text-underline-offset: 4px; }
+  p { margin: 0; }
+  .doc { max-width: 1232px; margin: 0 auto; padding: 32px 16px 64px; }
+  .doc > header h1 { font-family: var(--font-serif); font-size: 34px; line-height: 1.15; font-weight: 600; margin: 0 0 8px; }
+  .doc > header p { margin: 0 0 8px; max-width: 68ch; }
+  .state { margin-top: 48px; }
+  .state-label { font-family: var(--font-mono); font-size: 12px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted-foreground); margin: 0 0 4px; }
+  .state h2.state-title { font-family: var(--font-serif); font-size: 26px; line-height: 1.2; font-weight: 600; margin: 0 0 8px; }
+  .state .note { font-size: 15px; color: var(--muted-foreground); max-width: 68ch; margin: 0 0 16px; }
+  .frames { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+  .frame { container-type: inline-size; background: var(--background); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .frame.desktop { flex: 1 1 100%; min-width: 0; }
+  .frame.mobile { flex: 0 1 390px; width: 390px; max-width: 100%; }
+  .frame-cap { font-size: 15px; color: var(--muted-foreground); padding: 4px 16px; border-bottom: 1px solid var(--border); background: var(--muted); }
+
+  .mark { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .mono-square { width: 44px; height: 44px; border-radius: 8px; background: var(--accent-solid); color: var(--primary-foreground); font-family: var(--font-serif); font-weight: 600; display: grid; place-items: center; flex-shrink: 0; }
+  .mark-name { font-weight: 600; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 48px; padding: 0 16px; border-radius: 8px; font-size: 16px; font-weight: 600; font-family: var(--font-sans); border: 1px solid transparent; white-space: nowrap; flex-shrink: 0; }
+  .btn-default { background: var(--primary); color: var(--primary-foreground); }
+  .btn-outline { background: var(--background); color: var(--foreground); border-color: var(--input); }
+  .btn-destructive { background: var(--destructive); color: var(--primary-foreground); }
+  .btn[aria-disabled="true"] { opacity: .6; }
+  .ico { width: 20px; height: 20px; flex-shrink: 0; }
+  .card { border: 1px solid var(--border); border-radius: 8px; padding: 24px; background: var(--card); display: flex; flex-direction: column; gap: 16px; }
+  .h2 { font-family: var(--font-serif); font-size: 20px; font-weight: 600; margin: 0; }
+  .h1 { font-family: var(--font-serif); font-size: 34px; line-height: 1.15; font-weight: 600; margin: 0; }
+  .data { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 17px; }
+  .meta { font-size: 15px; color: var(--muted-foreground); }
+  .alert { display: flex; gap: 12px; border-radius: 8px; padding: 16px; border: 1px solid var(--border); background: var(--background); }
+  .alert .t { font-weight: 600; }
+  .alert-status .ico { color: var(--primary); }
+  .alert-muted { background: var(--muted); }
+  .alert-warning { background: var(--warning); border-color: var(--warning-border); color: var(--warning-foreground); }
+  .alert-destructive { border: 2px solid var(--destructive); color: var(--destructive-text); }
+  .actions { display: flex; gap: 12px; flex-wrap: wrap; }
+  .skeleton { background: var(--muted); border-radius: 4px; height: 56px; }
+  .skel-line { height: 24px; width: 60%; }
+
+  /* Back-office — sidebar 248 px → tiroir sous lg */
+  .bo { display: flex; }
+  .bo-side { width: 248px; flex-shrink: 0; background: var(--sidebar); border-right: 1px solid var(--sidebar-border); padding: 16px; font-size: 16px; }
+  .bo-side .grp { font-size: 15px; color: var(--muted-foreground); margin: 16px 12px 4px; }
+  .bo-side .item { padding: 8px 12px; border-radius: 8px; }
+  .bo-side .item.active { background: var(--sidebar-accent); font-weight: 600; }
+  .bo-top { display: none; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  .bo-main { flex: 1 1 auto; min-width: 0; padding: 32px; }
+  .bo-col { max-width: 800px; display: flex; flex-direction: column; gap: 24px; }
+  .crumb { font-size: 15px; color: var(--muted-foreground); }
+
+  /* Compteur (§3.13) et décompte d'une cible (§3.14) */
+  .counter { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin: 0; }
+  .counter.c3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .counter dt { font-size: 15px; color: var(--muted-foreground); }
+  .counter dd { margin: 4px 0 0; }
+  .tally { margin: 0; }
+  .tally .row { display: flex; justify-content: space-between; gap: 16px; padding: 8px 0; border-top: 1px solid var(--border); }
+  .tally .row:first-of-type { border-top: 0; }
+  .tally .row.total { border-top: 2px solid var(--border); font-weight: 600; }
+  .tally dt { min-width: 0; }
+  .tally dd { margin: 0; }
+  .tally-title { font-size: 17px; font-weight: 600; margin: 0; }
+
+  /* Plan écrit (§3.13, s29) */
+  .plan { border-left: 2px solid var(--border); padding-left: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .plan .ln { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+  .plan .ln strong { font-weight: 600; }
+  .badge { display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 8px; border-radius: 999px; border: 1px solid var(--border); font-size: 15px; white-space: nowrap; }
+  .badge-done { color: var(--muted-foreground); border-color: var(--input); }
+  .badge-secondary { background: var(--secondary); color: var(--secondary-foreground); border-color: transparent; }
+  .badge-pending { background: var(--warning); border-color: var(--warning-border); color: var(--warning-foreground); }
+  .badge-outline { border-color: var(--input); }
+
+  /* Tableau (§2.1, §3.5) */
+  table { width: 100%; border-collapse: collapse; font-size: 17px; }
+  th { background: var(--muted); font-size: 15px; font-weight: 600; text-align: left; padding: 12px 16px; }
+  td { padding: 8px 16px; border-top: 1px solid var(--border); height: 56px; vertical-align: top; }
+  tr:nth-child(even) td { background: var(--table-stripe); }
+  td .data { overflow-wrap: anywhere; }
+  .cards-m { display: none; }
+  .pcard { border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-top: 12px; }
+  .pcard dl { margin: 8px 0 0; }
+  .pcard dt { font-size: 15px; color: var(--muted-foreground); }
+  .pcard dd { margin: 0 0 8px; }
+  .pager { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .field label { display: block; font-size: 16px; font-weight: 500; margin-bottom: 4px; }
+  .select { height: 48px; border: 1px solid var(--input); border-radius: 8px; padding: 0 12px; display: flex; align-items: center; justify-content: space-between; max-width: 360px; }
+
+  /* Dialogue (alert-dialog) */
+  .veil { background: var(--muted); padding: 16px; }
+  .dlg { border: 1px solid var(--border); border-radius: 12px; background: var(--background); padding: 24px; max-width: 560px; margin: 16px auto; display: flex; flex-direction: column; gap: 16px; }
+  .dlg h3 { font-size: 20px; font-weight: 600; margin: 0; }
+
+  /* Réglages (§3.1) */
+  .opt { color: var(--muted-foreground); font-weight: 400; font-size: 15px; }
+  .textarea { min-height: 160px; border: 1px solid var(--input); border-radius: 8px; padding: 12px; font-size: 17px; white-space: pre-line; }
+  .help { font-size: 15px; color: var(--muted-foreground); margin: 4px 0 0; }
+  .counter-help { font-size: 15px; color: var(--muted-foreground); text-align: right; margin: 4px 0 0; }
+  .ro { background: var(--muted); border-radius: 8px; padding: 12px; }
+  .radio { display: flex; gap: 12px; align-items: flex-start; min-height: 48px; padding: 4px 0; }
+  .radio .dot { width: 20px; height: 20px; border-radius: 999px; border: 1px solid var(--input); flex-shrink: 0; margin-top: 4px; }
+  .radio .dot.on { border: 6px solid var(--primary); }
+
+  /* Email (§5) — rendu réel en hexadécimal de theme.ts, ici par les tokens */
+  .mail { max-width: 600px; margin: 0 auto; background: var(--background); padding: 24px; font-family: Helvetica, Arial, sans-serif; display: flex; flex-direction: column; gap: 16px; }
+  .mail h2 { font-family: Georgia, serif; font-size: 24px; line-height: 1.25; margin: 0; }
+  .mail .mbtn { display: block; text-align: center; background: var(--primary); color: var(--primary-foreground); font-weight: 600; font-size: 19px; padding: 12px 16px; border-radius: 8px; min-height: 48px; }
+  .mail .ubtn { display: inline-block; text-align: center; border: 1px solid var(--input); color: var(--foreground); font-weight: 600; font-size: 16px; padding: 12px 16px; border-radius: 8px; min-height: 48px; }
+  .mail .url { font-size: 15px; color: var(--link); overflow-wrap: anywhere; }
+  .mail ol { padding-left: 24px; margin: 0; }
+  .mail ol li { margin-bottom: 8px; }
+  .mail-head { background: var(--accent); border-top: 4px solid var(--accent-solid); padding: 16px 24px; margin: -24px -24px 0; font-weight: 600; color: var(--accent-foreground); display: flex; gap: 12px; align-items: center; }
+  .mail-head .mono-square { width: 32px; height: 32px; font-size: 15px; }
+  .mail-foot { background: var(--muted); color: var(--muted-foreground); font-size: 15px; padding: 16px 24px; margin: 8px -24px -24px; display: flex; flex-direction: column; gap: 12px; }
+  .mail.dark { background: #171A1E; color: #E8EBEF; }
+  .mail.dark .mbtn { background: #2063B0; color: #FFFFFF; }
+  .mail.dark .url { color: #8CC3FC; }
+  .mail.dark .ubtn { border-color: #32363A; color: #E8EBEF; }
+  .mail.dark .mail-head { background: #171A1E; color: #E8EBEF; border-top-color: #32363A; }
+  .mail.dark .mail-foot { background: #171A1E; color: #9DA6AE; border-top: 1px solid #32363A; }
+  .mail.dark .meta { color: #9DA6AE; }
+
+  /* Papier (§6.1) — échelle 1 mm = 2 px (1,6 px sous 640 px) ; noir et blanc */
+  .paper-wrap { padding: 24px; display: flex; justify-content: center; background: var(--muted); }
+  .paper { --mm: 2px; width: calc(210 * var(--mm)); height: calc(297 * var(--mm)); background: var(--background); color: var(--foreground); border: 1px solid var(--border); position: relative; flex-shrink: 0; }
+  .paper > div { position: absolute; }
+  .paper .head { left: calc(20 * var(--mm)); top: calc(15 * var(--mm)); right: calc(20 * var(--mm)); display: flex; gap: calc(3 * var(--mm)); align-items: center; }
+  .paper .mono { width: calc(9 * var(--mm)); height: calc(9 * var(--mm)); border: 1px solid var(--foreground); display: flex; align-items: center; justify-content: center; font-family: var(--font-serif); font-weight: 600; font-size: calc(4 * var(--mm)); }
+  .paper .org { font-family: var(--font-serif); font-weight: 600; font-size: calc(4.9 * var(--mm)); line-height: 1.2; }
+  .paper .window { left: calc(20 * var(--mm)); top: calc(45 * var(--mm)); width: calc(100 * var(--mm)); height: calc(35 * var(--mm)); outline: 1px dashed var(--muted-foreground); }
+  .paper .address { left: calc(25 * var(--mm)); top: calc(50 * var(--mm)); width: calc(90 * var(--mm)); height: calc(25 * var(--mm)); font-size: calc(4.23 * var(--mm)); line-height: 1.4; }
+  .paper .date { right: calc(20 * var(--mm)); top: calc(90 * var(--mm)); font-size: calc(4.23 * var(--mm)); }
+  .paper .content { left: calc(20 * var(--mm)); right: calc(20 * var(--mm)); top: calc(102 * var(--mm)); font-size: calc(4.4 * var(--mm)); line-height: 1.7; display: flex; flex-direction: column; gap: calc(3 * var(--mm)); }
+  .paper .subject { font-family: var(--font-serif); font-size: calc(4.6 * var(--mm)); font-weight: 600; }
+  .paper .site { border: 1px solid var(--foreground); padding: calc(2 * var(--mm)) calc(3 * var(--mm)); font-size: calc(4.23 * var(--mm)); }
+  .paper .foot { left: calc(20 * var(--mm)); right: calc(20 * var(--mm)); bottom: calc(20 * var(--mm)); border-top: 1px solid var(--foreground); padding-top: calc(2 * var(--mm)); font-size: calc(3.2 * var(--mm)); line-height: 1.5; }
+
+  /* Mobile : < 640 px dans le cadre (container query) */
+  @container (max-width: 640px) {
+    .h1 { font-size: 30px; }
+    .card { padding: 16px; }
+    .bo-side { display: none; }
+    .bo-top { display: flex; }
+    .bo-main { padding: 24px 16px; }
+    .actions { flex-direction: column; }
+    .actions .btn { width: 100%; height: 56px; font-size: 17px; }
+    .counter, .counter.c3 { grid-template-columns: 1fr; gap: 8px; }
+    .table-d { display: none; }
+    .cards-m { display: block; }
+    .pager .btn { flex: 1 1 0; height: 56px; }
+    .pager .meta { flex-basis: 100%; order: -1; text-align: center; }
+    .select { height: 56px; max-width: none; }
+    .dlg { margin: 16px 0 0; border-radius: 12px 12px 0 0; max-width: none; }
+    .mail { padding: 16px; }
+    .mail-head { margin: -16px -16px 0; padding: 16px; }
+    .mail-foot { margin: 8px -16px -16px; padding: 16px; }
+    .mail .ubtn { display: block; }
+    .paper-wrap { padding: 12px 0; }
+    .paper { --mm: 1.6px; }
+  }
+  @container (min-width: 641px) and (max-width: 1023px) {
+    .bo-side { display: none; }
+    .bo-top { display: flex; }
+  }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></symbol>
+  <symbol id="i-warn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21.7 18-8-14a2 2 0 0 0-3.4 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3z"/><path d="M12 9v4M12 17h.01"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></symbol>
+</svg>
+
+<div class="doc">
+<header>
+  <p class="state-label">Maquette de référence — ne pas copier en production</p>
+  <h1>s42b — Annoncer le site à tous les membres</h1>
+  <p>Association fictive « Clos-Fleuri » (CF, teinte 195). 296 fiches : 225 avec au moins une adresse email active, 71 sans (courrier). 312 adresses actives distinctes, 3 en attente de confirmation. Lancement et relance : nature statutaire (seed).</p>
+  <p class="meta">Chaque planche : cadre ordinateur, puis le même contenu en cadre mobile 390 px (copie automatique, requêtes de conteneur). Clair seul (ADR 033), sauf la jumelle sombre de l'email (§5.2).</p>
+</header>
+
+<!-- ===================== E1 · 1a — Page complète avant lancement ===================== -->
+<section class="state">
+  <p class="state-label">Écran 1 · état 1a — écran 2 · état 2a</p>
+  <h2 class="state-title">« Invitations » — avant le lancement</h2>
+  <p class="note">Nouvelle page du groupe « L'association », après « Relances ». Un seul bouton default : « Lancer les invitations ». Le suivi est déjà là : il compte les invitations individuelles (s42a) faites avant le lancement.</p>
+  <div class="frames">
+    <div class="frame desktop">
+      <div class="frame-cap">Ordinateur · /bureau/invitations</div>
+      <div class="bo">
+        <nav class="bo-side"><div class="mark"><div class="mono-square">CF</div><span class="mark-name">Clos-Fleuri</span></div><p class="grp">L'association</p><div class="item">Propriétaires</div><div class="item">Campagnes</div><div class="item">Relances</div><div class="item active">Invitations</div><div class="item">Envois</div><div class="item">Réglages</div></nav>
+        <div class="bo-main">
+          <div class="bo-top"><div class="mark"><div class="mono-square">CF</div><span class="mark-name">Clos-Fleuri</span></div><span class="btn btn-outline"><svg class="ico"><use href="#i-menu"/></svg>Menu</span></div>
+          <div class="bo-col" style="margin-top:16px">
+            <p class="crumb">L'association › Invitations</p>
+            <div><h1 class="h1">Invitations des membres</h1><p class="meta" style="margin-top:8px">Annoncer le site à tous les propriétaires, puis suivre qui s'est connecté à son espace.</p></div>
+            <section class="card" aria-labelledby="l1">
+              <h2 class="h2" id="l1">Lancement</h2>
+              <p>Un seul envoi, une seule fois : chaque adresse email active reçoit une invitation avec son propre lien de connexion ; les membres sans adresse email reçoivent un courrier qui annonce le site.</p>
+              <div>
+                <p class="tally-title">Fiches</p>
+                <dl class="tally">
+                  <div class="row"><dt>Avec au moins une adresse email active <span class="meta">— reçoivent l'invitation</span></dt><dd class="data">225</dd></div>
+                  <div class="row"><dt>Sans adresse email active <span class="meta">— reçoivent le courrier</span></dt><dd class="data">71</dd></div>
+                  <div class="row total"><dt>Fiches au total</dt><dd class="data">296</dd></div>
+                </dl>
+              </div>
+              <div>
+                <p class="tally-title">Adresses</p>
+                <dl class="tally">
+                  <div class="row"><dt>Adresses qui recevront l'invitation</dt><dd class="data">312</dd></div>
+                  <div class="row"><dt>Dont désinscrites des campagnes <span class="meta">— elles la reçoivent : c'est un envoi statutaire</span></dt><dd class="data">15</dd></div>
+                  <div class="row"><dt>En attente de confirmation <span class="meta">— ne reçoivent rien</span></dt><dd class="data">3</dd></div>
+                </dl>
+              </div>
+              <p class="meta">Une adresse partagée par plusieurs fiches ne reçoit qu'une invitation. Une fiche dont les seules adresses attendent leur confirmation reçoit le courrier.</p>
+              <div class="actions"><span class="btn btn-default"><svg class="ico"><use href="#i-send"/></svg>Lancer les invitations</span></div>
+              <p class="meta">Le texte de l'invitation et celui du courrier se règlent dans <a href="#">Réglages › Invitation des membres</a>.</p>
+            </section>
+            <section class="card" aria-labelledby="s1">
+              <h2 class="h2" id="s1">Suivi</h2>
+              <dl class="counter">
+                <div><dt>Invitations envoyées</dt><dd class="data">4</dd></div>
+                <div><dt>Adresses connectées</dt><dd class="data">3</dd></div>
+                <div><dt>Jamais connectées</dt><dd class="data">309</dd></div>
+                <div><dt>En attente</dt><dd class="data">3</dd></div>
+              </dl>
+              <p class="meta">Compté en adresses. « Invitations envoyées » : adresses invitées au moins une fois, depuis leur fiche ou par le lancement.</p>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== E1 · 1b — Confirmation du lancement ===================== -->
+<section class="state">
+  <p class="state-label">Écran 1 · état 1b</p>
+  <h2 class="state-title">Confirmer le lancement — décompte en fiches et plan d'envoi</h2>
+  <p class="note">alert-dialog (irréversible : un seul lancement par association). Bouton destructive qui nomme l'acte. Plan écrit quand le plafond ou le budget du jour étale l'envoi (s26, s52). Ancré en bas en mobile.</p>
+  <div class="frames">
+    <div class="frame desktop">
+      <div class="frame-cap">Ordinateur · /bureau/invitations — dialogue</div>
+      <div class="veil">
+        <div class="dlg" role="alertdialog" aria-labelledby="d1">
+          <h3 id="d1">Lancer les invitations ?</h3>
+          <p><strong>225 fiches</strong> reçoivent l'invitation par email (312 adresses) · <strong>71 fiches</strong> reçoivent le courrier.</p>
+          <p>Le lancement part en 4 jours :</p>
+          <div class="plan">
+            <div class="ln"><span class="data">100</span> adresses aujourd'hui</div>
+            <div class="ln"><span class="data">100</span> adresses demain</div>
+            <div class="ln"><span class="data">100</span> adresses après-demain</div>
+            <div class="ln"><span class="data">12</span> adresses le <span class="data">27/11/2026</span></div>
+          </div>
+          <p>Le courrier des 71 fiches sera prêt à télécharger dès aujourd'hui. Chaque lien de connexion vaut 7 jours à partir de son envoi.</p>
+          <p class="meta">Le lancement ne peut ni être annulé ni être refait. Ensuite, vous pourrez relancer les adresses jamais connectées.</p>
+          <div class="actions"><span class="btn btn-destructive">Envoyer le lancement</span><span class="btn btn-outline">Revenir</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== E1 · 1c, 1d, 1e — Après le lancement ===================== -->
+<section class="state">
+  <p class="state-label">Écran 1 · états 1c, 1d, 1e</p>
+  <h2 class="state-title">Carte « Lancement » — parti, reporté par le budget, terminé</h2>
+  <p class="note">Le bouton « Lancer » a disparu pour toujours. La ligne du lancement reprend le plan écrit de s29 : date, badge d'état d'un envoi (§3.13), décompte en meta, liens vers le détail de la campagne (s26) et vers sa carte « Courrier postal » (s28).</p>
+  <div class="frames">
+    <div class="frame desktop">
+      <div class="frame-cap">Ordinateur · /bureau/invitations</div>
+      <div class="bo-main"><div class="bo-col">
+        <section class="card">
+          <p class="state-label">1c · juste après la confirmation</p>
+          <div role="status" class="alert alert-status"><svg class="ico"><use href="#i-check"/></svg><p><span class="t">Lancement parti.</span> 100 adresses le reçoivent aujourd'hui ; la suite part seule les 25, 26 et 27/11. Le courrier des 71 fiches est prêt : <a href="#">Courrier postal (71)</a>.</p></div>
+          <h2 class="h2">Lancement</h2>
+          <div class="plan">
+            <div class="ln"><strong>Lancement — <span class="data">24/11/2026</span></strong><span class="badge badge-secondary">En cours d'envoi</span></div>
+            <p class="meta"><span class="data">100</span> reçues sur <span class="data">312</span> adresses · <span class="data">71</span> courriers · par Anne Martin</p>
+            <div class="ln"><a href="#">Voir l'envoi</a><a href="#">Courrier postal (71)</a></div>
+          </div>
+        </section>
+        <section class="card">
+          <p class="state-label">1d · reporté par le budget du jour (part entamée)</p>
+          <h2 class="h2">Lancement</h2>
+          <div class="alert alert-muted"><p>Le lancement continue seul : <strong>112 adresses</strong> le recevront le <span class="data">25/11/2026</span>, la limite d'envois du jour étant atteinte. Vous n'avez rien à faire.</p></div>
+          <div class="plan">
+            <div class="ln"><strong>Lancement — <span class="data">24/11/2026</span></strong><span class="badge badge-secondary">Programmée pour le 25/11</span></div>
+            <p class="meta"><span class="data">200</span> reçues · <span class="data">112</span> reportées au <span class="data">25/11</span> · <span class="data">71</span> courriers</p>
+            <div class="ln"><a href="#">Voir l'envoi</a><a href="#">Courrier postal (71)</a></div>
+          </div>
+        </section>
+        <section class="card">
+          <p class="state-label">1e · lancement terminé — la relance devient l'action</p>
+          <h2 class="h2">Lancement</h2>
+          <div class="plan">
+            <div class="ln"><strong>Lancement — <span class="data">24/11/2026</span></strong><span class="badge badge-done">Envoyée</span></div>
+            <p class="meta"><span class="data">312</span> adresses · <span class="data">71</span> courriers · par Anne Martin</p>
+            <div class="ln"><a href="#">Voir l'envoi</a><a href="#">Courrier postal (71)</a></div>
+          </div>
+        </section>
+        <section class="card">
+          <h2 class="h2">Relancer les jamais connectés</h2>
+          <p>Une nouvelle invitation part à chaque adresse active qui ne s'est jamais connectée, qu'elle ait déjà été invitée ou non. Par email seulement : la relance n'envoie aucun courrier.</p>
+          <dl class="tally">
+            <div class="row"><dt>Adresses qui recevront la relance</dt><dd class="data">142</dd></div>
+            <div class="row"><dt>Dont jamais invitées <span class="meta">— ajoutées depuis le lancement</span></dt><dd class="data">6</dd></div>
+            <div class="row"><dt>Dont désinscrites des campagnes <span class="meta">— elles la reçoivent : c'est un envoi statutaire</span></dt><dd class="data">9</dd></div>
+            <div class="row"><dt>En attente de confirmation <span class="meta">— ne reçoivent rien</span></dt><dd class="data">3</dd></div>
+          </dl>
+          <div class="actions"><span class="btn btn-default"><svg class="ico"><use href="#i-send"/></svg>Relancer les jamais connectés</span></div>
+          <p class="meta">Les liens encore valides de ces adresses cesseront de fonctionner : chacune reçoit un lien neuf.</p>
+        </section>
+      </div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== E1 · 1f, 1g, 1h — Relance ===================== -->
+<section class="state">
+  <p class="state-label">Écran 1 · états 1f, 1g, 1h</p>
+  <h2 class="state-title">Relance — confirmation, relance en cours, personne à relancer</h2>
+  <p class="note">1f : alert-dialog sans courrier. 1g : tant qu'un envoi d'invitations est en cours, le bouton laisse la place à une phrase (choix du design, à confirmer au plan). 1h : vide d'une file qui se vide seule, sans action (§3.13, s52).</p>
+  <div class="frames">
+    <div class="frame desktop">
+      <div class="frame-cap">Ordinateur · /bureau/invitations</div>
+      <div class="veil">
+        <div class="dlg" role="alertdialog" aria-labelledby="d2">
+          <p class="state-label">1f</p>
+          <h3 id="d2">Relancer 142 adresses ?</h3>
+          <p>Elle part en une seule fois, aujourd'hui. Aucun courrier n'est produit.</p>
+          <p class="meta">Les adresses connectées entre-temps sont écartées au moment de l'envoi.</p>
+          <div class="actions"><span class="btn btn-destructive">Envoyer la relance</span><span class="btn btn-outline">Revenir</span></div>
+        </div>
+      </div>
+      <div class="bo-main"><div class="bo-col">
+        <section class="card">
+          <p class="state-label">1g · relance en cours</p>
+          <h2 class="h2">Relancer les jamais connectés</h2>
+          <div class="plan">
+            <div class="ln"><strong>Relance — <span class="data">01/12/2026</span></strong><span class="badge badge-secondary">En cours d'envoi</span></div>
+            <p class="meta"><span class="data">60</span> reçues sur <span class="data">142</span> adresses · par Anne Martin</p>
+            <div class="ln"><a href="#">Voir l'envoi</a></div>
+          </div>
+          <p class="meta">Une relance est en cours d'envoi : vous pourrez relancer quand elle sera entièrement partie.</p>
+        </section>
+        <section class="card">
+          <p class="state-label">1h · personne à relancer</p>
+          <h2 class="h2">Relancer les jamais connectés</h2>
+          <div class="plan">
+            <div class="ln"><strong>Relance — <span class="data">01/12/2026</span></strong><span class="badge badge-done">Envoyée</span></div>
+            <p class="meta"><span class="data">142</span> adresses</p>
+          </div>
+          <div class="alert alert-muted"><p>Personne à relancer : toutes les adresses actives se sont connectées au moins une fois.</p></div>
+        </section>
+      </div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== E1 · 1i à 1l — Refus, erreur, chargement ===================== -->
+<section class="state">
+  <p class="state-label">Écran 1 · états 1i, 1j, 1k, 1l</p>
+  <h2 class="state-title">Refus lisibles, échec, chargement, lecture impossible</h2>
+  <p class="note">Toujours ancrés dans la carte, jamais un toast. Un refus métier n'est pas une erreur technique.</p>
+  <div class="frames">
+    <div class="frame desktop">
+      <div class="frame-cap">Ordinateur · /bureau/invitations</div>
+      <div class="bo-main"><div class="bo-col">
+        <section class="card">
+          <p class="state-label">1i · refus métier</p>
+          <h2 class="h2">Lancement</h2>
+          <div class="alert alert-muted"><svg class="ico"><use href="#i-info"/></svg><p><span class="t">Le lancement a déjà été envoyé</span> le <span class="data">24/11/2026</span> par Anne Martin. Rien n'est reparti. <a href="#">Voir l'envoi</a></p></div>
+          <div class="alert alert-warning"><svg class="ico"><use href="#i-warn"/></svg><p><span class="t">Le lancement attend la mise en ligne du site.</span> L'association n'a pas encore d'adresse de site : les liens de connexion ne peuvent pas être créés. Rien n'a été envoyé.</p></div>
+          <div class="alert alert-warning"><svg class="ico"><use href="#i-warn"/></svg><p><span class="t">Les envois d'emails aux membres sont coupés.</span> Rien n'a été envoyé. Ils se rétablissent dans les réglages de l'association.</p></div>
+        </section>
+        <section class="card">
+          <p class="state-label">1j · échec à la création</p>
+          <h2 class="h2">Lancement</h2>
+          <div role="alert" class="alert alert-destructive"><svg class="ico"><use href="#i-warn"/></svg><div><p class="t">Le lancement n'est pas parti.</p><p>Aucun email n'a été envoyé, aucun courrier préparé. Réessayez dans quelques minutes.</p></div></div>
+          <div class="actions"><span class="btn btn-default"><svg class="ico"><use href="#i-send"/></svg>Lancer les invitations</span></div>
+        </section>
+        <section class="card" aria-busy="true">
+          <p class="state-label">1k · chargement</p>
+          <div class="skeleton skel-line"></div>
+          <div class="skeleton"></div>
+          <div class="skeleton"></div>
+          <div class="actions"><span class="btn btn-default" aria-disabled="true">Lancement en cours…</span></div>
+        </section>
+        <section class="card">
+          <p class="state-label">1l · lecture impossible</p>
+          <div role="alert" class="alert alert-destructive"><svg class="ico"><use href="#i-warn"/></svg><div><p class="t">Les invitations ne peuvent pas être lues pour l'instant.</p><p>Rien n'est perdu et rien n'a été envoyé. Rechargez la page dans un instant.</p></div></div>
+        </section>
+      </div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== E2 — Suivi d'adoption ===================== -->
+<section class="state">
+  <p class="state-label">Écran 2 · états 2b, 2c</p>
+  <h2 class="state-title">Suivi — adoption par adresse, couverture par fiche, jamais connectées</h2>
+  <p class="note">Même page, sous la relance. Une ligne par adresse ; une adresse portée par deux fiches a une seule ligne, un seul état, et ses deux fiches. L'adresse en attente est dans la liste, marquée. 2c : nature réglée en facultative, fiches qui ont refusé les envois facultatifs listées à part.</p>
+  <div class="frames">
+    <div class="frame desktop">
+      <div class="frame-cap">Ordinateur · /bureau/invitations</div>
+      <div class="bo-main"><div class="bo-col">
+        <section class="card" aria-labelledby="s2">
+          <h2 class="h2" id="s2">Suivi</h2>
+          <dl class="counter">
+            <div><dt>Invitations envoyées</dt><dd class="data">312</dd></div>
+            <div><dt>Adresses connectées</dt><dd class="data">176</dd></div>
+            <div><dt>Jamais connectées</dt><dd class="data">142</dd></div>
+            <div><dt>En attente</dt><dd class="data">3</dd></div>
+          </dl>
+          <p class="meta">Compté en adresses. « Connectée » : une connexion réussie au moins une fois sur le site de l'association, pas un clic sur le lien.</p>
+          <p class="tally-title">Couverture des fiches</p>
+          <dl class="counter c3">
+            <div><dt>Par email</dt><dd class="data">225</dd></div>
+            <div><dt>Par courrier</dt><dd class="data">71</dd></div>
+            <div><dt>Ni l'un ni l'autre</dt><dd class="data">0</dd></div>
+          </dl>
+        </section>
+        <section class="card" aria-labelledby="s3">
+          <h2 class="h2" id="s3">Adresses jamais connectées</h2>
+          <p class="meta" aria-live="polite">145 adresses — dont 3 en attente de confirmation, qui ne reçoivent rien.</p>
+          <table class="table-d">
+            <thead><tr><th style="width:36%">Adresse</th><th style="width:28%">Fiche</th><th>Invitation</th></tr></thead>
+            <tbody>
+              <tr><td><span class="data">claire.dubois@exemple.fr</span></td><td><a href="#">Jean Dubois</a><div class="meta">parcelle <span class="data">21</span></div></td><td>Invitée le <span class="data">24/11/2026</span></td></tr>
+              <tr><td><span class="data">h.roux@exemple.fr</span><div class="meta">Même adresse sur 2 fiches : un seul état</div></td><td><a href="#">Hélène Roux</a><div class="meta">parcelle <span class="data">8</span></div><a href="#">Hélène Roux</a><div class="meta">parcelle <span class="data">31</span></div></td><td>Invitée le <span class="data">24/11/2026</span></td></tr>
+              <tr><td><span class="data">marc.dubois@exemple.fr</span></td><td><a href="#">Jean Dubois</a><div class="meta">parcelle <span class="data">21</span></div></td><td><span class="badge badge-pending">En attente de confirmation</span><div class="meta">ne reçoit rien tant qu'elle n'est pas confirmée</div></td></tr>
+              <tr><td><span class="data">p.lefevre@exemple.fr</span></td><td><a href="#">Paul Lefèvre</a><div class="meta">parcelle <span class="data">44</span></div></td><td>Jamais invitée<div class="meta">ajoutée le <span class="data">28/11/2026</span></div></td></tr>
+            </tbody>
+          </table>
+          <div class="cards-m">
+            <div class="pcard"><div class="data">claire.dubois@exemple.fr</div><dl><dt>Fiche</dt><dd><a href="#">Jean Dubois</a> · parcelle <span class="data">21</span></dd><dt>Invitation</dt><dd>Invitée le <span class="data">24/11/2026</span></dd></dl></div>
+            <div class="pcard"><div class="data">h.roux@exemple.fr</div><p class="meta">Même adresse sur 2 fiches : un seul état</p><dl><dt>Fiches</dt><dd><a href="#">Hélène Roux</a> · parcelle <span class="data">8</span><br><a href="#">Hélène Roux</a> · parcelle <span class="data">31</span></dd><dt>Invitation</dt><dd>Invitée le <span class="data">24/11/2026</span></dd></dl></div>
+            <div class="pcard"><div class="data">marc.dubois@exemple.fr</div><dl><dt>Fiche</dt><dd><a href="#">Jean Dubois</a> · parcelle <span class="data">21</span></dd><dt>Invitation</dt><dd><span class="badge badge-pending">En attente de confirmation</span><div class="meta">ne reçoit rien tant qu'elle n'est pas confirmée</div></dd></dl></div>
+            <div class="pcard"><div class="data">p.lefevre@exemple.fr</div><dl><dt>Fiche</dt><dd><a href="#">Paul Lefèvre</a> · parcelle <span class="data">44</span></dd><dt>Invitation</dt><dd>Jamais invitée<div class="meta">ajoutée le <span class="data">28/11/2026</span></div></dd></dl></div>
+          </div>
+          <div class="pager"><span class="btn btn-outline" aria-disabled="true">Précédent</span><span class="meta">Page <span class="data">1</span> sur <span class="data">6</span></span><span class="btn btn-outline">Suivant</span></div>
+        </section>
+        <section class="card" aria-labelledby="s4">
+          <p class="state-label">2c · lancement réglé en facultatif</p>
+          <h2 class="h2" id="s4">Ont refusé les envois facultatifs</h2>
+          <div class="alert alert-muted"><p>Ces <strong>2 fiches</strong> n'ont reçu ni email ni courrier : toutes leurs adresses sont désinscrites des campagnes, et le lancement est un envoi facultatif.</p></div>
+          <div class="plan">
+            <div class="ln"><a href="#">Odile Garnier</a><span class="meta">parcelle <span class="data">12</span></span></div>
+            <div class="ln"><a href="#">Marc Petit</a><span class="meta">parcelle <span class="data">57</span></span></div>
+          </div>
+        </section>
+      </div></div>
+    </div>
+  </div>
+</section>
+
+<section class="state">
+  <p class="state-label">Écran 2 · états 2d, 2e</p>
+  <h2 class="state-title">Suivi — liste vide, chargement</h2>
+  <p class="note">2d : file qui se vide seule, sans action. 2e : skeleton du compteur et de trois lignes, aria-busy.</p>
+  <div class="frames">
+    <div class="frame desktop">
+      <div class="frame-cap">Ordinateur · /bureau/invitations</div>
+      <div class="bo-main"><div class="bo-col">
+        <section class="card">
+          <p class="state-label">2d</p>
+          <h2 class="h2">Adresses jamais connectées</h2>
+          <div class="alert alert-muted"><p>Aucune adresse en attente de première connexion. Toutes les adresses se sont connectées au moins une fois.</p></div>
+        </section>
+        <section class="card" aria-busy="true">
+          <p class="state-label">2e</p>
+          <h2 class="h2">Suivi</h2>
+          <div class="skeleton"></div>
+          <div class="skeleton"></div>
+          <div class="skeleton"></div>
+          <div class="skeleton"></div>
+        </section>
+      </div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== E3 — Email de lancement ===================== -->
+<section class="state">
+  <p class="state-label">Écran 3 · états 3a, 3b</p>
+  <h2 class="state-title">Email de lancement — habillage des campagnes, bloc d'invitation, pied statutaire</h2>
+  <p class="note">Objet reçu : « Clos-Fleuri — Votre espace membre vous attend » (préfixe posé une seule fois). Pré-en-tête : « Un espace personnel vous est ouvert sur le site de l'association. Aucun mot de passe à retenir. » La relance reçoit le même email. Rendu réel en hexadécimal (theme.ts).</p>
+  <div class="frames">
+    <div class="frame desktop">
+      <div class="frame-cap">Client mail · 600 px · 3a clair</div>
+      <div class="veil"><div class="mail">
+        <div class="mail-head"><span class="mono-square">CF</span>Clos-Fleuri</div>
+        <h2>Votre espace sur le site de Clos-Fleuri</h2>
+        <p>Bonjour,</p>
+        <p>Votre association a ouvert sur son site un espace personnel pour chaque propriétaire. Vous y retrouverez les informations qui vous concernent.</p>
+        <span class="mbtn">Ouvrir mon espace</span>
+        <div><p class="meta">Ou recopiez ce lien dans votre navigateur :</p>
+        <p class="url">https://clos-fleuri.exemple.fr/api/auth/magic-link/verify?token=Xk3…</p></div>
+        <ol>
+          <li>Cliquez sur le bouton : votre espace s'ouvre directement.</li>
+          <li>Ce lien vaut jusqu'au 1er décembre 2026 et ne sert qu'une fois.</li>
+          <li>Ensuite, pour revenir, saisissez votre adresse sur la page de connexion : un nouveau lien vous est envoyé. Il n'y a <strong>aucun mot de passe</strong> à retenir.</li>
+        </ol>
+        <div class="mail-foot">
+          <p>Vous recevez cet email parce que vous êtes membre de Clos-Fleuri.</p>
+          <p>Ce message vous parvient même si vous vous êtes désinscrit des campagnes : votre appartenance à Clos-Fleuri vous engage à en être informé.</p>
+          <span class="ubtn">Ne plus recevoir les campagnes facultatives</span>
+          <p class="url">https://clos-fleuri.exemple.fr/desinscription/…</p>
+          <p>Se désinscrire ne vous prive d'aucune information obligatoire.</p>
+          <p>ASL du Clos-Fleuri · 12 chemin des Prés, 13000 Ville</p>
+        </div>
+      </div></div>
+      <div class="frame-cap">3b · jumelle sombre (§5.2)</div>
+      <div class="veil"><div class="mail dark">
+        <div class="mail-head"><span class="mono-square">CF</span>Clos-Fleuri</div>
+        <h2>Votre espace sur le site de Clos-Fleuri</h2>
+        <p>Bonjour,</p>
+        <p>Votre association a ouvert sur son site un espace personnel pour chaque propriétaire.</p>
+        <span class="mbtn">Ouvrir mon espace</span>
+        <p class="url">https://clos-fleuri.exemple.fr/api/auth/magic-link/verify?token=Xk3…</p>
+        <div class="mail-foot">
+          <p>Ce message vous parvient même si vous vous êtes désinscrit des campagnes : votre appartenance à Clos-Fleuri vous engage à en être informé.</p>
+          <span class="ubtn">Ne plus recevoir les campagnes facultatives</span>
+          <p class="url">https://clos-fleuri.exemple.fr/desinscription/…</p>
+        </div>
+      </div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== E4 — Courrier ===================== -->
+<section class="state">
+  <p class="state-label">Écran 4 · état 4a</p>
+  <h2 class="state-title">Courrier de lancement — une page du PDF (gabarit §6.1)</h2>
+  <p class="note">Texte du courrier (réglage), jamais celui de l'invitation. Aucun lien de connexion, aucune promesse d'accès. L'adresse du site est ajoutée d'office, en clair, encadrée 1 pt. Fenêtre en pointillés : repère, jamais imprimé.</p>
+  <div class="frames">
+    <div class="frame desktop">
+      <div class="frame-cap">PDF · A4 · échelle 1 mm = 2 px (1,6 px sous 640 px)</div>
+      <div class="paper-wrap">
+        <div class="paper" role="img" aria-label="Lettre de lancement, A4">
+          <div class="head"><span class="mono">CF</span><span class="org">Clos-Fleuri</span></div>
+          <div class="window" aria-hidden="true"></div>
+          <div class="address">Mme Odette Blanc<br>4 impasse des Lilas<br>13000 Ville</div>
+          <div class="date">Le 24 novembre 2026</div>
+          <div class="content">
+            <p class="subject">Objet : le site de Clos-Fleuri est en ligne</p>
+            <p>Bonjour,</p>
+            <p>L'association a mis en ligne son site internet. Chacun peut le consulter librement, sans inscription : vous y trouverez les actualités de l'association et les résultats des analyses de l'eau.</p>
+            <p>Rien ne change pour vous : le bureau continue de vous écrire par la poste pour tout ce qui vous concerne, comme aujourd'hui.</p>
+            <p>Le bureau de l'association</p>
+            <p class="site">Adresse du site : clos-fleuri.exemple.fr</p>
+          </div>
+          <div class="foot">Courrier envoyé par voie postale, faute d'adresse email connue.<br>ASL du Clos-Fleuri · 12 chemin des Prés, 13000 Ville</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== E5 — Réglages ===================== -->
+<section class="state">
+  <p class="state-label">Écran 5 · états 5a, 5b</p>
+  <h2 class="state-title">Réglages — texte du courrier, natures du lancement et de la relance</h2>
+  <p class="note">5a : section « Invitation des membres » de s42a, un champ de plus (texte long, compteur, phrase du défaut). 5b : carte « Nature des envois » (s27b), deux lignes de plus, en lecture seule pour le bureau.</p>
+  <div class="frames">
+    <div class="frame desktop">
+      <div class="frame-cap">Ordinateur · /bureau/reglages</div>
+      <div class="bo-main"><div class="bo-col">
+        <p class="crumb">L'association › Réglages</p>
+        <section class="card">
+          <p class="state-label">5a</p>
+          <h2 class="h2">Invitation des membres</h2>
+          <p class="meta">L'email qui invite un membre à se connecter à son espace, depuis sa fiche ou lors du lancement, et le courrier envoyé à ceux qui n'ont pas d'adresse email.</p>
+          <div class="field"><label for="it">Texte de l'invitation <span class="opt">Facultatif</span></label><div class="textarea" id="it" style="min-height:96px"></div><p class="help">Il s'affiche au-dessus du bouton de connexion, dans l'invitation depuis la fiche comme dans le lancement et la relance. Le bouton, le lien et le mode d'emploi sont ajoutés d'office.</p></div>
+          <div class="field"><label for="lt">Texte du courrier de lancement <span class="opt">Facultatif</span></label><div class="textarea" id="lt" style="min-height:96px"></div><p class="counter-help"><span class="data">0</span> / <span class="data">2000</span></p><p class="help">Envoyé par la poste, lors du lancement, aux membres sans adresse email. Ils n'ont pas d'espace membre : ce courrier ne contient aucun lien de connexion et ne doit promettre aucun accès. L'adresse du site est ajoutée d'office en dessous.</p><p class="help">Laissé vide, le courrier reprend le texte par défaut : « Bonjour, L'association a mis en ligne son site internet. Chacun peut le consulter librement, sans inscription : vous y trouverez les actualités de l'association et les résultats des analyses de l'eau. Rien ne change pour vous : le bureau continue de vous écrire par la poste pour tout ce qui vous concerne, comme aujourd'hui. Le bureau de l'association »</p></div>
+        </section>
+        <section class="card">
+          <p class="state-label">5b · vue du bureau</p>
+          <h2 class="h2">Nature des envois</h2>
+          <p class="meta">Un envoi statutaire atteint aussi les membres désinscrits : leur appartenance à l'association les engage à le recevoir. Un envoi facultatif ne les atteint pas.</p>
+          <div class="field"><label>Lancement du site</label><div class="ro">Statutaire — les désinscrits le reçoivent aussi</div><p class="help">Réglé par l'équipe technique de la plateforme, après avis du conseil RGPD : vous ne pouvez pas le modifier.</p></div>
+          <div class="field"><label>Relance des invitations</label><div class="ro">Statutaire — les désinscrits le reçoivent aussi</div><p class="help">Réglé par l'équipe technique de la plateforme, après avis du conseil RGPD : vous ne pouvez pas le modifier.</p></div>
+          <p class="state-label">5b · vue du SuperAdmin</p>
+          <div class="field"><label>Lancement du site</label>
+            <div class="radio"><span class="dot"></span><span>Facultatif — les désinscrits ne le reçoivent pas</span></div>
+            <div class="radio"><span class="dot on"></span><span>Statutaire — les désinscrits le reçoivent aussi</span></div>
+          </div>
+        </section>
+      </div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== E6 — Détail de la campagne de lancement ===================== -->
+<section class="state">
+  <p class="state-label">Écran 6 · état 6a</p>
+  <h2 class="state-title">Détail de campagne (s26) — ce qui change pour un lancement</h2>
+  <p class="note">Seules deux phrases changent : le « Contenu envoyé » dit que le lien n'est pas conservé ; la carte « Courrier postal » ne dit plus « au même contenu que l'email ». Le reste du détail (avancement, parts, destinataires, résumé) est celui de s26.</p>
+  <div class="frames">
+    <div class="frame desktop">
+      <div class="frame-cap">Ordinateur · /bureau/campagnes/{id}</div>
+      <div class="bo-main"><div class="bo-col">
+        <section class="card">
+          <h2 class="h2">Courrier postal</h2>
+          <p>Les membres sans adresse email reçoivent par la poste le courrier de lancement : il annonce le site, sans lien de connexion. Le PDF contient une lettre par fiche, prête à glisser dans une enveloppe à fenêtre.</p>
+          <dl class="counter c3">
+            <div><dt>Fiches sans adresse email</dt><dd class="data">71</dd></div>
+            <div><dt>Dont sans domicile</dt><dd class="data">0</dd></div>
+            <div><dt>Date portée sur les lettres</dt><dd class="data">24/11/2026</dd></div>
+          </dl>
+          <div class="actions"><span class="btn btn-default"><svg class="ico"><use href="#i-download"/></svg>Télécharger le PDF du courrier</span><span class="btn btn-outline"><svg class="ico"><use href="#i-download"/></svg>Télécharger la page de calage</span></div>
+        </section>
+        <section class="card">
+          <h2 class="h2">Contenu envoyé</h2>
+          <p class="meta">Type : Lancement du site · Nature : Statutaire</p>
+          <p>Bonjour,</p>
+          <p>Votre association a ouvert sur son site un espace personnel pour chaque propriétaire. Vous y retrouverez les informations qui vous concernent.</p>
+          <div class="alert alert-muted"><p>Ajoutés à chaque envoi : le bouton « Ouvrir mon espace », un lien de connexion propre à chaque destinataire, valable 7 jours, et le mode d'emploi en trois étapes. Les liens ne sont jamais conservés.</p></div>
+        </section>
+      </div></div>
+    </div>
+  </div>
+</section>
+</div>
+
+<script>
+  /* Chaque cadre ordinateur est recopié en cadre mobile 390 px : même contenu, mêmes états. */
+  document.querySelectorAll('.frame.desktop').forEach(function (desktop) {
+    var mobile = desktop.cloneNode(true);
+    mobile.className = 'frame mobile';
+    mobile.querySelectorAll('.frame-cap').forEach(function (cap) { cap.textContent = cap.textContent.replace(/^[^·]+/, 'Mobile 390 px '); });
+    mobile.querySelectorAll('[id]').forEach(function (el) { el.id = el.id + '-m'; });
+    mobile.querySelectorAll('[for]').forEach(function (el) { el.setAttribute('for', el.getAttribute('for') + '-m'); });
+    mobile.querySelectorAll('[aria-labelledby]').forEach(function (el) { el.setAttribute('aria-labelledby', el.getAttribute('aria-labelledby') + '-m'); });
+    desktop.parentNode.appendChild(mobile);
+  });
+</script>
+</body>
+</html>

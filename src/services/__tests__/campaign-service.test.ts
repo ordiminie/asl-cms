@@ -2669,6 +2669,8 @@ describe('nature des envois — réintégration des désinscrits (s27b, ADR 064)
       general_assembly: 'statutaire',
       post_assembly_documents: 'facultative',
       unpaid_reminder: 'facultative',
+      member_invitation_launch: 'facultative',
+      member_invitation_reminder: 'facultative',
     })
   })
 

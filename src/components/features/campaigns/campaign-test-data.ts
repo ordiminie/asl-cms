@@ -52,6 +52,7 @@ export const spreadCampaignOf = (
       failed: 0,
       unsubscribed: 0,
       settled: 0,
+      superseded: 0,
     },
     parts: [
       partOf(1, '2026-11-12', 100),
@@ -117,6 +118,7 @@ export const campaignOf = (
     failed: 0,
     unsubscribed: 0,
     settled: 0,
+    superseded: 0,
   },
   parts: [partOf(1, '2026-11-12', 296)],
   sendDate: '2026-11-12',

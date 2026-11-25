@@ -214,3 +214,29 @@ export const letterBodyBlocksOf = (
 /** Le texte d'un bloc, lignes separees par un retour : pour mesurer et tester. */
 export const plainTextOfBlock = (block: LetterBlock): string =>
   textOfRuns(runsOfBlock(block))
+
+const plainRun = (text: string): LetterRun => ({text, ...PLAIN})
+
+/**
+ * Le courrier du lancement des invitations (s42b, ADR 072 §6) : un texte du
+ * bureau en paragraphes **texte**, sans analyse Markdown ni variable, puis
+ * l'encart de l'adresse du site (cadre 1 pt, §6.1). Sans adresse, aucun
+ * encart.
+ */
+export const letterTextBlocksOf = (
+  text: string,
+  siteLine: string | null
+): LetterBlock[] => [
+  ...text
+    .replace(/\r\n/g, '\n')
+    .split(/\n\s*\n/)
+    .map((paragraph) => paragraph.trim())
+    .filter((paragraph) => paragraph !== '')
+    .map((paragraph): LetterBlock => ({
+      kind: 'paragraph',
+      runs: [plainRun(paragraph)],
+    })),
+  ...(siteLine
+    ? [{kind: 'quote' as const, paragraphs: [[plainRun(siteLine)]]}]
+    : []),
+]

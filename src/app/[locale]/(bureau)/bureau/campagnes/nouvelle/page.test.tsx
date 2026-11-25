@@ -90,6 +90,8 @@ beforeEach(() => {
       general_assembly: 'facultative',
       post_assembly_documents: 'facultative',
       unpaid_reminder: 'facultative',
+      member_invitation_launch: 'facultative',
+      member_invitation_reminder: 'facultative',
     },
   })
 })
