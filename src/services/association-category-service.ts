@@ -8,6 +8,7 @@ import {
   updateCategoryTxnDao,
 } from '@/db/repositories/association-category-repository'
 import {countIncidentReportsByCategoryDao} from '@/db/repositories/incident-report-repository'
+import {countMemberDocumentsByCategoryDao} from '@/db/repositories/member-document-repository'
 import {countMemberQuestionsByCategoryDao} from '@/db/repositories/member-question-repository'
 import {countSharedDocumentsByCategoryDao} from '@/db/repositories/shared-document-repository'
 import {withTenant} from '@/db/tenant-scope'
@@ -46,12 +47,14 @@ import {
  * domaine est gouverne par l'action de son usage : les categories de
  * signalement par `report.manage`, les sujets des questions par
  * `question.manage` (s23), les categories de documents partages par
- * `shared.document.manage` (s31). s35 ajoutera sa ligne ici.
+ * `shared.document.manage` (s31), les categories de documents nominatifs par
+ * `member.document.manage` (s32). s35 ajoutera sa ligne ici.
  */
 const MANAGE_ACTION_OF_DOMAIN: Record<CategoryDomain, string> = {
   [CategoryDomainConst.REPORT]: ActionIdConst.REPORT_MANAGE,
   [CategoryDomainConst.QUESTION]: ActionIdConst.QUESTION_MANAGE,
   [CategoryDomainConst.DOCUMENT]: ActionIdConst.SHARED_DOCUMENT_MANAGE,
+  [CategoryDomainConst.MEMBER_DOCUMENT]: ActionIdConst.MEMBER_DOCUMENT_MANAGE,
 }
 
 /**
@@ -65,6 +68,7 @@ const USAGE_COUNTS_OF_DOMAIN: Record<
   [CategoryDomainConst.REPORT]: countIncidentReportsByCategoryDao,
   [CategoryDomainConst.QUESTION]: countMemberQuestionsByCategoryDao,
   [CategoryDomainConst.DOCUMENT]: countSharedDocumentsByCategoryDao,
+  [CategoryDomainConst.MEMBER_DOCUMENT]: countMemberDocumentsByCategoryDao,
 }
 
 const MANAGE_DENIED =

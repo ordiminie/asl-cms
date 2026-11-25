@@ -1016,6 +1016,28 @@ plan de s31 (ADR 069). Aucun ne crée de token ni de composant : ils composent l
   domaine qui n'envoie rien (les documents), la colonne et le champ du `dialog` disparaissent ; le
   `dialog` n'a plus qu'un champ, et le serveur n'écrit aucune adresse.
 
+### 3.19 Formes retenues par s32 — les documents nominatifs
+
+Écarts de la maquette `docs/designs/s32-documents-nominatifs.md` (manques 1, 2 et 5), versés ici par
+le plan de s32 (ADR 073). Aucun ne crée de token ni de composant : ils composent l'existant.
+
+- **Rapport ligne à ligne d'un dépôt de fichiers** (manque 1) — un lot part **un fichier par appel** ;
+  pendant l'envoi, `progress` **déterminée** sans pourcentage écrit, la phrase porte le décompte
+  (« 5 fichiers traités sur 12 », `aria-live="polite"`) puis « Envoi de {nom} », et le rapport se
+  remplit sous la barre. À la fin : `alert` neutre `CircleCheck` (« Lot terminé : … »), compteur `dl`
+  (Déposés · Écartés · Total, §3.13), `meta` « Ce rapport n'est pas conservé », tableau **Fichier**
+  (`data`) · **Résultat** (`badge` « Déposé » `outline` / « Écarté » `destructive`) · **Fiche ou
+  raison**, **écartés en tête** ; cartes empilées sous 640 px (§3.5). Le rapport reprend les réponses
+  du serveur telles quelles : le navigateur ne rapproche rien.
+- **Garde de sortie pendant un envoi** (manque 2) — `alert` `warning` + `AlertTriangle` (palette
+  `warning`, §3.13 : un report, pas un refus) « Restez sur cette page jusqu'à la fin… », doublée d'un
+  écouteur `beforeunload` posé **pendant l'envoi seulement** : le navigateur affiche sa propre
+  confirmation, sans dialogue maison.
+- **Titre commun d'un lot** (manque 5) — un champ « Titre des documents » partagé par tout le lot :
+  le titre reste écrit par le bureau, jamais tiré du nom du fichier.
+- **Règle de nommage écrite avant le formulaire** — `alert` neutre `muted` + `Info`, l'exemple en
+  `data` montre la vraie forme de l'identifiant client Pennylane (« 3f2a…_facture-2026.pdf »).
+
 ---
 
 ## 4 · Le contenu — rendu public des cinq blocs
@@ -1427,6 +1449,8 @@ des composants à improviser. À traiter en `/ks-design` ou `/ks-research` de la
 | Email     | **Contenu d'invitation dans l'habillage de campagne** (s42b, écran 3) — `CampaignMail` n'avait pas d'emplacement pour une action (bouton + URL en clair + étapes + échéance). Composé avec les pièces du gabarit transactionnel (§5.1, §5.5) : à verser au §5 comme forme décrite                                                                                                                                | s42b             |
 | Suivi     | **Taux d'adoption** (s42b, écran 2) — pas de `progress` (réservé à l'envoi et au quota, §2.1, §3.13) : compteur seul. Une barre « n sur N adresses connectées » serait une extension de §2.1 à décider                                                                                                                                                                                                           | s42b             |
 | Barre     | **Entrée « Invitations »** de la barre du bureau (s42b) — item sans icône, après « Relances », avant « Envois » : à inscrire avec les autres entrées du groupe « L'association »                                                                                                                                                                                                                                 | s42b             |
+| Documents | **« Fiche sans référence » dans un lot** (s32, manque 3) — un fichier ne peut pas nommer une fiche sans identifiant client Pennylane : ce n'est pas une raison de rejet détectable. Rendu par un encart du rapport (et l'état 5e) qui compte ces fiches ; le lien « Voir les propriétaires » mène à la liste entière, faute d'un filtre « sans identifiant Pennylane » à décider                                 | s32              |
+| Barre     | **Entrée « Documents nominatifs »** de la barre du bureau (s32, manque 7) — item sans icône du groupe « L'association », juste après « Documents », actif sur ses sous-routes : à inscrire avec les autres entrées du groupe                                                                                                                                                                                     | s32              |
 | Badge     | **« Désactivée par l'import »** (s42b, écran 2) — forme proposée `outline`, même `meta` que l'attente ; non utilisée tant que s56 n'est pas livrée                                                                                                                                                                                                                                                               | s42b, s56        |
 | Plan      | **Plan écrit d'un envoi du système** (s42b, écran 1) — la ligne « Lancement — date » + badge + liens reprend la ligne de rang de s29 (§3.13) hors des relances d'impayés ; à noter comme forme générale                                                                                                                                                                                                          | s29, s42b        |
 | Technique | **Échelle de `z-index`** — seules deux valeurs sont posées (`PreviewBar` 50, `ImpersonationBar` 60). Avec trois bandes persistantes, les dialogues, les popovers, les tiroirs et les toasts, une échelle explicite évite les conflits au cas par cas                                                                                                                                                             | s04, s07, s41    |

@@ -14,6 +14,9 @@ import type {CategoryDomain} from '../../services/types/domain/association-categ
  * Les categories des documents partages (s31, ADR 069) : « Statuts »,
  * « Proces-verbaux », « Ordres du jour » sont des valeurs de seed du premier
  * tenant (ADR 010), jamais des constantes ; Marketing Pro a la sienne.
+ *
+ * Les categories des documents nominatifs (s32, ADR 073 §9) : « Facture » et
+ * « Convocation », valeurs de seed de chaque tenant de test (ADR 010).
  */
 export type TestTenantCategory = {
   organizationSlug: string
@@ -89,4 +92,12 @@ export const TEST_TENANT_CATEGORIES: readonly TestTenantCategory[] = [
     name: 'Comptes rendus',
     routingEmail: null,
   },
+  ...['techcorp-solutions', 'marketing-pro'].flatMap((organizationSlug) =>
+    ['Facture', 'Convocation'].map((name): TestTenantCategory => ({
+      organizationSlug,
+      domain: 'member_document',
+      name,
+      routingEmail: null,
+    }))
+  ),
 ]

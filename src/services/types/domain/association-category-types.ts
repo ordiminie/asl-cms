@@ -12,12 +12,15 @@ export const CategoryDomainConst = {
   QUESTION: 'question',
   /** Categories des documents partages (s31, ADR 069). */
   DOCUMENT: 'document',
+  /** Categories des documents nominatifs (s32, ADR 073 §9). */
+  MEMBER_DOCUMENT: 'member_document',
 } as const
 
 export const CATEGORY_DOMAINS = [
   CategoryDomainConst.REPORT,
   CategoryDomainConst.QUESTION,
   CategoryDomainConst.DOCUMENT,
+  CategoryDomainConst.MEMBER_DOCUMENT,
 ] as const
 
 export type CategoryDomain = (typeof CATEGORY_DOMAINS)[number]

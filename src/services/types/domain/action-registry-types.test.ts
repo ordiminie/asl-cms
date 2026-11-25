@@ -228,3 +228,30 @@ describe('ACTION_REGISTRY — documents partagés (s31, ADR 069)', () => {
     }
   })
 })
+
+describe('ACTION_REGISTRY — documents nominatifs (s32, ADR 073)', () => {
+  it('member.document.manage autorise la Presidente et le bureau, refuse un membre simple', () => {
+    expect(ActionIdConst.MEMBER_DOCUMENT_MANAGE).toBe('member.document.manage')
+    for (const role of ['owner', 'board'] as const) {
+      expect(
+        isActionAllowedForRole(
+          ACTION_REGISTRY,
+          ActionIdConst.MEMBER_DOCUMENT_MANAGE,
+          role
+        ),
+        role
+      ).toBe(true)
+    }
+    expect(
+      isActionAllowedForRole(
+        ACTION_REGISTRY,
+        ActionIdConst.MEMBER_DOCUMENT_MANAGE,
+        'member'
+      )
+    ).toBe(false)
+  })
+
+  it("n'ajoute aucune action de lecture : la lecture membre passe par la possession", () => {
+    expect(Object.values(ActionIdConst)).not.toContain('member.document.read')
+  })
+})

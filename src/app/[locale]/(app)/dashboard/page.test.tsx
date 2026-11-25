@@ -68,6 +68,22 @@ vi.mock('@/app/dal/shared-document-dal', () => ({
     ])
   ),
 }))
+vi.mock('@/app/dal/member-document-dal', () => ({
+  getMyMemberDocumentsDal: vi.fn(() =>
+    Promise.resolve([
+      {
+        id: '55555555-5555-4555-8555-555555555555',
+        title: 'Facture 2026',
+        categoryName: 'Facture',
+        documentDate: '2026-03-15',
+        fileBytes: 1024,
+        parcelNumbers: ['61'],
+        meterNumber: null,
+        holderName: null,
+      },
+    ])
+  ),
+}))
 vi.mock('./actions', () => ({
   updateMyContactAction: vi.fn(),
   openMyInvoicePdfAction: vi.fn(),
@@ -631,5 +647,18 @@ describe('DashboardPage — « Documents de l’association » (s31)', () => {
     expect(
       await screen.findByRole('region', {name: 'Documents de l’association'})
     ).toHaveTextContent('Statuts de l’ASL')
+  })
+})
+
+describe('DashboardPage — « Mes documents » (s32)', () => {
+  it('passe la promesse des documents nominatifs à l’espace membre', async () => {
+    vi.mocked(getMyLandsDal).mockResolvedValue(parcelsOf())
+    vi.mocked(getMyContactDal).mockResolvedValue(CONTACT)
+
+    await renderDashboard()
+
+    expect(
+      await screen.findByRole('region', {name: 'Mes documents'})
+    ).toHaveTextContent('Facture 2026')
   })
 })

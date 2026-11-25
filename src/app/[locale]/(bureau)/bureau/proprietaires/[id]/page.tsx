@@ -4,6 +4,7 @@ import {getTranslations, setRequestLocale} from 'next-intl/server'
 import {Suspense} from 'react'
 
 import {getAssociationSettingsDal} from '@/app/dal/association-settings-dal'
+import {getMemberDocumentsOfProfileForBureauDal} from '@/app/dal/member-document-dal'
 import {getMemberInvoicesForBureauDal} from '@/app/dal/member-invoice-dal'
 import {getMemberNotesForBureauDal} from '@/app/dal/member-note-dal'
 import {
@@ -14,12 +15,17 @@ import {
 import {requireCurrentTenantDal} from '@/app/dal/tenant-dal'
 import {getMemberUnsubscribeForBureauDal} from '@/app/dal/unsubscribe-dal'
 import {BureauAccessDenied} from '@/components/features/association/bureau-access-denied'
+import {
+  type MemberDocumentNotice,
+  memberDocumentNoticeOf,
+} from '@/components/features/member-documents/member-document-paths'
 import {INVOICE_SAVED} from '@/components/features/member-invoice/member-invoice-paths'
 import {MemberProfileDetail} from '@/components/features/member-profile/member-profile-detail'
 import {Skeleton} from '@/components/ui/skeleton'
 import {getInvitationLinkDays} from '@/services/types/domain/association-settings-types'
 import {calendarDayOf} from '@/services/types/domain/water-analysis-types'
 
+import {removeMemberDocumentAction} from '../../documents-nominatifs/actions'
 import {
   attachParcelAction,
   changeMemberRoleAction,
@@ -47,6 +53,8 @@ type MemberProfilePageProps = {
     vente?: string
     notes?: string
     facture?: string
+    documents?: string
+    document?: string
   }>
 }
 
@@ -80,7 +88,7 @@ export default async function BureauMemberProfilePage({
 }: MemberProfilePageProps) {
   const {locale, id} = await params
   setRequestLocale(locale)
-  const {cree, vente, notes, facture} = await searchParams
+  const {cree, vente, notes, facture, documents, document} = await searchParams
 
   return (
     <Suspense fallback={<ProfileSkeleton />}>
@@ -90,6 +98,7 @@ export default async function BureauMemberProfilePage({
         soldParcelId={vente}
         notesPage={notesPageOf(notes)}
         invoiceSaved={facture === INVOICE_SAVED}
+        documentNotice={memberDocumentNoticeOf(documents, document)}
       />
     </Suspense>
   )
@@ -101,12 +110,14 @@ async function MemberProfileSection({
   soldParcelId,
   notesPage,
   invoiceSaved,
+  documentNotice,
 }: {
   memberProfileId: string
   created: boolean
   soldParcelId?: string
   notesPage: number
   invoiceSaved: boolean
+  documentNotice?: MemberDocumentNotice
 }) {
   const [tenant, allowed] = await Promise.all([
     requireCurrentTenantDal(),
@@ -140,6 +151,12 @@ async function MemberProfileSection({
     tenant.id,
     memberProfileId
   )
+  // Les documents nominatifs (s32), lus a part et sans les attendre ; rien
+  // pour un compte qui ne les gere pas.
+  const documentsPromise = getMemberDocumentsOfProfileForBureauDal(
+    tenant.id,
+    memberProfileId
+  )
   const [parcels, settings] = await Promise.all([
     getMemberParcelsForBureauDal(tenant.id, memberProfileId),
     getAssociationSettingsDal(tenant.id),
@@ -165,6 +182,9 @@ async function MemberProfileSection({
       unsubscribePromise={unsubscribePromise}
       invoicesPromise={invoicesPromise}
       invoiceSaved={invoiceSaved}
+      documentsPromise={documentsPromise}
+      documentNotice={documentNotice}
+      removeDocumentAction={removeMemberDocumentAction}
       updatePennylaneIdAction={updateMemberProfilePennylaneIdAction}
       addNoteAction={addMemberNoteAction}
       addExchangeAction={addMemberExchangeAction}

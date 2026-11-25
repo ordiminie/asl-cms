@@ -30,6 +30,12 @@ vi.mock('@/app/dal/member-note-dal', () => ({
 vi.mock('@/app/dal/member-invoice-dal', () => ({
   getMemberInvoicesForBureauDal: vi.fn(),
 }))
+vi.mock('@/app/dal/member-document-dal', () => ({
+  getMemberDocumentsOfProfileForBureauDal: vi.fn(),
+}))
+vi.mock('../../documents-nominatifs/actions', () => ({
+  removeMemberDocumentAction: vi.fn(),
+}))
 vi.mock('@/app/dal/association-settings-dal', () => ({
   getAssociationSettingsDal: vi.fn(),
 }))
@@ -58,6 +64,7 @@ vi.mock('./actions', () => ({
 
 import {render, screen, userEvent, within} from '@/__tests__/customRender'
 import {getAssociationSettingsDal} from '@/app/dal/association-settings-dal'
+import {getMemberDocumentsOfProfileForBureauDal} from '@/app/dal/member-document-dal'
 import {getMemberInvoicesForBureauDal} from '@/app/dal/member-invoice-dal'
 import {getMemberNotesForBureauDal} from '@/app/dal/member-note-dal'
 import {
@@ -113,6 +120,8 @@ const renderPage = async (
     vente?: string
     notes?: string
     facture?: string
+    documents?: string
+    document?: string
   } = {}
 ) => {
   const element = (await BureauMemberProfilePage({
@@ -138,6 +147,9 @@ beforeEach(() => {
     new Promise(() => {})
   )
   vi.mocked(getMemberInvoicesForBureauDal).mockReturnValue(
+    new Promise(() => {})
+  )
+  vi.mocked(getMemberDocumentsOfProfileForBureauDal).mockReturnValue(
     new Promise(() => {})
   )
   vi.mocked(getAssociationSettingsDal).mockResolvedValue(
@@ -471,5 +483,66 @@ describe('/bureau/proprietaires/[id] — invitation (s42a, écran 2)', () => {
       within(card).getByRole('button', {name: 'Envoyer l’invitation'})
     ).toBeInTheDocument()
     expect(card).toHaveTextContent('valable 12 jours')
+  })
+})
+
+describe('/bureau/proprietaires/[id] — section « Documents » (s32)', () => {
+  const DOCUMENT_ID = '55555555-5555-4555-8555-555555555555'
+  const documents = [
+    {
+      id: DOCUMENT_ID,
+      title: 'Facture 2026',
+      categoryId: '44444444-4444-4444-8444-444444444444',
+      categoryName: 'Facture',
+      documentDate: '2026-03-15',
+      fileBytes: 1024,
+      createdAt: new Date(),
+      memberProfileId: PROFILE_ID,
+      memberProfileName: 'Hélène Roy',
+    },
+  ]
+
+  beforeEach(() => {
+    vi.mocked(canManageCurrentMemberProfilesDal).mockResolvedValue(true)
+  })
+
+  it('lit les documents de la fiche pour le tenant courant et les montre après les factures', async () => {
+    vi.mocked(getMemberDocumentsOfProfileForBureauDal).mockResolvedValue(
+      documents
+    )
+
+    await renderPage()
+
+    expect(getMemberDocumentsOfProfileForBureauDal).toHaveBeenCalledWith(
+      TENANT_ID,
+      PROFILE_ID
+    )
+    const card = await screen.findByRole('region', {name: 'Documents'})
+    expect(card).toHaveTextContent('Facture 2026')
+    expect(card).toHaveTextContent('Cette fiche n’est reliée à aucun compte')
+  })
+
+  it('un compte qui ne gère pas les documents : la section n’est pas rendue', async () => {
+    vi.mocked(getMemberDocumentsOfProfileForBureauDal).mockResolvedValue(
+      undefined
+    )
+
+    await renderPage()
+
+    await screen.findByRole('region', {name: 'Parcelles'})
+    expect(screen.queryByRole('region', {name: 'Documents'})).toBeNull()
+  })
+
+  it('2e : ?documents=depose&document= dit le dépôt avec le titre', async () => {
+    vi.mocked(getMemberDocumentsOfProfileForBureauDal).mockResolvedValue(
+      documents
+    )
+
+    await renderPage({documents: 'depose', document: DOCUMENT_ID})
+
+    const card = await screen.findByRole('region', {name: 'Documents'})
+    expect(within(card).getByRole('status')).toHaveTextContent(
+      'Document déposé. « Facture 2026 »'
+    )
   })
 })

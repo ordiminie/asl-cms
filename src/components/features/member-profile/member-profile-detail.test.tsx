@@ -153,6 +153,8 @@ const detailOf = (input: DetailInput = {}) => (
     unsubscribePromise={input.unsubscribePromise ?? NOT_UNSUBSCRIBED}
     invoicesPromise={NO_INVOICES}
     invoiceSaved={false}
+    documentsPromise={NO_INVOICES}
+    removeDocumentAction={vi.fn()}
     invitationLinkDays={7}
     {...actions}
   />

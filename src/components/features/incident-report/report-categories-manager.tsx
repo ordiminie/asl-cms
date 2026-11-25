@@ -89,6 +89,7 @@ export type CategoryLabelsNamespace =
   | 'BureauReportCategoriesPage'
   | 'BureauQuestionCategoriesPage'
   | 'BureauDocumentCategoriesPage'
+  | 'BureauMemberDocumentCategoriesPage'
 
 const CategoryLabelsContext = createContext<CategoryLabelsNamespace>(
   'BureauReportCategoriesPage'

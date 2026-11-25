@@ -749,3 +749,151 @@ test.describe('s29 — rangs de relance : RLS de unpaid_reminder (ADR 070)', () 
     })
   })
 })
+
+test.describe('s32 — documents nominatifs : RLS de member_document (ADR 073)', () => {
+  /** Une ligne par association, sur une fiche du seed, écrite sous `bypass` puis retirée. */
+  const created: {
+    a?: string
+    b?: string
+    categories: string[]
+    profiles: string[]
+  } = {categories: [], profiles: []}
+
+  const inScope = async <T>(
+    client: Client,
+    organizationId: string,
+    read: () => Promise<T>
+  ): Promise<T> => {
+    await client.query('begin')
+    try {
+      await client.query(`select set_config('app.organization_id', $1, true)`, [
+        organizationId,
+      ])
+      return await read()
+    } finally {
+      await client.query('rollback')
+    }
+  }
+
+  const inBypass = async <T>(client: Client, write: () => Promise<T>) => {
+    await client.query('begin')
+    try {
+      await client.query(`select set_config('app.bypass_rls', 'on', true)`)
+      const result = await write()
+      await client.query('commit')
+      return result
+    } catch (error) {
+      await client.query('rollback')
+      throw error
+    }
+  }
+
+  test.beforeAll(async () => {
+    await withAppRoleClient(async (client) => {
+      const {a, b} = await tenantIds(client)
+      await inBypass(client, async () => {
+        for (const [slot, organizationId] of [
+          ['a', a],
+          ['b', b],
+        ] as const) {
+          const profile = await client.query<{id: string}>(
+            `select id from member_profile where organization_id = $1 order by id limit 1`,
+            [organizationId]
+          )
+          expect(
+            profile.rowCount,
+            'le seed porte une fiche par association'
+          ).toBe(1)
+          created.profiles.push(profile.rows[0].id)
+          const category = await client.query<{id: string}>(
+            `insert into association_category (organization_id, domain, name)
+             values ($1, 'member_document', $2) returning id`,
+            [organizationId, `RLS s32 ${Date.now().toString(36)} ${slot}`]
+          )
+          created.categories.push(category.rows[0].id)
+          const document = await client.query<{id: string}>(
+            `insert into member_document
+               (organization_id, member_profile_id, title, category_id,
+                document_date, file_key, file_bytes)
+             values ($1, $2, 'RLS s32', $3, '2026-01-01', $4, 1) returning id`,
+            [
+              organizationId,
+              profile.rows[0].id,
+              category.rows[0].id,
+              `${organizationId}/member-documents/${profile.rows[0].id}/rls.pdf`,
+            ]
+          )
+          created[slot] = document.rows[0].id
+        }
+      })
+    })
+  })
+
+  test.afterAll(async () => {
+    await withAppRoleClient((client) =>
+      inBypass(client, async () => {
+        await client.query(
+          `delete from member_document where id = any($1::uuid[])`,
+          [[created.a, created.b].filter(Boolean)]
+        )
+        await client.query(
+          `delete from association_category where id = any($1::uuid[])`,
+          [created.categories]
+        )
+      })
+    )
+  })
+
+  test('hors scope de tenant, aucun document nominatif ne sort', async () => {
+    await withAppRoleClient(async (client) => {
+      expect(
+        (await client.query('select id from member_document')).rowCount
+      ).toBe(0)
+    })
+  })
+
+  test('dans le scope de A, seuls les documents de A sortent ; celui de A est invisible depuis B', async () => {
+    await withAppRoleClient(async (client) => {
+      const {a, b} = await tenantIds(client)
+
+      const fromA = await inScope(client, a, () =>
+        client.query<{id: string; organization_id: string}>(
+          'select id, organization_id from member_document'
+        )
+      )
+      const forgedFromB = await inScope(client, b, () =>
+        client.query('select id from member_document where id = $1', [
+          created.a,
+        ])
+      )
+
+      expect(fromA.rows.map((row) => row.id)).toContain(created.a)
+      expect(fromA.rows.map((row) => row.id)).not.toContain(created.b)
+      for (const row of fromA.rows) expect(row.organization_id).toBe(a)
+      expect(forgedFromB.rowCount).toBe(0)
+    })
+  })
+
+  test('écrire un document nominatif pour une autre association est refusé', async () => {
+    await withAppRoleClient(async (client) => {
+      const {a, b} = await tenantIds(client)
+
+      await client.query('begin')
+      await client.query(`select set_config('app.organization_id', $1, true)`, [
+        a,
+      ])
+
+      await expect(
+        client.query(
+          `insert into member_document
+             (organization_id, member_profile_id, title, category_id,
+              document_date, file_key, file_bytes)
+           values ($1, $2, 'Forgé', $3, '2026-01-01', 'forge.pdf', 1)`,
+          [b, created.profiles[1], created.categories[1]]
+        )
+      ).rejects.toThrow(/row-level security/i)
+
+      await client.query('rollback')
+    })
+  })
+})

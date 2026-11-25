@@ -2,6 +2,7 @@ import {Suspense} from 'react'
 import {describe, expect, it, vi} from 'vitest'
 
 import {act, render, screen, within} from '@/__tests__/customRender'
+import type {MyMemberDocumentDTO} from '@/services/types/domain/member-document-types'
 import type {
   MyContactDTO,
   MyInvoicesDTO,
@@ -43,6 +44,8 @@ const renderSpace = async (
   },
   options: {
     documents?: SharedDocumentDTO[]
+    /** « Mes documents » (s32) ; `null` : la lecture ne rend rien. */
+    memberDocuments?: MyMemberDocumentDTO[] | null
     /** Sans fiche : la lecture des coordonnees ne rend rien (C5). */
     withoutProfile?: boolean
   } = {}
@@ -72,6 +75,11 @@ const renderSpace = async (
           invoicesPromise={Promise.resolve(invoices ?? undefined)}
           openInvoicePdfAction={vi.fn()}
           sharedDocumentsPromise={Promise.resolve(options.documents ?? [])}
+          memberDocumentsPromise={Promise.resolve(
+            options.memberDocuments === null
+              ? undefined
+              : (options.memberDocuments ?? [])
+          )}
         />
       </Suspense>
     )
@@ -355,5 +363,68 @@ describe('MemberSpace — « Documents de l’association » (s31, écran 1)', (
       .getAllByRole('link')
       .map((link) => link.getAttribute('href') ?? '')
     expect(hrefs.some((href) => href.includes('shared-documents/'))).toBe(false)
+  })
+})
+
+describe('MemberSpace — « Mes documents » (s32, écran 1)', () => {
+  const MEMBER_DOCUMENTS: MyMemberDocumentDTO[] = [
+    {
+      id: '55555555-5555-4555-8555-555555555555',
+      title: 'Facture 2026',
+      categoryName: 'Facture',
+      documentDate: '2026-03-15',
+      fileBytes: 310 * 1024,
+      parcelNumbers: ['61'],
+      meterNumber: null,
+      holderName: null,
+    },
+  ]
+  const myDocuments = () => screen.findByRole('region', {name: 'Mes documents'})
+  const follows = (a: Element, b: Element) =>
+    Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)
+
+  it('avec parcelles : après « Mes factures », avant « Documents de l’association », pour les trois terrains', async () => {
+    await renderSpace(THREE_LANDS, undefined, {
+      memberDocuments: MEMBER_DOCUMENTS,
+    })
+
+    const card = await myDocuments()
+    const invoices = screen.getByRole('region', {name: 'Mes factures'})
+    const shared = screen.getByRole('region', {
+      name: 'Documents de l’association',
+    })
+    expect(follows(invoices, card)).toBe(true)
+    expect(follows(card, shared)).toBe(true)
+    expect(card).toHaveTextContent('pour vos 3 terrains')
+    expect(within(card).getByText('Facture 2026')).toBeInTheDocument()
+  })
+
+  it('sans parcelle : la carte est rendue, avant « Documents de l’association »', async () => {
+    await renderSpace({accountName: 'Lucie', lands: []}, undefined, {
+      memberDocuments: MEMBER_DOCUMENTS,
+    })
+
+    const card = await myDocuments()
+    const shared = screen.getByRole('region', {
+      name: 'Documents de l’association',
+    })
+    expect(follows(card, shared)).toBe(true)
+  })
+
+  it('sans fiche : pas de dossier, pas de carte', async () => {
+    await renderSpace({accountName: 'Lucie', lands: []}, null, {
+      memberDocuments: MEMBER_DOCUMENTS,
+      withoutProfile: true,
+    })
+
+    await screen.findByRole('region', {name: 'Documents de l’association'})
+    expect(screen.queryByRole('region', {name: 'Mes documents'})).toBeNull()
+  })
+
+  it('la lecture ne rend rien : la carte n’est pas rendue, le reste de l’espace oui', async () => {
+    await renderSpace(THREE_LANDS, undefined, {memberDocuments: null})
+
+    await screen.findByRole('region', {name: 'Mes factures'})
+    expect(screen.queryByRole('region', {name: 'Mes documents'})).toBeNull()
   })
 })

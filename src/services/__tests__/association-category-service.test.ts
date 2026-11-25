@@ -21,6 +21,9 @@ vi.mock('@/db/repositories/member-question-repository', () => ({
 vi.mock('@/db/repositories/shared-document-repository', () => ({
   countSharedDocumentsByCategoryDao: vi.fn(),
 }))
+vi.mock('@/db/repositories/member-document-repository', () => ({
+  countMemberDocumentsByCategoryDao: vi.fn(),
+}))
 vi.mock('@/db/repositories/association-category-repository', () => ({
   createCategoryWithinLimitTxnDao: vi.fn(),
   getCategoryByIdDao: vi.fn(),
@@ -37,6 +40,7 @@ import {
   updateCategoryTxnDao,
 } from '@/db/repositories/association-category-repository'
 import {countIncidentReportsByCategoryDao} from '@/db/repositories/incident-report-repository'
+import {countMemberDocumentsByCategoryDao} from '@/db/repositories/member-document-repository'
 import {countMemberQuestionsByCategoryDao} from '@/db/repositories/member-question-repository'
 import {countSharedDocumentsByCategoryDao} from '@/db/repositories/shared-document-repository'
 
@@ -616,5 +620,56 @@ describe('[s31] domaine document — catégories des documents partagés', () =>
       listAssociationCategoriesService(ORG_ID, DOCUMENT)
     ).rejects.toThrow(AuthorizationError)
     expect(countSharedDocumentsByCategoryDao).not.toHaveBeenCalled()
+  })
+})
+
+describe('[s32] domaine member_document — catégories des documents nominatifs', () => {
+  const MEMBER_DOCUMENT = CategoryDomainConst.MEMBER_DOCUMENT
+
+  it.each([
+    ['[ORGANIZATION OWNER]', UserOrganizationRoleConst.OWNER],
+    ['[ORGANIZATION ADMIN]', UserOrganizationRoleConst.ADMIN],
+  ])(
+    '%s lists the member document categories with their document counts',
+    async (_label, role) => {
+      setupAuthUserMocked(withRole(role))
+      vi.mocked(listActiveCategoriesDao).mockResolvedValue([
+        categoryRow({domain: MEMBER_DOCUMENT, name: 'Facture'}),
+      ])
+      vi.mocked(countMemberDocumentsByCategoryDao).mockResolvedValue({
+        [CATEGORY_ID]: 5,
+      })
+
+      const list = await listAssociationCategoriesService(
+        ORG_ID,
+        MEMBER_DOCUMENT
+      )
+
+      expect(listActiveCategoriesDao).toHaveBeenCalledWith(
+        ORG_ID,
+        MEMBER_DOCUMENT
+      )
+      expect(list.items).toEqual([
+        expect.objectContaining({domain: MEMBER_DOCUMENT, usageCount: 5}),
+      ])
+      expect(countSharedDocumentsByCategoryDao).not.toHaveBeenCalled()
+    }
+  )
+
+  it('[ORGANIZATION MEMBER] should NOT manage the member document categories (member.document.manage)', async () => {
+    setupAuthUserMocked(withRole(UserOrganizationRoleConst.MEMBER))
+
+    await expect(
+      listAssociationCategoriesService(ORG_ID, MEMBER_DOCUMENT)
+    ).rejects.toThrow(AuthorizationError)
+    await expect(
+      createAssociationCategoryService({
+        organizationId: ORG_ID,
+        domain: MEMBER_DOCUMENT,
+        name: 'Facture',
+      })
+    ).rejects.toThrow(AuthorizationError)
+    allDaos().forEach((dao) => expect(dao).not.toHaveBeenCalled())
+    expect(countMemberDocumentsByCategoryDao).not.toHaveBeenCalled()
   })
 })

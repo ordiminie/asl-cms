@@ -163,6 +163,13 @@ export const ActionIdConst = {
    * ADR 069) : tout membre authentifie, quel que soit son role.
    */
   SHARED_DOCUMENT_READ: 'shared.document.read',
+  /**
+   * Gerer les documents nominatifs (s32, ADR 073 §6) : deposer, retirer,
+   * lister tous ceux de l'association et administrer les categories du
+   * domaine `member_document`. La lecture d'un membre ne passe par aucune
+   * action : elle suit la **possession** de la fiche, comme les factures.
+   */
+  MEMBER_DOCUMENT_MANAGE: 'member.document.manage',
 } as const
 
 export const ACTION_REGISTRY: ActionRegistry = [
@@ -245,5 +252,9 @@ export const ACTION_REGISTRY: ActionRegistry = [
   {
     id: ActionIdConst.SHARED_DOCUMENT_READ,
     defaultRoles: ['owner', 'board', 'member'],
+  },
+  {
+    id: ActionIdConst.MEMBER_DOCUMENT_MANAGE,
+    defaultRoles: ['owner', 'board'],
   },
 ]
