@@ -592,18 +592,42 @@ test.describe('s56 — mise à jour annuelle des coordonnées', () => {
     expect(await profilesOf(TENANT_A_SLUG)).toEqual(profilesBefore)
   })
 
-  test('la présidente de TechCorp n’a pas l’écran sur Marketing Pro', async ({
+  // Depuis s46b, la connexion est limitée à l'association du domaine : la
+  // présidente de TechCorp ne peut pas ouvrir de session sur Marketing Pro, et
+  // sans session la route annuelle renvoie à la connexion.
+  test('la présidente de TechCorp est refusée sur Marketing Pro et n’y voit pas l’écran', async ({
     browser,
   }) => {
-    const page = await newSession(browser, TENANT_B, OWNER_A)
-    await page.goto(`${TENANT_B}${ANNUAL_ROUTE}`, {waitUntil: 'networkidle'})
-    await expect(page.getByRole('heading', {level: 1}).first()).toBeVisible({
+    const context = await browser.newContext({locale: 'fr-FR'})
+    await context.addCookies([
+      {name: 'NEXT_LOCALE', value: 'fr', url: TENANT_B},
+    ])
+    const page = await context.newPage()
+    const sessionCookiesOnTenantB = async () =>
+      (await context.cookies(TENANT_B)).filter((cookie) =>
+        cookie.name.includes('session_token')
+      )
+
+    await page.goto(`${TENANT_B}/login/prestataire`)
+    await page.waitForLoadState('networkidle')
+    await expect(page.locator('form')).toBeVisible()
+    await page.fill('input[name="email"]', OWNER_A)
+    await page.fill('input[name="password"]', PASSWORD)
+    await page.click('button[type="submit"]')
+
+    await expect(page.locator('form .text-red-500').first()).toBeVisible({
       timeout: 15_000,
     })
+    await expect(page).toHaveURL(/\/login\/prestataire/)
+    expect(await sessionCookiesOnTenantB()).toHaveLength(0)
+
+    await page.goto(`${TENANT_B}${ANNUAL_ROUTE}`, {waitUntil: 'networkidle'})
+    await expect(page).toHaveURL(/\/login/)
     await expect(
       page.getByRole('button', {name: 'Mettre à jour les fiches'})
     ).toHaveCount(0)
     await expect(page.getByText(MARKER)).toHaveCount(0)
-    await page.context().close()
+    expect(await sessionCookiesOnTenantB()).toHaveLength(0)
+    await context.close()
   })
 })

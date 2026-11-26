@@ -296,3 +296,16 @@ l'utilisatrice a choisi de les corriger avant la PR, avec deux mineurs de texte.
       fait (pas de serveur Postgres sur la machine) et qu'il est couvert par `db:migrate` en CI.
 - [x] **m5** — ADR 077 §1 : l'instantané écrit par s13 contient le terrain effectivement écrit, terrain par
       défaut compris.
+
+## Correctif CI (PR 90, 2026-11-26)
+
+La CI de la PR 90 échoue sur un seul test e2e : `e2e/member-annual-import.spec.ts:595`, « la présidente de
+TechCorp n’a pas l’écran sur Marketing Pro » (`page.waitForURL` dépasse 15 s dans `newSession`). Cause : le test
+suppose que la présidente de TechCorp peut se connecter sur le domaine de Marketing Pro, alors que s46b
+(`e2e/auth.spec.ts:180`) refuse la connexion à quiconque n’est pas membre de l’association du domaine. Le code
+de s56 n’est pas en cause ; l’isolation des données est déjà prouvée par le test précédent (lecture en base).
+
+- [x] Le test vérifie ce qui est vrai depuis s46b : la connexion de la présidente de TechCorp sur Marketing Pro
+  est refusée (la page reste sur `/login`, aucun cookie de session), et une visite de la route annuelle de
+  Marketing Pro sans session n’affiche ni l’écran ni le marqueur des fichiers fictifs. Pas de changement du
+  code applicatif.
