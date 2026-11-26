@@ -942,6 +942,35 @@ describe('[BUREAU] adresse désactivée par l’import (s56, ADR 076)', () => {
     expect(unlinkMemberProfileAccountDao).not.toHaveBeenCalled()
   })
 
+  it('modifier une adresse désactivée : refusé, ni écriture ni compte (revue M1)', async () => {
+    givenEmails(jeanEmail, disabledEmail)
+
+    const result = await updateMemberProfileEmailService({
+      organizationId: ORG_ID,
+      memberProfileId: PROFILE_ID,
+      emailId: DISABLED_ID,
+      email: 'nouvelle@exemple.fr',
+    })
+
+    expect(result).toEqual({status: 'not_found'})
+    expect(updateMemberProfileEmailDao).not.toHaveBeenCalled()
+    expect(createUserIfAbsentTxnDao).not.toHaveBeenCalled()
+    expect(linkMemberProfileAccountDao).not.toHaveBeenCalled()
+  })
+
+  it('désigner une adresse désactivée titulaire : refusé, aucun rôle ne bouge (revue M1)', async () => {
+    givenEmails(jeanEmail, disabledEmail)
+
+    const result = await designateMemberProfileHolderService({
+      organizationId: ORG_ID,
+      memberProfileId: PROFILE_ID,
+      emailId: DISABLED_ID,
+    })
+
+    expect(result).toEqual({status: 'invalid_replacement'})
+    expect(setMemberProfileEmailRoleDao).not.toHaveBeenCalled()
+  })
+
   it('désactiver et réactiver exigent la gestion des fiches', async () => {
     setupAuthUserMocked(withRole('member'))
 

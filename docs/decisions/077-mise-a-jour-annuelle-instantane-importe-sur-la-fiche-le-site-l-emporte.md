@@ -22,7 +22,10 @@ d'une adresse dit qui l'a **créée**, pas qui l'a modifiée (une adresse `file`
    aucune table nouvelle, patron de l'ADR 048) : `pennylane_import_snapshot` (`jsonb`) — les dernières valeurs
    **lues dans le fichier** pour chaque groupe : `home` (ligne, code postal, commune), `land` (idem), `phone`,
    `emails` (liste en minuscules, ordre de la cellule) — et `pennylane_imported_at` (`timestamptz`). Écrites
-   par l'import annuel à chaque fiche rapprochée, et par l'import initial (s13) à la création.
+   par l'import annuel à chaque fiche rapprochée, et par l'import initial (s13) à la création. L'instantané de
+   s13 porte le terrain **effectivement écrit** sur la fiche, terrain par défaut de l'association compris
+   quand le fichier n'en donne pas : sinon la mise à jour suivante prendrait ce terrain pour une valeur
+   modifiée sur le site, le garderait et le signalerait à tort.
 2. **Granularité : le groupe**, pas le champ (domicile, terrain, téléphone, adresses email). C'est la maille
    du rapport (design s56, section 1) et des formulaires du bureau ; les compléments d'adresse, absents du
    fichier, ne sont jamais écrits par l'import.

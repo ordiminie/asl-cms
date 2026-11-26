@@ -251,4 +251,34 @@ describe('AnnualImportReport — écran 2 (s56)', () => {
     )
     expect(within(table).getAllByRole('row')).toHaveLength(26)
   })
+
+  it('typographie sur l’échelle du design system (revue M2)', () => {
+    renderReport(FULL)
+
+    expect(belowMetaFloor(document.body)).toEqual([])
+    const bilan = screen.getByRole('heading', {level: 2, name: 'Bilan'})
+    expect(bilan).toHaveClass('font-serif', 'text-[26px]', 'font-semibold')
+    for (const heading of screen.getAllByRole('heading', {level: 3})) {
+      expect(heading).not.toHaveClass('font-serif')
+    }
+    const summary = screen.getByRole('region', {name: 'Bilan'})
+    const label = within(summary).getByText('Fiches mises à jour')
+    expect(label).toHaveClass('text-[15px]')
+    expect(label.nextSibling).toHaveClass('font-mono', 'text-[17px]')
+    expect(label.nextSibling).not.toHaveClass('text-[22px]')
+    const section1 = within(section(/^Fiches mises à jour/)).getByRole(
+      'heading',
+      {level: 3}
+    )
+    expect(section1).toHaveClass('text-[20px]', 'font-semibold')
+  })
 })
+
+/** Les tailles explicites sous le plancher `meta` (15 px). */
+const belowMetaFloor = (root: HTMLElement) =>
+  Array.from(root.querySelectorAll('[class*="text-["]'))
+    .flatMap((element) => Array.from(element.classList))
+    .filter((name) => {
+      const size = /^text-\[(\d+)px\]$/.exec(name)
+      return size !== null && Number(size[1]) < 15
+    })

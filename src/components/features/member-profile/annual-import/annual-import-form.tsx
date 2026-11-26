@@ -71,14 +71,12 @@ export function AnnualImportForm({
 
       <Card>
         <CardHeader>
-          <CardTitle className="font-serif text-[20px]">
-            {t('file.cardTitle')}
-          </CardTitle>
+          <CardTitle className="text-[20px]">{t('file.cardTitle')}</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           <p
             id={`${FILE_FIELD_ID}-help`}
-            className="text-muted-foreground text-[14px]"
+            className="text-muted-foreground text-[15px]"
           >
             {t('file.help')}
           </p>
@@ -129,9 +127,7 @@ export function AnnualImportForm({
 
       <Card className="bg-muted shadow-none">
         <CardHeader>
-          <CardTitle className="font-serif text-[20px]">
-            {t('explain.title')}
-          </CardTitle>
+          <CardTitle className="text-[20px]">{t('explain.title')}</CardTitle>
         </CardHeader>
         <CardContent>
           <ul className="flex list-disc flex-col gap-2 pl-5 text-[15px]">
@@ -147,7 +143,7 @@ export function AnnualImportForm({
       {pending && (
         <div className="flex flex-col gap-2">
           <Progress aria-label={progressLabel} />
-          <p className="text-muted-foreground text-[14px]">{progressLabel}</p>
+          <p className="text-muted-foreground text-[15px]">{progressLabel}</p>
         </div>
       )}
 
@@ -172,7 +168,7 @@ export function AnnualImportForm({
           )}
         </div>
         {!ready && !pending && (
-          <p id={MISSING_ID} className="text-muted-foreground text-[14px]">
+          <p id={MISSING_ID} className="text-muted-foreground text-[15px]">
             {t('missingInput')}
           </p>
         )}

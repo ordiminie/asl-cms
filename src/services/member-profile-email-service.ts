@@ -237,6 +237,8 @@ export const addMemberProfileEmailService = async (
  * titulaire, critere 9) et son compte suit la nouvelle adresse. Une nouvelle
  * valeur n'herite pas du refus des envois de l'ancienne (ADR 057). Une
  * adresse en attente modifiee par le bureau est activee d'office (design 4).
+ * Une adresse desactivee par l'import ne se modifie pas : elle se retire ou
+ * se ressaisit (s56, ADR 076 §2).
  */
 export const updateMemberProfileEmailService = async (
   input: UpdateMemberProfileEmailInput
@@ -253,7 +255,12 @@ export const updateMemberProfileEmailService = async (
     const loaded = await loadProfileEmails(context, memberProfileId)
     if (!loaded) return {status: 'not_found'}
     const target = loaded.emails.find((row) => row.id === emailId)
-    if (!target) return {status: 'not_found'}
+    if (
+      !target ||
+      target.status === MemberEmailStatusConst.DISABLED_BY_IMPORT
+    ) {
+      return {status: 'not_found'}
+    }
     if (
       loaded.emails.some(
         (other) => other.id !== emailId && sameEmail(other.email, email)

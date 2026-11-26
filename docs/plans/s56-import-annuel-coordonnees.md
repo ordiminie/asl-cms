@@ -132,7 +132,9 @@ ajoutée sur le site n'est jamais désactivée par le fichier (9) ; un identifia
        nouvelle : RLS forcée de `member_profile` et `member_profile_email` déjà en place). **Vérif** :
        `pnpm db:generate` sans diff ensuite ; migration rejouée sur la base locale de secours (skill
        `postgres-local-dev`) : ligne existante intacte, insertion d'une adresse `disabled_by_import` acceptée,
-       index unique partiel de la titulaire inchangé ; sortie collée au rapport d'exécution.
+       index unique partiel de la titulaire inchangé ; sortie collée au rapport d'exécution. **Non fait** :
+       le rejeu sur une base locale n'a pas eu lieu (pas de serveur Postgres sur la machine) ; il est couvert
+       par `pnpm db:migrate`, exécuté en CI avant les e2e (revue m3).
 2. [x] **Registre et garde** — `action-registry-types.ts` : `MEMBER_CONTACT_IMPORT: 'member.contact.import'`,
        entrée `defaultRoles: ['owner']` (JSDoc : première action de la présidence seule) ;
        `src/services/authorization/member-contact-import-authorization.ts` :
@@ -148,14 +150,14 @@ ajoutée sur le site n'est jamais désactivée par le fichier (9) ; un identifia
        identifiant aux références divergentes → un candidat sans parcelle ; 25 cas existants verts.
 4. [x] **Règle pure des coordonnées (ADR 077 §2-3)** — `src/services/rules/member-annual-import-rules.ts` (+
        types `src/services/types/domain/member-annual-import-types.ts`) : `planAnnualContactUpdate(current,
-       fileGroups, snapshot | null, touchedSinceCreation)` → par groupe `unchanged | updated | kept(reported)`,
+    fileGroups, snapshot | null, touchedSinceCreation)` → par groupe `unchanged | updated | kept(reported)`,
        contact fusionné (compléments, `companyName`, nom repris de la fiche) et nouvel instantané. **Vérif** :
        un test par branche — `F = C` ; `C = S` → écrit ; `C ≠ S`, `F ≠ S` → gardé signalé ; `C ≠ S`, `F = S` →
        gardé non signalé ; sans instantané, fiche intacte → écrit, fiche touchée → gardé ; terrain sans
        livraison → gardé (C) ; téléphone vide dans le fichier → rien effacé ; compléments jamais touchés ;
        rejouer le résultat → tout `unchanged`.
 5. [x] **Règle pure des adresses (décision 2, B, D)** — même fichier : `planAnnualEmailUpdate({rows, cell,
-       snapshotEmails, roleBoundEmailIds, holderRoleBound})` → opérations ordonnées (`add`, `reactivate`,
+    snapshotEmails, roleBoundEmailIds, holderRoleBound})` → opérations ordonnées (`add`, `reactivate`,
        `disable`, `demote`, `promote`) et constats du rapport (`replaced`, `designated`, `disabled`, `kept`,
        `manual`). Types `'active' | 'pending'` élargis à `disabled_by_import` dans `member-email-rules.ts`
        (`planEmailRemoval` : une ligne désactivée se retire sans remplaçante). **Vérif** : un test par critère
@@ -278,3 +280,19 @@ ajoutée sur le site n'est jamais désactivée par le fichier (9) ; un identifia
   stocké ni journalisé.
 - `withTenant` / `getDb()` partout ; tenant du domaine ; accès croisé testé en e2e.
 - `/ks-review` passée sans critique ; e2e verts en CI ; amendement du critère 4 porté sur `main` au ship.
+
+## Correctifs de revue (tour 1, arbitrage du 2026-11-26)
+
+La revue du tour 1 (`docs/reviews/s56-import-annuel-coordonnees.md`) autorise le ship avec deux majeurs ;
+l'utilisatrice a choisi de les corriger avant la PR, avec deux mineurs de texte.
+
+- [x] **M1** — `updateMemberProfileEmailService` refuse une cible `disabled_by_import` (refus `not_found` ou
+      dédié, sans ouvrir ni relier de compte), test d'abord. Tout autre écrivain du bureau qui accepterait la même
+      cible est couvert de la même façon.
+- [x] **M2** — typographie du rapport et du formulaire de l'import annuel (`annual-import-report.tsx`,
+      `annual-import-form.tsx`) ramenée sur l'échelle du design system (`meta` 15 px, `data` 17 px, `h2`/`h3`
+      selon §3) ; l'écran de s13 n'est pas touché.
+- [x] **m3** — tâche 1 : la case porte la mention que le rejeu de la migration sur une base locale n'a pas été
+      fait (pas de serveur Postgres sur la machine) et qu'il est couvert par `db:migrate` en CI.
+- [x] **m5** — ADR 077 §1 : l'instantané écrit par s13 contient le terrain effectivement écrit, terrain par
+      défaut compris.

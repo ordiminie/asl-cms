@@ -108,7 +108,7 @@ export function AnnualImportReport({
 
       <ResultBanner report={report} kind={kind} />
 
-      <p className="text-muted-foreground flex items-start gap-2 text-[14px]">
+      <p className="text-muted-foreground flex items-start gap-2 text-[15px]">
         <Lock aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
         {tImport('privacy')}
       </p>
@@ -317,7 +317,7 @@ function Summary({report}: {report: AnnualImportReportDTO}) {
     <section aria-labelledby={headingId}>
       <Card className="gap-4 shadow-none">
         <CardContent className="flex flex-col gap-4">
-          <h2 id={headingId} className="font-serif text-[22px] font-semibold">
+          <h2 id={headingId} className="font-serif text-[26px] font-semibold">
             {t('summaryTitle')}
           </h2>
           <Figures figures={totals} />
@@ -338,8 +338,8 @@ function Figures({figures}: {figures: [string, number][]}) {
           key={label}
           className="flex items-baseline justify-between gap-3 sm:flex-col sm:items-start sm:gap-1"
         >
-          <dt className="text-muted-foreground text-[14px]">{label}</dt>
-          <dd className="font-mono text-[22px] font-semibold">{value}</dd>
+          <dt className="text-muted-foreground text-[15px]">{label}</dt>
+          <dd className="font-mono text-[17px] tabular-nums">{value}</dd>
         </div>
       ))}
     </dl>
@@ -379,7 +379,7 @@ function ReportSection({
     <section aria-labelledby={headingId}>
       <Card className="gap-4 shadow-none">
         <CardContent className="flex flex-col gap-4">
-          <h3 id={headingId} className="font-serif text-[20px] font-semibold">
+          <h3 id={headingId} className="text-[20px] font-semibold">
             {t(`${name}.title`)}{' '}
             <span className="font-mono font-medium">({rows.length})</span>
           </h3>
@@ -483,7 +483,7 @@ function PagedRows({
 function CardPair({label, value}: {label: string; value: ReactNode}) {
   return (
     <>
-      <dt className="text-muted-foreground text-[14px]">{label}</dt>
+      <dt className="text-muted-foreground text-[15px]">{label}</dt>
       <dd>{value}</dd>
     </>
   )

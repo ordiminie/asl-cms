@@ -99,4 +99,23 @@ describe('AnnualImportForm — écran 1 (s56)', () => {
 
     expect(formAction).toHaveBeenCalledTimes(1)
   })
+
+  it('typographie sur l’échelle du design system (revue M2)', async () => {
+    const {formAction, rerender} = renderForm()
+    expect(belowMetaFloor(document.body)).toEqual([])
+    expect(document.querySelectorAll('.font-serif')).toHaveLength(0)
+
+    await userEvent.upload(fileInput(), csv())
+    rerender(<AnnualImportForm formAction={formAction} pending />)
+    expect(belowMetaFloor(document.body)).toEqual([])
+  })
 })
+
+/** Les tailles explicites sous le plancher `meta` (15 px). */
+const belowMetaFloor = (root: HTMLElement) =>
+  Array.from(root.querySelectorAll('[class*="text-["]'))
+    .flatMap((element) => Array.from(element.classList))
+    .filter((name) => {
+      const size = /^text-\[(\d+)px\]$/.exec(name)
+      return size !== null && Number(size[1]) < 15
+    })
