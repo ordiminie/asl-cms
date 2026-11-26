@@ -4,11 +4,12 @@ const scope = vi.hoisted(() => ({current: undefined as string | undefined}))
 
 vi.mock('@/db/tenant-scope', () => ({
   withTenant: vi.fn(async (organizationId: string, callback: () => unknown) => {
+    const outer = scope.current
     scope.current = organizationId
     try {
       return await callback()
     } finally {
-      scope.current = undefined
+      scope.current = outer
     }
   }),
 }))
@@ -21,6 +22,9 @@ vi.mock('@/db/repositories/member-question-repository', () => ({
 }))
 vi.mock('@/db/repositories/member-profile-repository', () => ({
   getMemberProfilesByUserIdDao: vi.fn(),
+}))
+vi.mock('@/db/repositories/parcel-ownership-repository', () => ({
+  listOwnershipPeriodsByProfilesDao: vi.fn(),
 }))
 vi.mock('@/db/repositories/association-category-repository', () => ({
   listActiveCategoriesDao: vi.fn(),
@@ -45,6 +49,7 @@ import {
   markMemberQuestionNotificationFailedDao,
 } from '@/db/repositories/member-question-repository'
 import * as organizationRepository from '@/db/repositories/organization-repository'
+import {listOwnershipPeriodsByProfilesDao} from '@/db/repositories/parcel-ownership-repository'
 import {EmailTransportError} from '@/lib/emails/transport/email-transport'
 import {logger} from '@/lib/logger'
 
@@ -147,6 +152,7 @@ const settingsWith = (contactEmail: string | undefined) => ({
 beforeEach(() => {
   vi.clearAllMocks()
   scope.current = undefined
+  vi.mocked(listOwnershipPeriodsByProfilesDao).mockResolvedValue([])
   vi.mocked(listActiveCategoriesDao).mockResolvedValue([categoryRow()])
   vi.mocked(getMemberProfilesByUserIdDao).mockResolvedValue([
     {...profileRow(), currentParcelNumbers: []},
@@ -604,5 +610,48 @@ describe('[ORGANIZATION MEMBER] question d’un compte à deux fiches (s53)', ()
     expect(createMemberQuestionDao).toHaveBeenCalledWith(
       expect.objectContaining({memberId: profileRow().id})
     )
+  })
+})
+
+describe('[ORGANIZATION MEMBER] accès après la vente — une fiche fermée n’est jamais la « première fiche » (s57, ADR 075 §4)', () => {
+  const SOLD_ID = '00000000-0000-4000-8000-000000000001'
+  const closedPeriod = {
+    memberProfileId: SOLD_ID,
+    number: '9',
+    meterNumber: null,
+    startsOn: '2003-05-14',
+    endsOn: '2019-10-01',
+  }
+
+  beforeEach(() => {
+    setupAuthUserMocked(withRole(UserOrganizationRoleConst.MEMBER))
+    vi.mocked(listOwnershipPeriodsByProfilesDao).mockResolvedValue([
+      closedPeriod,
+    ])
+  })
+
+  it('la question est rattachée à la fiche encore ouverte', async () => {
+    vi.mocked(getMemberProfilesByUserIdDao).mockResolvedValue([
+      {...profileRow(), id: SOLD_ID, currentParcelNumbers: []},
+      {...profileRow(), currentParcelNumbers: []},
+    ] as never)
+
+    await createMyQuestionService(submission())
+
+    expect(createMemberQuestionDao).toHaveBeenCalledWith(
+      expect.objectContaining({memberId: PROFILE_ID})
+    )
+  })
+
+  it('seule une fiche fermée : `not_found`, aucune question, aucun sujet', async () => {
+    vi.mocked(getMemberProfilesByUserIdDao).mockResolvedValue([
+      {...profileRow(), id: SOLD_ID, currentParcelNumbers: []},
+    ] as never)
+
+    await expect(createMyQuestionService(submission())).resolves.toEqual({
+      status: 'not_found',
+    })
+    expect(createMemberQuestionDao).not.toHaveBeenCalled()
+    expect(await listMyQuestionCategoriesService(ORG_ID)).toBeUndefined()
   })
 })

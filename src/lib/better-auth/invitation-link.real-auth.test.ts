@@ -45,6 +45,10 @@ vi.mock('@/db/repositories/organization-repository', () => ({
 vi.mock('@/services/member-invitation-service', () => ({
   recordFirstSignIn: vi.fn(),
 }))
+/** Fiches toujours ouvertes ici : la regle de s57 se prouve ailleurs. */
+vi.mock('@/services/facades/member-profile-access-service-facade', () => ({
+  hasMemberSpaceAccessService: vi.fn(async () => true),
+}))
 vi.mock('@/services/facades/organization-service-facade', () => ({
   getOrganizationByDomainService: vi.fn(),
 }))

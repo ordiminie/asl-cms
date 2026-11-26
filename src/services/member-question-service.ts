@@ -3,7 +3,6 @@ import 'server-only'
 import {AssociationCategoryModel} from '@/db/models/association-category-model'
 import {MemberQuestionModel} from '@/db/models/member-question-model'
 import {listActiveCategoriesDao} from '@/db/repositories/association-category-repository'
-import {getMemberProfilesByUserIdDao} from '@/db/repositories/member-profile-repository'
 import {
   createMemberQuestionDao,
   getMemberQuestionByIdDao,
@@ -28,7 +27,7 @@ import {
   ValidationError,
   ValidationParsedZodError,
 } from './errors/validation-error'
-import {orderMyProfiles} from './rules/my-profiles-order-rules'
+import {getMyAccessibleProfiles} from './member-profile-access-service'
 import {ActionIdConst} from './types/domain/action-registry-types'
 import {
   CategoryDomainConst,
@@ -221,9 +220,7 @@ export const createMyQuestionService = async (
   const authUser = await requireSessionUser()
   const {organizationId, locale, categoryId, body} = parsed.data
   const written = await withTenant(organizationId, async () => {
-    const [profile] = orderMyProfiles(
-      await getMemberProfilesByUserIdDao(organizationId, authUser.id)
-    )
+    const [profile] = await getMyAccessibleProfiles(organizationId, authUser.id)
     if (!profile) return undefined
 
     const category = await resolveQuestionCategory(organizationId, categoryId)
@@ -264,9 +261,7 @@ const readForMyProfile = async <T>(
 
   const authUser = await requireSessionUser()
   return withTenant(parsed.data, async () => {
-    const [profile] = orderMyProfiles(
-      await getMemberProfilesByUserIdDao(parsed.data, authUser.id)
-    )
+    const [profile] = await getMyAccessibleProfiles(parsed.data, authUser.id)
     return profile ? read(profile, authUser.email) : undefined
   })
 }

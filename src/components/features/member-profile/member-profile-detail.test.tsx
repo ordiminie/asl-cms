@@ -32,6 +32,7 @@ const profile = (
   incomplete: false,
   emails: [],
   account: {status: 'mail_only'},
+  accessWindow: null,
   pennylaneCustomerId: null,
   roleCard: {
     reading: 'no_account',
@@ -1256,6 +1257,150 @@ describe('MemberProfileDetail — invitation depuis « Accès à l’espace memb
 
     expect(await within(accessCard()).findByRole('alert')).toHaveTextContent(
       'Cette action est réservée au bureau de l’association.'
+    )
+  })
+})
+
+describe('MemberProfileDetail — fin d’accès après la vente (s57, écran A)', () => {
+  const accessCard = () =>
+    screen.getByRole('region', {name: 'Accès à l’espace membre'})
+
+  const activeEmail = (
+    address: string
+  ): MemberProfileDTO['emails'][number] => ({
+    id: address,
+    email: address,
+    role: 'holder',
+    status: 'active',
+    origin: 'site',
+    addedByName: null,
+    expiresAt: null,
+    replacesEmailId: null,
+    boardRole: null,
+    otherProfiles: [],
+    invitation: {state: 'never', at: null},
+  })
+
+  const sellerProfile = (
+    accessWindow: MemberProfileDTO['accessWindow'],
+    boardRole: 'board' | 'owner' | null = null
+  ) =>
+    profile({
+      name: 'Jean Dubois',
+      email: 'jean.dubois@exemple.fr',
+      mailOnly: false,
+      emails: [activeEmail('jean.dubois@exemple.fr')],
+      account: {
+        status: 'open',
+        loginEmail: 'jean.dubois@exemple.fr',
+        boardRole,
+        accountName: 'Jean Dubois',
+        otherProfiles: [],
+      },
+      accessWindow,
+    })
+
+  const GRACE = {
+    status: 'grace' as const,
+    soldOn: '2026-06-15',
+    openUntil: '2026-12-14',
+  }
+  const CLOSED = {
+    status: 'closed' as const,
+    soldOn: '2026-02-03',
+    closedSince: '2026-08-03',
+  }
+
+  it('A1 / A4 — propriétaire ou sans période : carte inchangée, aucune date', () => {
+    renderDetail({profile: sellerProfile(null)})
+
+    expect(accessCard()).toHaveTextContent(
+      'Compte ouvert. Jean Dubois peut se connecter à son espace avec jean.dubois@exemple.fr.'
+    )
+    expect(accessCard()).not.toHaveTextContent('Accès ouvert jusqu’au')
+    expect(accessCard()).not.toHaveTextContent('Accès fermé')
+    expect(
+      within(accessCard()).getByRole('button', {name: /invitation/})
+    ).toBeInTheDocument()
+  })
+
+  it('A2 — en délai : la phrase d’ouverture reste, la date de fin d’accès s’ajoute, l’invitation reste possible', () => {
+    renderDetail({profile: sellerProfile(GRACE)})
+
+    expect(accessCard()).toHaveTextContent('Compte ouvert.')
+    expect(accessCard()).toHaveTextContent(
+      'Accès ouvert jusqu’au 14/12/2026. Jean Dubois n’est plus propriétaire depuis la vente du 15/06/2026 ; il voit encore ses factures et documents d’avant cette date. Ensuite, aucune adresse de cette fiche ne s’y connectera plus.'
+    )
+    expect(
+      within(accessCard()).getByRole('button', {name: /invitation/})
+    ).toBeInTheDocument()
+  })
+
+  it('A3 — délai écoulé : la phrase d’ouverture est remplacée, plus de bouton d’invitation', () => {
+    renderDetail({profile: sellerProfile(CLOSED)})
+
+    expect(accessCard()).not.toHaveTextContent('Compte ouvert.')
+    expect(accessCard()).toHaveTextContent(
+      'Accès fermé depuis le 03/08/2026. Jean Dubois n’est plus propriétaire depuis la vente du 03/02/2026 : aucune adresse de cette fiche ne s’y connecte plus. Ses autres fiches ne sont pas touchées.'
+    )
+    expect(accessCard()).toHaveTextContent(
+      'Rien n’est supprimé : ses factures et ses documents restent consultables par le bureau, plus bas sur cette fiche.'
+    )
+    expect(within(accessCard()).queryByRole('button')).toBeNull()
+    expect(accessCard()).toHaveTextContent(
+      'Pas d’invitation possible : l’accès de cette fiche est fermé.'
+    )
+  })
+
+  it('A3-bureau — délai écoulé, compte au bureau : badge et phrase du back-office', () => {
+    renderDetail({profile: sellerProfile(CLOSED, 'board')})
+
+    expect(within(accessCard()).getByText('Bureau')).toBeInTheDocument()
+    expect(accessCard()).toHaveTextContent(
+      'Son compte garde l’accès au back-office ; cette fiche sort seulement de son espace membre.'
+    )
+  })
+
+  it('A3 — un compte simple membre n’a ni badge ni phrase du back-office', () => {
+    renderDetail({profile: sellerProfile(CLOSED)})
+
+    expect(accessCard()).not.toHaveTextContent('back-office')
+  })
+
+  it('A5 — courrier uniquement, en délai : la phrase mailOnly reste, la date s’ajoute avec sa variante', () => {
+    renderDetail({profile: profile({name: 'Henri Blanc', accessWindow: GRACE})})
+
+    expect(accessCard()).toHaveTextContent('Joignable par courrier uniquement.')
+    expect(accessCard()).toHaveTextContent(
+      'Accès ouvert jusqu’au 14/12/2026. Henri Blanc n’est plus propriétaire depuis la vente du 15/06/2026. Une adresse ajoutée d’ici là ouvrira son espace jusqu’à cette date.'
+    )
+    expect(accessCard()).toHaveTextContent(
+      'Pas d’invitation possible : ce membre reçoit tout par courrier.'
+    )
+  })
+
+  it('A5 — courrier uniquement, délai écoulé : « Accès fermé depuis le … » puis la phrase mailOnly', () => {
+    renderDetail({
+      profile: profile({name: 'Henri Blanc', accessWindow: CLOSED}),
+    })
+
+    expect(accessCard()).toHaveTextContent(
+      'Accès fermé depuis le 03/08/2026. Henri Blanc n’est plus propriétaire depuis la vente du 03/02/2026.'
+    )
+    expect(accessCard()).toHaveTextContent('Joignable par courrier uniquement.')
+    expect(within(accessCard()).queryByRole('button')).toBeNull()
+  })
+
+  it('refus serveur d’une fiche fermée entre-temps : le dit, sans rien envoyer', async () => {
+    actions.inviteAction.mockResolvedValue({status: 'access_closed'})
+    renderDetail({profile: sellerProfile(GRACE)})
+
+    await userEvent.click(
+      within(accessCard()).getByRole('button', {name: /invitation/})
+    )
+
+    expect(await within(accessCard()).findByRole('status')).toHaveTextContent(
+      'L’accès de cette fiche est fermé.'
     )
   })
 })

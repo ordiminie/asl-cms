@@ -1,14 +1,15 @@
-import {beforeEach, describe, expect, it, vi} from 'vitest'
+import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 
 const scope = vi.hoisted(() => ({current: undefined as string | undefined}))
 
 vi.mock('@/db/tenant-scope', () => ({
   withTenant: vi.fn(async (organizationId: string, callback: () => unknown) => {
+    const outer = scope.current
     scope.current = organizationId
     try {
       return await callback()
     } finally {
-      scope.current = undefined
+      scope.current = outer
     }
   }),
 }))
@@ -42,6 +43,12 @@ vi.mock('@/db/repositories/user-repository', () => ({
 }))
 vi.mock('@/db/repositories/member-invitation-state-repository', () => ({
   getInvitationStatesByUserIdsDao: vi.fn(async () => []),
+}))
+vi.mock('@/db/repositories/parcel-ownership-repository', () => ({
+  listOwnershipPeriodsByProfilesDao: vi.fn(),
+}))
+vi.mock('@/db/repositories/organization-setting-repository', () => ({
+  getOrganizationSettingsDao: vi.fn(),
 }))
 vi.mock('@/db/repositories/member-role-event-repository', () => ({
   insertMemberRoleEventDao: vi.fn(),
@@ -89,6 +96,8 @@ import {
   getUserOrganizationDao,
   updateMemberRoleFromDao,
 } from '@/db/repositories/organization-repository'
+import {getOrganizationSettingsDao} from '@/db/repositories/organization-setting-repository'
+import {listOwnershipPeriodsByProfilesDao} from '@/db/repositories/parcel-ownership-repository'
 import {
   createUserDao,
   createUserIfAbsentTxnDao,
@@ -223,6 +232,8 @@ const membership = (role: 'member' | 'board' | 'owner', userId: string) =>
 beforeEach(() => {
   vi.clearAllMocks()
   scope.current = undefined
+  vi.mocked(listOwnershipPeriodsByProfilesDao).mockResolvedValue([])
+  vi.mocked(getOrganizationSettingsDao).mockResolvedValue([])
   vi.mocked(getActingContext).mockResolvedValue(undefined)
   vi.mocked(createMemberProfileTxnDao).mockResolvedValue({
     status: 'created',
@@ -1616,6 +1627,105 @@ describe('[s42a] état de l’invitation de chaque adresse', () => {
     expect(claireOn(second)).toEqual({
       state: 'invited',
       at: INVITED_AT.toISOString(),
+    })
+  })
+})
+
+describe('[ORGANIZATION ADMIN] date de fin d’accès sur la fiche (s57, critère 8)', () => {
+  const closedPeriod = (endsOn: string) => ({
+    memberProfileId: PROFILE_ID,
+    number: '47',
+    meterNumber: null,
+    startsOn: '1998-02-03',
+    endsOn,
+  })
+
+  beforeEach(() => {
+    setupAuthUserMocked(withRole(UserOrganizationRoleConst.ADMIN))
+    vi.useFakeTimers({toFake: ['Date']})
+    vi.setSystemTime(new Date('2026-11-26T10:00:00Z'))
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('vente du 15/06/2026, délai du tenant de 6 mois : accès ouvert jusqu’au 14/12/2026', async () => {
+    vi.mocked(listOwnershipPeriodsByProfilesDao).mockResolvedValue([
+      closedPeriod('2026-06-15'),
+    ])
+    vi.mocked(getOrganizationSettingsDao).mockResolvedValue([
+      {key: 'member.access_after_sale_months', value: '6'},
+    ] as never)
+
+    const profile = await getMemberProfileService(ORG_ID, PROFILE_ID)
+
+    expect(listOwnershipPeriodsByProfilesDao).toHaveBeenCalledWith([PROFILE_ID])
+    expect(profile?.accessWindow).toEqual({
+      status: 'grace',
+      soldOn: '2026-06-15',
+      openUntil: '2026-12-14',
+    })
+  })
+
+  it('vente du 03/02/2026 : accès fermé depuis le 03/08/2026', async () => {
+    vi.mocked(listOwnershipPeriodsByProfilesDao).mockResolvedValue([
+      closedPeriod('2026-02-03'),
+    ])
+
+    const profile = await getMemberProfileService(ORG_ID, PROFILE_ID)
+
+    expect(profile?.accessWindow).toEqual({
+      status: 'closed',
+      soldOn: '2026-02-03',
+      closedSince: '2026-08-03',
+    })
+  })
+
+  it('fiche encore propriétaire ou sans période : aucune date', async () => {
+    vi.mocked(listOwnershipPeriodsByProfilesDao).mockResolvedValue([
+      {...closedPeriod('2026-02-03'), endsOn: null},
+    ])
+    expect(
+      (await getMemberProfileService(ORG_ID, PROFILE_ID))?.accessWindow
+    ).toBeNull()
+
+    vi.mocked(listOwnershipPeriodsByProfilesDao).mockResolvedValue([])
+    expect(
+      (await getMemberProfileService(ORG_ID, PROFILE_ID))?.accessWindow
+    ).toBeNull()
+  })
+
+  it('non-régression — « Ce compte réunit aussi » liste encore une fiche fermée (le bureau voit tout)', async () => {
+    const SOLD_ID = '99999999-9999-4999-8999-999999999999'
+    const email = 'bernard.lefevre@exemple.fr'
+    vi.mocked(getMemberProfileByIdDao).mockResolvedValue(
+      profileRow({email, mailOnly: false})
+    )
+    givenLinkedHolder(email, ACCOUNT_ID)
+    vi.mocked(getMemberAccountDao).mockResolvedValue({
+      email,
+      name: 'Bernard Lefèvre',
+      role: 'member',
+    })
+    vi.mocked(getMemberProfilesByUserIdDao).mockResolvedValue([
+      {...profileRow(), currentParcelNumbers: ['12']},
+      {
+        ...profileRow({id: SOLD_ID, name: 'Bernard Lefèvre'}),
+        currentParcelNumbers: [],
+      },
+    ])
+    vi.mocked(listOwnershipPeriodsByProfilesDao).mockResolvedValue([
+      {...closedPeriod('2019-10-01'), memberProfileId: SOLD_ID},
+    ])
+
+    const profile = await getMemberProfileService(ORG_ID, PROFILE_ID)
+
+    expect(profile?.account).toMatchObject({
+      status: 'open',
+      otherProfiles: [
+        {id: SOLD_ID, name: 'Bernard Lefèvre', parcelNumbers: []},
+      ],
     })
   })
 })

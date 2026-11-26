@@ -13,10 +13,12 @@ import {
   getContactMessagesPerHourLimit,
   getDefaultLandAddress,
   getInvitationLinkDays,
+  getMemberAccessAfterSaleMonths,
   getMemberEmailConfirmationDays,
   getStatutoryTemplateIds,
   getUnpaidReminderSettings,
   INVITATION_LINK_DAYS_SETTING_KEY,
+  MEMBER_ACCESS_AFTER_SALE_MONTHS_SETTING_KEY,
   MEMBER_EMAIL_CONFIRMATION_DAYS_SETTING_KEY,
   resolveSettings,
   validateSettingsChanges,
@@ -219,5 +221,21 @@ describe('TEST_TENANT_SETTINGS — invitation des membres (s42a)', () => {
       storedValue: '7',
     })
     expect(getInvitationLinkDays(settings)).toBe(7)
+  })
+})
+
+describe('TEST_TENANT_SETTINGS — accès après la vente (s57, ADR 075)', () => {
+  it('le premier tenant porte 6 mois en valeur de seed, Marketing Pro le défaut', () => {
+    const techcorp = settingsOf('techcorp-solutions')
+    expect(techcorp[MEMBER_ACCESS_AFTER_SALE_MONTHS_SETTING_KEY]).toMatchObject(
+      {
+        value: 6,
+        storedValue: '6',
+      }
+    )
+    expect(getMemberAccessAfterSaleMonths(techcorp)).toBe(6)
+    expect(
+      settingsOf('marketing-pro')[MEMBER_ACCESS_AFTER_SALE_MONTHS_SETTING_KEY]
+    ).toMatchObject({storedValue: null})
   })
 })

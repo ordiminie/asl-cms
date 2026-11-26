@@ -268,6 +268,26 @@ test.describe.serial('s02 — paramètres de l’association', () => {
     })
   })
 
+  test('s57 — le bureau lit le délai d’accès après la vente sans pouvoir le modifier', async ({
+    browser,
+  }) => {
+    const page = await newSession(browser, TENANT_A, 'user-owner@gmail.com')
+    await openSettingsPage(page, TENANT_A)
+
+    const card = page
+      .getByRole('heading', {level: 3, name: 'Accès à l’espace membre'})
+      .locator('xpath=ancestor::*[@data-slot="card"][1]')
+    const field = card.getByLabel(/Délai d’accès après la vente/)
+    await expect(field).toHaveValue('6')
+    await expect(field).toHaveAttribute('readonly', '')
+    await expect(card).toContainText('mois')
+    await expect(card).toContainText(
+      'Réglé par l’équipe technique de la plateforme, après avis du conseil RGPD : vous ne pouvez pas le modifier.'
+    )
+
+    await page.close()
+  })
+
   test('critère 4 — le forage jamais renseigné reste vide, sans promettre d’envoi (s10, ADR 028)', async ({
     browser,
   }) => {

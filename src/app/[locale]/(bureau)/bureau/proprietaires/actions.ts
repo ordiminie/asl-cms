@@ -480,7 +480,9 @@ export async function removeFromRecipientGroupAction(
 const toInvitationActionResult = (
   result: MemberInvitationResult
 ): InviteMemberActionResult => {
-  if (result.status === 'mail_only') return result
+  if (result.status === 'mail_only' || result.status === 'access_closed') {
+    return result
+  }
   if (result.status === 'deferred') {
     return {status: 'deferred', sent: result.sent, deferred: result.deferred}
   }
@@ -491,8 +493,9 @@ const toInvitationActionResult = (
 /**
  * « Envoyer l'invitation » depuis la fiche (s42a, ecran 2) : une invitation a
  * chaque adresse active, chacune avec son lien. Le service reverifie
- * `member.profile.manage` et relit la fiche sous le tenant du domaine. Le
- * refus « courrier uniquement » et l'echec sont rendus, jamais leves ; la
+ * `member.profile.manage` et relit la fiche sous le tenant du domaine. Les
+ * refus « courrier uniquement » et « acces ferme » (s57) et l'echec sont
+ * rendus, jamais leves ; la
  * fiche n'est revalidee qu'apres un depart reel.
  */
 export async function inviteMemberProfileAction(

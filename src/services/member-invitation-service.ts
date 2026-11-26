@@ -21,6 +21,7 @@ import {getAssociationSettingsService} from './association-settings-service'
 import {sendInvitationEmailService} from './email-service'
 import {NotFoundError} from './errors/not-found-error'
 import {ValidationParsedZodError} from './errors/validation-error'
+import {readProfileAccess} from './member-profile-access-service'
 import {
   accountOfEmail,
   readProfileEmails,
@@ -131,7 +132,9 @@ const inviteTarget = async (
 /**
  * Invite chaque adresse active d'une fiche (s42a, criteres 1, 6, 7, 8, 9).
  * `member.profile.manage` ; fiche lue sous le tenant (introuvable :
- * `NotFoundError`) ; aucune adresse active : refus « courrier uniquement ».
+ * `NotFoundError`) ; fiche fermee apres la vente (s57, ADR 075) : refus
+ * `access_closed`, avant tout lien ; aucune adresse active : refus « courrier
+ * uniquement ».
  * Chaque adresse, dans l'ordre de la fiche, recoit un lien neuf — les
  * precedents de l'adresse sont revoques par le generateur — puis son email ;
  * « invitee le » s'ecrit au depart reel. Une erreur apres un premier email
@@ -149,6 +152,8 @@ export const inviteMemberProfileService = async (
   const targets = await withTenant(organizationId, () =>
     readInvitationTargets(memberProfileId, now)
   )
+  const access = await readProfileAccess(organizationId, memberProfileId, now)
+  if (access.status === 'closed') return {status: 'access_closed'}
   if (targets.length === 0) return {status: 'mail_only'}
   const context = await readInvitationContext(organizationId)
 

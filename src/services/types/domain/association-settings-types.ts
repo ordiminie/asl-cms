@@ -39,6 +39,7 @@ export type AssociationSettingSection =
   | 'reminder'
   | 'letter'
   | 'invitation'
+  | 'member_access'
 
 /** Defaut constant (valeur brute, comme en base) ou reference a une autre cle. */
 export type AssociationSettingDefault = {value: string} | {fromKey: string}
@@ -284,6 +285,14 @@ export const INVITATION_LETTER_TEXT_SETTING_KEY = 'invitation.letter_text'
  * demande depuis la page de connexion garde sa propre duree.
  */
 export const INVITATION_LINK_DAYS_SETTING_KEY = 'invitation.link_days'
+/**
+ * Mois pendant lesquels une fiche vendue garde l'accès à l'espace membre
+ * (s57, ADR 075), comptés depuis la fin de sa dernière période. Calculé à
+ * chaque lecture : un changement s'applique à toutes les fiches vendues.
+ * Réservé au SuperAdmin, après avis du conseil RGPD.
+ */
+export const MEMBER_ACCESS_AFTER_SALE_MONTHS_SETTING_KEY =
+  'member.access_after_sale_months'
 /**
  * Code postal et commune du terrain par defaut (s55, ADR 058) : l'import les
  * ecrit au terrain d'une fiche **creee** sans adresse de terrain. **Sans
@@ -848,6 +857,26 @@ export const ASSOCIATION_SETTINGS_REGISTRY: AssociationSettingsRegistry = [
     page: 'settings',
     section: 'invitation',
   },
+  {
+    key: MEMBER_ACCESS_AFTER_SALE_MONTHS_SETTING_KEY,
+    type: 'number',
+    required: false,
+    default: {value: '6'},
+    min: 1,
+    max: 60,
+    integer: true,
+    unitKey: 'units.months',
+    labelKey: 'fields.memberAccessAfterSaleMonths.label',
+    helpKey: 'fields.memberAccessAfterSaleMonths.help',
+    errorMessageKeys: {
+      invalidNumber: 'fields.memberAccessAfterSaleMonths.errors.invalid',
+      belowMin: 'fields.memberAccessAfterSaleMonths.errors.invalid',
+    },
+    readOnlyHelpKey: 'campaignNature.superAdminOnly',
+    page: 'settings',
+    section: 'member_access',
+    editableBy: 'super_admin',
+  },
 ]
 
 const emailSchema = z.email()
@@ -1391,3 +1420,12 @@ export const getInvitationLetterText = (
   settings: ResolvedAssociationSettings
 ): string | null =>
   textSettingOf(settings, INVITATION_LETTER_TEXT_SETTING_KEY) ?? null
+
+/**
+ * Mois d'accès d'une fiche vendue (s57, ADR 075) : valeur du SuperAdmin,
+ * sinon défaut du registre.
+ */
+export const getMemberAccessAfterSaleMonths = (
+  settings: ResolvedAssociationSettings
+): number =>
+  numberSettingOf(settings, MEMBER_ACCESS_AFTER_SALE_MONTHS_SETTING_KEY)

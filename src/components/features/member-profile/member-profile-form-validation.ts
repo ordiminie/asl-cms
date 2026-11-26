@@ -297,6 +297,7 @@ export type InviteMemberActionResult =
   | {status: 'deferred'; sent: string[]; deferred: string[]}
   | {status: 'partial'; sent: string[]}
   | {status: 'mail_only'}
+  | {status: 'access_closed'}
   | {status: 'failed'}
   | {status: 'error'; message: string}
 

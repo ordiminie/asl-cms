@@ -40,8 +40,8 @@ vi.mock('@/db/repositories/association-category-repository', () => ({
 vi.mock('@/db/repositories/parcel-ownership-repository', () => ({
   listOwnershipPeriodsByProfilesDao: vi.fn(),
 }))
-vi.mock('../member-account-service', () => ({
-  getMyMemberProfiles: vi.fn(),
+vi.mock('../member-profile-access-service', () => ({
+  getMyAccessibleProfiles: vi.fn(),
 }))
 vi.mock('@/lib/files/storage/storage-factory', () => ({
   createStorage: vi.fn(() => storage),
@@ -72,7 +72,6 @@ import {AuthorizationError} from '../errors/authorization-error'
 import {NotFoundError} from '../errors/not-found-error'
 import {UnauthenticatedError} from '../errors/unauthenticated-error'
 import {ValidationParsedZodError} from '../errors/validation-error'
-import {getMyMemberProfiles} from '../member-account-service'
 import {
   depositMemberDocumentBatchLineService,
   depositMemberDocumentService,
@@ -83,6 +82,7 @@ import {
   readMemberDocumentFileService,
   removeMemberDocumentService,
 } from '../member-document-service'
+import {getMyAccessibleProfiles} from '../member-profile-access-service'
 import {CategoryDomainConst} from '../types/domain/association-category-types'
 import {
   MEMBER_DOCUMENT_TITLE_MAX_LENGTH,
@@ -618,8 +618,11 @@ describe('getMemberDocumentsForBureauService — vue d’ensemble (critère 6)',
 
 const THIRD_PROFILE_ID = 'a1200000-0000-4000-8000-000000000003'
 
-const myProfile = (id: string, name: string) =>
-  ({id, name, currentParcelNumbers: []}) as never
+const myProfile = (
+  id: string,
+  name: string,
+  access: Record<string, string> = {status: 'owner'}
+) => ({id, name, currentParcelNumbers: [], access}) as never
 
 const period = (
   memberProfileId: string,
@@ -632,7 +635,7 @@ const period = (
 describe('getMyMemberDocumentsService — « Mes documents » (critères 1, 3, 5)', () => {
   it('[USER] lit les documents de toutes ses fiches, chacun avec son terrain à sa date, date décroissante', async () => {
     setupAuthUserMocked({...withRole('member'), name: 'Bernard Lefèvre'})
-    vi.mocked(getMyMemberProfiles).mockResolvedValue([
+    vi.mocked(getMyAccessibleProfiles).mockResolvedValue([
       myProfile(PROFILE_ID, 'Bernard Lefèvre'),
       myProfile(OTHER_PROFILE_ID, 'SCI Les Pins'),
     ])
@@ -663,7 +666,7 @@ describe('getMyMemberDocumentsService — « Mes documents » (critères 1, 3, 5
     const documents = await getMyMemberDocumentsService(ORG_ID)
 
     expect(readUnder).toBe(ORG_ID)
-    expect(getMyMemberProfiles).toHaveBeenCalledWith(ORG_ID, userTest.id)
+    expect(getMyAccessibleProfiles).toHaveBeenCalledWith(ORG_ID, userTest.id)
     expect(listMemberDocumentsByProfilesDao).toHaveBeenCalledWith([
       PROFILE_ID,
       OTHER_PROFILE_ID,
@@ -689,7 +692,7 @@ describe('getMyMemberDocumentsService — « Mes documents » (critères 1, 3, 5
 
   it('vente : le terrain est celui de la fiche à la date du document (critère 5)', async () => {
     setupAuthUserMocked(withRole('member'))
-    vi.mocked(getMyMemberProfiles).mockResolvedValue([
+    vi.mocked(getMyAccessibleProfiles).mockResolvedValue([
       myProfile(PROFILE_ID, userTest.name),
     ])
     vi.mocked(listOwnershipPeriodsByProfilesDao).mockResolvedValue([
@@ -706,7 +709,7 @@ describe('getMyMemberDocumentsService — « Mes documents » (critères 1, 3, 5
 
   it("ne demande que les documents des fiches reliées au compte : jamais ceux d'une autre", async () => {
     setupAuthUserMocked(withRole('member'))
-    vi.mocked(getMyMemberProfiles).mockResolvedValue([
+    vi.mocked(getMyAccessibleProfiles).mockResolvedValue([
       myProfile(PROFILE_ID, userTest.name),
     ])
     vi.mocked(listOwnershipPeriodsByProfilesDao).mockResolvedValue([])
@@ -719,7 +722,7 @@ describe('getMyMemberDocumentsService — « Mes documents » (critères 1, 3, 5
 
   it('compte sans fiche : aucun document, aucune lecture', async () => {
     setupAuthUserMocked(withRole('member'))
-    vi.mocked(getMyMemberProfiles).mockResolvedValue([])
+    vi.mocked(getMyAccessibleProfiles).mockResolvedValue([])
 
     expect(await getMyMemberDocumentsService(ORG_ID)).toEqual([])
     expect(listMemberDocumentsByProfilesDao).not.toHaveBeenCalled()
@@ -731,12 +734,12 @@ describe('getMyMemberDocumentsService — « Mes documents » (critères 1, 3, 5
     await expect(getMyMemberDocumentsService(ORG_ID)).rejects.toThrow(
       AuthorizationError
     )
-    expect(getMyMemberProfiles).not.toHaveBeenCalled()
+    expect(getMyAccessibleProfiles).not.toHaveBeenCalled()
   })
 
   it('[SUPER_ADMIN] suit lui aussi ses propres fiches, pas celles des autres', async () => {
     setupAuthUserMocked(userTestSuperAdmin)
-    vi.mocked(getMyMemberProfiles).mockResolvedValue([])
+    vi.mocked(getMyAccessibleProfiles).mockResolvedValue([])
 
     expect(await getMyMemberDocumentsService(ORG_ID)).toEqual([])
     expect(listMemberDocumentsByProfilesDao).not.toHaveBeenCalled()
@@ -746,7 +749,7 @@ describe('getMyMemberDocumentsService — « Mes documents » (critères 1, 3, 5
 describe('readMemberDocumentFileService — trois contrôles indépendants (ADR 073 §4)', () => {
   beforeEach(() => {
     vi.mocked(getMemberDocumentByIdDao).mockResolvedValue(documentRow())
-    vi.mocked(getMyMemberProfiles).mockResolvedValue([
+    vi.mocked(getMyAccessibleProfiles).mockResolvedValue([
       myProfile(PROFILE_ID, userTest.name),
     ])
   })
@@ -769,7 +772,7 @@ describe('readMemberDocumentFileService — trois contrôles indépendants (ADR 
 
   it('[USER] compte multi-fiches : lit le document de chacune de ses fiches', async () => {
     setupAuthUserMocked(withRole('member'))
-    vi.mocked(getMyMemberProfiles).mockResolvedValue([
+    vi.mocked(getMyAccessibleProfiles).mockResolvedValue([
       myProfile(PROFILE_ID, userTest.name),
       myProfile(THIRD_PROFILE_ID, 'SCI Les Pins'),
     ])
@@ -797,7 +800,7 @@ describe('readMemberDocumentFileService — trois contrôles indépendants (ADR 
 
   it("contrôle 2 — fiche non possédée : NotFoundError, l'existence n'est pas révélée", async () => {
     setupAuthUserMocked(withRole('member'))
-    vi.mocked(getMyMemberProfiles).mockResolvedValue([
+    vi.mocked(getMyAccessibleProfiles).mockResolvedValue([
       myProfile(OTHER_PROFILE_ID, userTest.name),
     ])
 
@@ -816,7 +819,7 @@ describe('readMemberDocumentFileService — trois contrôles indépendants (ADR 
     'contrôle 2 — %s lit tout document de son association sans posséder la fiche',
     async (_, user) => {
       setupAuthUserMocked(user)
-      vi.mocked(getMyMemberProfiles).mockResolvedValue([])
+      vi.mocked(getMyAccessibleProfiles).mockResolvedValue([])
 
       await readMemberDocumentFileService(ORG_ID, DOCUMENT_ID)
 
@@ -826,7 +829,7 @@ describe('readMemberDocumentFileService — trois contrôles indépendants (ADR 
 
   it("contrôle 2 — owner d'une autre association, sans fiche ici : NotFoundError", async () => {
     setupAuthUserMocked(withRole('owner', OTHER_ORG_ID))
-    vi.mocked(getMyMemberProfiles).mockResolvedValue([])
+    vi.mocked(getMyAccessibleProfiles).mockResolvedValue([])
 
     await expect(
       readMemberDocumentFileService(ORG_ID, DOCUMENT_ID)
@@ -1180,5 +1183,96 @@ describe('getMemberDocumentBatchReachService — fiches atteignables par un lot'
       AuthorizationError
     )
     expect(countMemberProfilesWithoutReferenceDao).not.toHaveBeenCalled()
+  })
+})
+
+describe('accès après la vente — documents d’avant la vente seulement (s57, critère 6)', () => {
+  const SOLD_ON = '2026-03-15'
+  const grace = {status: 'grace', soldOn: SOLD_ON, closesOn: '2026-09-15'}
+
+  it('[USER] en délai : le document daté de la veille de la vente reste, celui du jour est masqué', async () => {
+    setupAuthUserMocked(withRole('member'))
+    vi.mocked(getMyAccessibleProfiles).mockResolvedValue([
+      myProfile(PROFILE_ID, userTest.name, grace),
+      myProfile(OTHER_PROFILE_ID, 'SCI Les Pins'),
+    ])
+    vi.mocked(listOwnershipPeriodsByProfilesDao).mockResolvedValue([])
+    vi.mocked(listMemberDocumentsByProfilesDao).mockResolvedValue([
+      {
+        ...documentRow({id: 'veille', documentDate: '2026-03-14'}),
+        categoryName: 'Facture',
+      },
+      {
+        ...documentRow({id: 'jour', documentDate: SOLD_ON}),
+        categoryName: 'Facture',
+      },
+      {
+        ...documentRow({
+          id: 'autre-fiche',
+          memberProfileId: OTHER_PROFILE_ID,
+          documentDate: '2026-06-01',
+        }),
+        categoryName: 'Facture',
+      },
+    ])
+
+    const documents = await getMyMemberDocumentsService(ORG_ID)
+
+    expect(documents.map(({id}) => id)).toEqual(['autre-fiche', 'veille'])
+  })
+
+  it('[USER] identifiant forgé d’un document d’après la vente : NotFoundError, rien n’est lu', async () => {
+    setupAuthUserMocked(withRole('member'))
+    vi.mocked(getMyAccessibleProfiles).mockResolvedValue([
+      myProfile(PROFILE_ID, userTest.name, grace),
+    ])
+    vi.mocked(getMemberDocumentByIdDao).mockResolvedValue(
+      documentRow({documentDate: SOLD_ON})
+    )
+
+    await expect(
+      readMemberDocumentFileService(ORG_ID, DOCUMENT_ID)
+    ).rejects.toThrow(NotFoundError)
+    expect(storage.download).not.toHaveBeenCalled()
+  })
+
+  it('[USER] document d’avant la vente : lu', async () => {
+    setupAuthUserMocked(withRole('member'))
+    vi.mocked(getMyAccessibleProfiles).mockResolvedValue([
+      myProfile(PROFILE_ID, userTest.name, grace),
+    ])
+    vi.mocked(getMemberDocumentByIdDao).mockResolvedValue(
+      documentRow({documentDate: '2026-03-14'})
+    )
+
+    await readMemberDocumentFileService(ORG_ID, DOCUMENT_ID)
+
+    expect(storage.download).toHaveBeenCalledWith(FILE_NAME)
+  })
+
+  it('[USER] document d’une fiche fermée (absente des fiches accessibles) : NotFoundError', async () => {
+    setupAuthUserMocked(withRole('member'))
+    vi.mocked(getMyAccessibleProfiles).mockResolvedValue([
+      myProfile(OTHER_PROFILE_ID, 'SCI Les Pins'),
+    ])
+    vi.mocked(getMemberDocumentByIdDao).mockResolvedValue(documentRow())
+
+    await expect(
+      readMemberDocumentFileService(ORG_ID, DOCUMENT_ID)
+    ).rejects.toThrow(NotFoundError)
+    expect(storage.download).not.toHaveBeenCalled()
+  })
+
+  it('[ORGANIZATION BOARD] member.document.manage lit tout, même d’après la vente', async () => {
+    setupAuthUserMocked(withRole('board'))
+    vi.mocked(getMyAccessibleProfiles).mockResolvedValue([])
+    vi.mocked(getMemberDocumentByIdDao).mockResolvedValue(
+      documentRow({documentDate: '2026-06-01'})
+    )
+
+    await readMemberDocumentFileService(ORG_ID, DOCUMENT_ID)
+
+    expect(storage.download).toHaveBeenCalledWith(FILE_NAME)
+    expect(getMyAccessibleProfiles).not.toHaveBeenCalled()
   })
 })

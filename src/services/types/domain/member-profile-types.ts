@@ -12,6 +12,7 @@ import {
   MemberEmailRole,
   MemberEmailStatus,
 } from './member-email-types'
+import type {ProfileAccessWindow} from './member-profile-access-types'
 import {MemberRoleCardDTO} from './member-role-types'
 
 /** Taille de page de la liste du bureau, tableau comme cartes (decision I). */
@@ -138,6 +139,11 @@ export type MemberProfileDTO = MemberProfileFieldsDTO & {
   /** Les adresses de la fiche, titulaire d'abord (s54). */
   emails: MemberProfileEmailDTO[]
   account: MemberProfileAccountDTO
+  /**
+   * Fin d'acces de la fiche apres la vente (s57, critere 8) : nulle pour une
+   * fiche encore proprietaire ou sans periode.
+   */
+  accessWindow: ProfileAccessWindow | null
   /**
    * Carte « Role dans l'association » (s14), calculee pour la personne
    * connectee : lecture, droit de modifier, options.
@@ -342,6 +348,8 @@ export type InviteMemberProfileInput = {
  */
 export type MemberInvitationResult =
   | {status: 'mail_only'}
+  /** Fiche fermee apres la vente (s57, ADR 075) : aucun lien emis. */
+  | {status: 'access_closed'}
   | {
       status: 'sent' | 'deferred' | 'partial'
       sent: string[]

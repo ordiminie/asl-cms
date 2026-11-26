@@ -9,12 +9,16 @@ vi.mock('@/services/facades/organization-service-facade', () => ({
 vi.mock('@/services/member-invitation-service', () => ({
   recordFirstSignIn: vi.fn(),
 }))
+vi.mock('@/services/facades/member-profile-access-service-facade', () => ({
+  hasMemberSpaceAccessService: vi.fn(),
+}))
 vi.mock('@/lib/logger', () => ({
   logger: {debug: vi.fn(), error: vi.fn(), info: vi.fn(), warn: vi.fn()},
 }))
 
 import {getUserByIdDao} from '@/db/repositories/user-repository'
 import {logger} from '@/lib/logger'
+import {hasMemberSpaceAccessService} from '@/services/facades/member-profile-access-service-facade'
 import {getOrganizationByDomainService} from '@/services/facades/organization-service-facade'
 import {recordFirstSignIn} from '@/services/member-invitation-service'
 import type {Organization} from '@/services/types/domain/organization-types'
@@ -51,6 +55,7 @@ const accountOf = (role: string, ...organizationIds: string[]) =>
     role,
     organizations: organizationIds.map((organizationId) => ({
       organizationId,
+      role: 'member',
     })),
   }) as never
 
@@ -84,6 +89,39 @@ describe('associationSessionGuard — session.create.before (ADR 034)', () => {
     vi.mocked(getOrganizationByDomainService).mockImplementation(
       async (domain: string) => ASSOCIATIONS[domain]
     )
+    vi.mocked(hasMemberSpaceAccessService).mockResolvedValue(true)
+  })
+
+  it.each(MODES)(
+    '%s : refuse un membre dont toutes les fiches sont fermées (s57, ADR 075)',
+    async (_, contextOf) => {
+      vi.mocked(getUserByIdDao).mockResolvedValue(accountOf('user', 'org-a'))
+      vi.mocked(hasMemberSpaceAccessService).mockResolvedValue(false)
+
+      const result = await sessionCreateBefore()(
+        session,
+        contextOf('asso-a.test')
+      )
+
+      expect(result).toBe(false)
+      expect(hasMemberSpaceAccessService).toHaveBeenCalledWith(
+        'org-a',
+        'user-1'
+      )
+    }
+  )
+
+  it('ouvre une session à la place d’un compte fermé (s48, ADR 075 §3)', async () => {
+    vi.mocked(getUserByIdDao).mockResolvedValue(accountOf('user', 'org-a'))
+    vi.mocked(hasMemberSpaceAccessService).mockResolvedValue(false)
+
+    const result = await sessionCreateBefore()(
+      {userId: 'user-1', impersonatedBy: 'superadmin-1'},
+      withHeaders('asso-a.test')
+    )
+
+    expect(result).not.toBe(false)
+    expect(hasMemberSpaceAccessService).not.toHaveBeenCalled()
   })
 
   it.each(MODES)('%s : accepte un membre de A sur A', async (_, contextOf) => {

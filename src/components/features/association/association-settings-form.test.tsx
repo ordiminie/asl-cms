@@ -23,6 +23,7 @@ import {
   FORAGE_EMAIL_SETTING_KEY,
   getSettingsForPage,
   GOOGLE_VERIFICATION_SETTING_KEY,
+  MEMBER_ACCESS_AFTER_SALE_MONTHS_SETTING_KEY,
   resolveSettings,
 } from '@/services/types/domain/association-settings-types'
 
@@ -1012,13 +1013,13 @@ describe('AssociationSettingsForm — carte « Invitation des membres » (s42a, 
       />
     )
 
-  it('vient en dernière carte, avec le texte facultatif puis la durée en jours', () => {
+  it('vient juste avant la carte « Accès à l’espace membre », avec le texte facultatif puis la durée en jours', () => {
     renderInvitationForm()
 
     const headings = screen
       .getAllByRole('heading', {level: 3})
       .map((heading) => heading.textContent)
-    expect(headings.at(-1)).toBe('Invitation des membres')
+    expect(headings.at(-2)).toBe('Invitation des membres')
     const card = invitationCard()
     expect(
       within(card).getByLabelText(/Texte de l’invitation/)
@@ -1055,5 +1056,92 @@ describe('AssociationSettingsForm — carte « Invitation des membres » (s42a, 
     expect(card).toHaveTextContent('aucun lien de connexion')
     expect(card).toHaveTextContent('Laissé vide, le courrier reprend')
     expect(card).toHaveTextContent('lors du lancement')
+  })
+})
+
+describe('AssociationSettingsForm — carte « Accès à l’espace membre » (s57, écran B)', () => {
+  const accessCard = () =>
+    screen
+      .getByRole('heading', {level: 3, name: 'Accès à l’espace membre'})
+      .closest('[data-slot="card"]') as HTMLElement
+  const monthsField = () =>
+    within(accessCard()).getByLabelText(/Délai d’accès après la vente/)
+
+  const renderAccessForm = (
+    canEditSuperAdminOnly: boolean,
+    saveAction: AssociationSettingsSaveAction = saved(),
+    rows = [{key: CONTACT_EMAIL_SETTING_KEY, value: CONTACT}]
+  ) =>
+    render(
+      <AssociationSettingsForm
+        definitions={getSettingsForPage(
+          ASSOCIATION_SETTINGS_REGISTRY,
+          'settings'
+        )}
+        settings={resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, rows)}
+        saveAction={saveAction}
+        canEditSuperAdminOnly={canEditSuperAdminOnly}
+      />
+    )
+
+  it('vient juste après « Invitation des membres », avec l’unité « mois »', () => {
+    renderAccessForm(true)
+
+    const headings = screen
+      .getAllByRole('heading', {level: 3})
+      .map((heading) => heading.textContent)
+    expect(headings.slice(-2)).toEqual([
+      'Invitation des membres',
+      'Accès à l’espace membre',
+    ])
+    expect(accessCard()).toHaveTextContent('mois')
+    expect(accessCard()).toHaveTextContent(
+      "Vide : la valeur par défaut s'applique (6)."
+    )
+  })
+
+  it('B1 · le SuperAdmin modifie le délai', async () => {
+    const saveAction = saved()
+    renderAccessForm(true, saveAction)
+
+    expect(monthsField()).not.toHaveAttribute('readonly')
+    await userEvent.type(monthsField(), '12')
+    await submit()
+
+    await waitFor(() => expect(saveAction).toHaveBeenCalledTimes(1))
+    const formData = vi.mocked(saveAction).mock.calls[0][1]
+    expect(formData.get(MEMBER_ACCESS_AFTER_SALE_MONTHS_SETTING_KEY)).toBe('12')
+  })
+
+  it('B2 · le bureau lit le délai en vigueur sans pouvoir le modifier, et ne l’envoie jamais', async () => {
+    const saveAction = saved()
+    renderAccessForm(false, saveAction, [
+      {key: CONTACT_EMAIL_SETTING_KEY, value: CONTACT},
+      {key: MEMBER_ACCESS_AFTER_SALE_MONTHS_SETTING_KEY, value: '6'},
+    ])
+
+    expect(monthsField()).toHaveAttribute('readonly')
+    expect(monthsField()).toHaveValue('6')
+    expect(monthsField().closest('[data-setting]')).toHaveTextContent(
+      'Réglé par l’équipe technique de la plateforme, après avis du conseil RGPD'
+    )
+
+    await submit()
+    await waitFor(() => expect(saveAction).toHaveBeenCalledTimes(1))
+    const formData = vi.mocked(saveAction).mock.calls[0][1]
+    expect(formData.has(MEMBER_ACCESS_AFTER_SALE_MONTHS_SETTING_KEY)).toBe(
+      false
+    )
+  })
+
+  it('B4 · un zéro est refusé avec le message propre', async () => {
+    renderAccessForm(true)
+
+    await userEvent.type(monthsField(), '0')
+    await userEvent.tab()
+
+    expect(accessCard()).toHaveTextContent(
+      'Saisissez un nombre entier de mois supérieur à 0.'
+    )
   })
 })

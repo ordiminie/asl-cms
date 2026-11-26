@@ -530,16 +530,18 @@ export type MemberPostalContactWrite = {
 }
 
 /**
- * Met a jour le telephone et le domicile de **toutes** les fiches
- * reliees au compte (s53, arbitrage du 16/11), designees par
- * `(organization_id, user_id)`, jamais par un identifiant venu du navigateur.
- * Rend les fiches ecrites.
+ * Met a jour le telephone et le domicile des fiches donnees **parmi** celles
+ * reliees au compte (s53, arbitrage du 16/11 ; s57 : les seules fiches
+ * accessibles), toujours bornees par `(organization_id, user_id)` : un
+ * identifiant hors du compte n'est jamais ecrit. Rend les fiches ecrites.
  */
 export const updateMyMemberProfilesContactDao = async (
   organizationId: string,
   userId: string,
+  memberProfileIds: readonly string[],
   contact: MemberPostalContactWrite
 ): Promise<MemberProfileModel[]> => {
+  if (memberProfileIds.length === 0) return []
   const {
     phone,
     homeAddressLine,
@@ -560,6 +562,7 @@ export const updateMyMemberProfilesContactDao = async (
     .where(
       and(
         eq(memberProfile.organizationId, organizationId),
+        inArray(memberProfile.id, [...memberProfileIds]),
         inArray(memberProfile.id, linkedProfileIds(organizationId, userId))
       )
     )

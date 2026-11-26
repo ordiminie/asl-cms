@@ -107,6 +107,7 @@ const profile = {
   incomplete: false,
   emails: [],
   account: {status: 'mail_only' as const},
+  accessWindow: null,
   pennylaneCustomerId: null,
   roleCard: {
     reading: 'no_account' as const,

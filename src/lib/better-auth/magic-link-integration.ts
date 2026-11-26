@@ -205,7 +205,7 @@ const issueInvitation = async (
     !organization ||
     !origin ||
     !user ||
-    !canOpenSessionOn(user, organization)
+    !(await canOpenSessionOn(user, organization))
   ) {
     logger.warn('[INVITATION-LINK] Compte hors de l’association : aucun lien')
     await discardToken(token, ctx)
@@ -269,7 +269,7 @@ export async function sendMagicLink(
   }
 
   const user = await getUserByEmailDao(email)
-  if (!user || !canOpenSessionOn(user, organization)) return
+  if (!user || !(await canOpenSessionOn(user, organization))) return
 
   const association = await emailAssociationOf(organization, origin, services)
   await revokeEarlierMagicLinks(email, token, ctx)

@@ -27,6 +27,9 @@ vi.mock('@/db/repositories/member-profile-email-repository', () => ({
 vi.mock('@/db/repositories/organization-repository', () => ({
   getOrganizationByIdDao: vi.fn(),
 }))
+vi.mock('@/db/repositories/parcel-ownership-repository', () => ({
+  listOwnershipPeriodsByProfilesDao: vi.fn(),
+}))
 vi.mock('@/services/association-settings-service', () => ({
   getAssociationSettingsService: vi.fn(),
 }))
@@ -47,6 +50,7 @@ import {
   getMemberProfileByIdDao,
 } from '@/db/repositories/member-profile-repository'
 import {getOrganizationByIdDao} from '@/db/repositories/organization-repository'
+import {listOwnershipPeriodsByProfilesDao} from '@/db/repositories/parcel-ownership-repository'
 import {withTenant} from '@/db/tenant-scope'
 import {issueInvitationLink} from '@/lib/better-auth/invitation-link'
 import {EmailTransportError} from '@/lib/emails/transport/email-transport'
@@ -146,6 +150,7 @@ const invite = () =>
 beforeEach(async () => {
   vi.clearAllMocks()
   scope.current = undefined
+  vi.mocked(listOwnershipPeriodsByProfilesDao).mockResolvedValue([])
   await setupAuthUserMocked(withRole('board'))
   givenProfileWith(TWO_ACTIVE())
   vi.mocked(getLinkedAccountsDao).mockResolvedValue([
@@ -354,5 +359,45 @@ describe('recordFirstSignIn — première connexion sur une association (s42a)',
       userId: USER_JEAN,
       at: AT,
     })
+  })
+})
+
+describe('inviteMemberProfileService — fiche fermée après la vente (s57, ADR 075)', () => {
+  const sold = (endsOn: string) => [
+    {
+      memberProfileId: PROFILE_ID,
+      number: '9',
+      meterNumber: null,
+      startsOn: '2003-05-14',
+      endsOn,
+    },
+  ]
+
+  it('appel serveur direct sur une fiche fermée : `access_closed`, aucun lien ni email, lue sous l’association', async () => {
+    vi.mocked(listOwnershipPeriodsByProfilesDao).mockImplementation(
+      async () => {
+        expect(scope.current).toBe(ORG_A)
+        return sold('2019-10-01')
+      }
+    )
+
+    expect(await invite()).toEqual({status: 'access_closed'})
+    expect(listOwnershipPeriodsByProfilesDao).toHaveBeenCalledWith([PROFILE_ID])
+    expect(issueInvitationLink).not.toHaveBeenCalled()
+    expect(sendInvitationEmailService).not.toHaveBeenCalled()
+  })
+
+  it('fiche vendue encore dans son délai : l’invitation part', async () => {
+    vi.useFakeTimers({toFake: ['Date']})
+    vi.setSystemTime(new Date('2026-11-26T10:00:00Z'))
+    try {
+      vi.mocked(listOwnershipPeriodsByProfilesDao).mockResolvedValue(
+        sold('2026-06-15')
+      )
+
+      expect(await invite()).toMatchObject({status: 'sent'})
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

@@ -56,6 +56,10 @@ vi.mock('@/db/repositories/scheduled-job-repository', () => ({
 vi.mock('@/services/association-settings-service', () => ({
   getAssociationSettingsService: vi.fn(),
 }))
+/** Fiches toujours ouvertes ici : la regle de s57 se prouve ailleurs. */
+vi.mock('@/services/facades/member-profile-access-service-facade', () => ({
+  hasMemberSpaceAccessService: vi.fn(async () => true),
+}))
 vi.mock('@/services/facades/organization-service-facade', () => ({
   getOrganizationByDomainService: vi.fn(),
 }))

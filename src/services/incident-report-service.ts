@@ -15,7 +15,6 @@ import {
   markIncidentReportNotificationFailedDao,
   MyIncidentReportRow,
 } from '@/db/repositories/incident-report-repository'
-import {getMemberProfilesByUserIdDao} from '@/db/repositories/member-profile-repository'
 import {getOrganizationByIdDao} from '@/db/repositories/organization-repository'
 import {withTenant} from '@/db/tenant-scope'
 import {associationOriginOf} from '@/lib/better-auth/association-origin'
@@ -32,7 +31,7 @@ import {
   ValidationError,
   ValidationParsedZodError,
 } from './errors/validation-error'
-import {orderMyProfiles} from './rules/my-profiles-order-rules'
+import {getMyAccessibleProfiles} from './member-profile-access-service'
 import {ActionIdConst} from './types/domain/action-registry-types'
 import {CategoryDomainConst} from './types/domain/association-category-types'
 import {getIdentityVersionFromKey} from './types/domain/association-identity-types'
@@ -486,9 +485,7 @@ export const createMyIncidentReportService = async (
   const {organizationId, locale, categoryId, location, description} =
     parsed.data
   const written = await withTenant(organizationId, async () => {
-    const [profile] = orderMyProfiles(
-      await getMemberProfilesByUserIdDao(organizationId, authUser.id)
-    )
+    const [profile] = await getMyAccessibleProfiles(organizationId, authUser.id)
     if (!profile) return undefined
 
     const category = await resolveReportCategory(organizationId, categoryId)
@@ -542,8 +539,9 @@ const readForMyProfiles = async <T>(
   }
 
   return withTenant(parsed.data, async () => {
-    const [first, ...others] = orderMyProfiles(
-      await getMemberProfilesByUserIdDao(parsed.data, authUser.id)
+    const [first, ...others] = await getMyAccessibleProfiles(
+      parsed.data,
+      authUser.id
     )
     return first ? read([first, ...others], authUser.email) : undefined
   })

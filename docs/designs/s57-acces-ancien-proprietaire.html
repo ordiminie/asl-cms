@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>s57 — Accès de l'ancien propriétaire (maquette de référence)</title>
+<style>
+  /* Tokens copiés de docs/design-system.md §1.1 et §1.9 — clair seul (ADR 033). Rien d'autre. */
+  :root {
+    --radius: 0.5rem;
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.22 0.015 250);
+    --card: oklch(1 0 0);
+    --muted: oklch(0.972 0.005 240);
+    --muted-foreground: oklch(0.45 0.02 245);
+    --border: oklch(0.9 0.008 245);
+    --input: oklch(0.66 0.014 245);
+    --ring: oklch(0.55 0.11 235);
+    --primary: oklch(0.35 0.06 240);
+    --primary-foreground: oklch(0.985 0.003 240);
+    --secondary: oklch(0.965 0.006 240);
+    --secondary-foreground: oklch(0.3 0.02 245);
+    --destructive: oklch(0.48 0.17 27);
+    --destructive-text: oklch(0.48 0.17 27);
+    --link: oklch(0.45 0.13 250);
+    --warning: oklch(0.94 0.06 75);
+    --warning-border: oklch(0.6 0.13 65);
+    --warning-foreground: oklch(0.3 0.08 60);
+    --accent-hue: 195;
+    --accent-solid: oklch(0.55 0.1 var(--accent-hue));
+    --sidebar: oklch(0.985 0.004 250);
+    --sidebar-accent: oklch(0.93 0.012 245);
+    --sidebar-border: oklch(0.91 0.008 245);
+    --font-sans: 'Public Sans', ui-sans-serif, system-ui, sans-serif;
+    --font-serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--muted); color: var(--foreground); font-family: var(--font-sans); font-size: 17px; line-height: 1.6; }
+  a { color: var(--link); text-decoration: underline; text-underline-offset: 4px; }
+  p { margin: 0; }
+  .doc { max-width: 1232px; margin: 0 auto; padding: 32px 16px 64px; }
+  .doc > header h1 { font-family: var(--font-serif); font-size: 34px; line-height: 1.15; font-weight: 600; margin: 0 0 8px; }
+  .doc > header p { margin: 0 0 8px; max-width: 68ch; }
+  .state { margin-top: 48px; }
+  .state-label { font-family: var(--font-mono); font-size: 12px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted-foreground); margin: 0 0 4px; }
+  .state h2.state-title { font-family: var(--font-serif); font-size: 26px; line-height: 1.2; font-weight: 600; margin: 0 0 8px; }
+  .state .note { font-size: 15px; color: var(--muted-foreground); max-width: 68ch; margin: 0 0 16px; }
+  .frames { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+  .frame { container-type: inline-size; background: var(--background); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .frame.desktop { flex: 1 1 760px; max-width: 1000px; min-width: 0; }
+  .frame.mobile { flex: 0 1 390px; width: 390px; max-width: 100%; }
+  .frame-cap { font-size: 15px; color: var(--muted-foreground); padding: 4px 16px; border-bottom: 1px solid var(--border); background: var(--muted); }
+
+  .mark { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .mono-square { width: 44px; height: 44px; border-radius: 8px; background: var(--accent-solid); color: var(--primary-foreground); font-family: var(--font-serif); font-weight: 600; display: grid; place-items: center; flex-shrink: 0; }
+  .mark-name { font-weight: 600; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 48px; padding: 0 16px; border-radius: 8px; font-size: 16px; font-weight: 600; font-family: var(--font-sans); border: 1px solid transparent; white-space: nowrap; flex-shrink: 0; }
+  .btn-default { background: var(--primary); color: var(--primary-foreground); }
+  .btn-outline { background: var(--background); color: var(--foreground); border-color: var(--input); }
+  .ico { width: 20px; height: 20px; flex-shrink: 0; }
+  .data { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+  .meta { font-size: 15px; color: var(--muted-foreground); }
+
+  /* Back-office — sidebar 248 px → tiroir sous lg */
+  .bo { display: flex; }
+  .bo-side { width: 248px; flex-shrink: 0; background: var(--sidebar); border-right: 1px solid var(--sidebar-border); padding: 16px; font-size: 16px; }
+  .bo-side .item { padding: 8px 12px; border-radius: 8px; }
+  .bo-side .item.active { background: var(--sidebar-accent); font-weight: 600; }
+  .bo-wrap { flex: 1 1 auto; min-width: 0; }
+  .bo-top { display: none; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  .bo-main { padding: 32px; }
+  .bo-col { max-width: 800px; display: flex; flex-direction: column; gap: 24px; }
+  .crumb { font-size: 15px; color: var(--muted-foreground); }
+
+  /* DetailCard de la fiche (member-profile-detail-card.tsx) : h2 serif 24 px */
+  .dcard { border: 1px solid var(--border); border-radius: 8px; padding: 24px; background: var(--card); display: flex; flex-direction: column; gap: 20px; }
+  .dcard h2 { font-family: var(--font-serif); font-size: 24px; line-height: 1.25; font-weight: 600; margin: 0; }
+  .stack { display: flex; flex-direction: column; gap: 16px; }
+  .access { display: flex; align-items: flex-start; gap: 12px; }
+  .access .ico { color: var(--primary); margin-top: 4px; }
+  .access p + p { margin-top: 8px; }
+  .hint { font-size: 15px; color: var(--muted-foreground); }
+  .badge { display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border-radius: 999px; border: 1px solid var(--border); font-size: 15px; background: var(--secondary); color: var(--secondary-foreground); }
+
+  /* Réglages — Card générée (association-settings-form.tsx) */
+  .scard { border: 1px solid var(--border); border-radius: 8px; padding: 24px; background: var(--card); display: flex; flex-direction: column; gap: 16px; }
+  .scard h3 { font-size: 20px; line-height: 1.375; font-weight: 600; margin: 0; }
+  .lead { color: var(--muted-foreground); font-size: 16px; }
+  .field { display: flex; flex-direction: column; gap: 8px; }
+  .field label { font-size: 16px; font-weight: 500; line-height: 1.375; }
+  .field .opt { color: var(--muted-foreground); font-weight: 400; }
+  .field .help { color: var(--muted-foreground); font-size: 16px; }
+  .num { display: flex; align-items: center; gap: 12px; }
+  .input { height: 48px; width: 160px; border: 1px solid var(--input); border-radius: 8px; padding: 0 12px; display: flex; align-items: center; font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 17px; background: var(--background); }
+  .input.ro { background: var(--muted); }
+  .input.err { border: 2px solid var(--destructive); }
+  .input.empty { color: var(--muted-foreground); }
+  .field-error { color: var(--destructive-text); font-size: 16px; display: flex; gap: 8px; align-items: flex-start; }
+  .field-error .ico { margin-top: 2px; }
+  .after { font-size: 16px; }
+  .alert { display: flex; gap: 12px; border-radius: 8px; padding: 16px; border: 1px solid var(--border); background: var(--background); }
+  .alert .ico { color: var(--primary); }
+  .submit { align-self: flex-start; min-width: 256px; }
+
+  @container (max-width: 640px) {
+    .bo-side { display: none; }
+    .bo-top { display: flex; }
+    .bo-main { padding: 24px 16px; }
+    .dcard, .scard { padding: 24px 16px; }
+    .btn-block, .submit { width: 100%; height: 56px; font-size: 17px; min-width: 0; }
+    .input { height: 56px; }
+  }
+  @container (min-width: 641px) and (max-width: 1023px) {
+    .bo-side { display: none; }
+    .bo-top { display: flex; }
+  }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+</svg>
+
+<div class="doc">
+<header>
+  <p class="state-label">Maquette de référence — ne pas copier en production</p>
+  <h1>s57 — Accès de l'ancien propriétaire</h1>
+  <p>Association fictive « Clos-Fleuri » (CF, teinte 195). Aujourd'hui : 26/11/2026. Délai réglé : 6 mois.
+  Jean Dubois a vendu sa parcelle 21 le 15/06/2026 ; Lucie Moreau a vendu sa parcelle 7 le 03/02/2026 ;
+  Paul Ferrand n'a aucune parcelle rattachée.</p>
+  <p class="meta">Chaque planche : cadre ordinateur, puis le même contenu en cadre mobile 390 px (copie automatique, mise en page par requête de conteneur). Clair seul (ADR 033).</p>
+</header>
+
+<!-- ===================== A — Fiche du bureau ===================== -->
+<section class="state">
+  <p class="state-label">Écran A · états A1, A2</p>
+  <h2 class="state-title">Fiche — « Accès à l'espace membre », propriétaire puis vendue dans le délai</h2>
+  <p class="note">A1 : au moins une parcelle actuelle, rien de nouveau (carte de s12d/s42a telle quelle). A2 : la dernière parcelle est vendue, une phrase s'ajoute sous la phrase d'ouverture ; l'invitation reste possible pendant le délai.</p>
+  <div class="frames">
+    <div class="frame desktop">
+      <div class="frame-cap">Ordinateur · /bureau/proprietaires/{id}</div>
+      <div class="bo">
+        <nav class="bo-side"><div class="item">Accueil</div><div class="item active">Propriétaires</div><div class="item">Campagnes</div><div class="item">Réglages</div></nav>
+        <div class="bo-wrap">
+          <div class="bo-top"><div class="mark"><div class="mono-square">CF</div><span class="mark-name">Clos-Fleuri</span></div><svg class="ico"><use href="#i-menu"/></svg></div>
+          <div class="bo-main"><div class="bo-col">
+            <p class="crumb">Propriétaires › Bernard Lefèvre</p>
+            <section class="dcard" aria-labelledby="a1">
+              <h2 id="a1">Accès à l'espace membre</h2>
+              <div class="stack">
+                <div class="access"><svg class="ico"><use href="#i-lock"/></svg><p><strong>Compte ouvert.</strong> Bernard Lefèvre peut se connecter à son espace avec bernard.lefevre@exemple.fr.</p></div>
+                <div><span class="btn btn-outline btn-block"><svg class="ico"><use href="#i-send"/></svg>Renvoyer l'invitation</span></div>
+                <p class="hint">Les liens envoyés le 02/10/2026 cesseront de fonctionner. Un email part à l'adresse active.</p>
+              </div>
+            </section>
+            <p class="crumb">Propriétaires › Jean Dubois</p>
+            <section class="dcard" aria-labelledby="a2">
+              <h2 id="a2">Accès à l'espace membre</h2>
+              <div class="stack">
+                <div class="access"><svg class="ico"><use href="#i-lock"/></svg><div>
+                  <p><strong>Compte ouvert.</strong> Jean Dubois peut se connecter à son espace avec jean.dubois@exemple.fr.</p>
+                  <p><strong>Accès ouvert jusqu'au <span class="data">14/12/2026</span>.</strong> Jean Dubois n'est plus propriétaire depuis la vente du <span class="data">15/06/2026</span> ; il voit encore ses factures et documents d'avant cette date. Ensuite, aucune adresse de cette fiche ne s'y connectera plus.</p>
+                </div></div>
+                <div><span class="btn btn-outline btn-block"><svg class="ico"><use href="#i-send"/></svg>Renvoyer l'invitation</span></div>
+                <p class="hint">Les liens envoyés le 02/10/2026 cesseront de fonctionner. Un email part à chacune des 2 adresses actives.</p>
+              </div>
+            </section>
+          </div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="state">
+  <p class="state-label">Écran A · états A3, A3-bureau, A4, A5</p>
+  <h2 class="state-title">Délai écoulé, membre du bureau, fiche sans période, fiche courrier</h2>
+  <p class="note">A3 : la phrase d'ouverture est remplacée ; plus de bouton d'invitation ; les factures et documents de la fiche restent plus bas, comme aujourd'hui. A3-bureau : une ligne de plus, le compte garde le bureau. A4 : aucune période, hors règle, carte inchangée. A5 : fiche courrier vendue, la date se lit quand même.</p>
+  <div class="frames">
+    <div class="frame desktop">
+      <div class="frame-cap">Ordinateur · /bureau/proprietaires/{id}</div>
+      <div class="bo">
+        <nav class="bo-side"><div class="item">Accueil</div><div class="item active">Propriétaires</div><div class="item">Campagnes</div><div class="item">Réglages</div></nav>
+        <div class="bo-wrap">
+          <div class="bo-top"><div class="mark"><div class="mono-square">CF</div><span class="mark-name">Clos-Fleuri</span></div><svg class="ico"><use href="#i-menu"/></svg></div>
+          <div class="bo-main"><div class="bo-col">
+            <p class="crumb">Propriétaires › Lucie Moreau</p>
+            <section class="dcard" aria-labelledby="a3">
+              <h2 id="a3">Accès à l'espace membre</h2>
+              <div class="stack">
+                <div class="access"><svg class="ico"><use href="#i-lock"/></svg><div>
+                  <p><strong>Accès fermé depuis le <span class="data">03/08/2026</span>.</strong> Lucie Moreau n'est plus propriétaire depuis la vente du <span class="data">03/02/2026</span> : aucune adresse de cette fiche ne s'y connecte plus. Ses autres fiches ne sont pas touchées.</p>
+                  <p>Rien n'est supprimé : ses factures et ses documents restent consultables par le bureau, plus bas sur cette fiche.</p>
+                </div></div>
+                <p class="hint">Pas d'invitation possible : l'accès de cette fiche est fermé.</p>
+              </div>
+            </section>
+            <p class="crumb">Propriétaires › Anne Roux (membre du bureau)</p>
+            <section class="dcard" aria-labelledby="a3b">
+              <h2 id="a3b">Accès à l'espace membre</h2>
+              <div class="stack">
+                <div class="access"><svg class="ico"><use href="#i-lock"/></svg><div>
+                  <p><strong>Accès fermé depuis le <span class="data">03/08/2026</span>.</strong> Anne Roux n'est plus propriétaire depuis la vente du <span class="data">03/02/2026</span> : aucune adresse de cette fiche ne s'y connecte plus. Ses autres fiches ne sont pas touchées.</p>
+                  <p>Rien n'est supprimé : ses factures et ses documents restent consultables par le bureau, plus bas sur cette fiche.</p>
+                  <p><span class="badge">Bureau</span> Son compte garde l'accès au back-office ; cette fiche sort seulement de son espace membre.</p>
+                </div></div>
+                <p class="hint">Pas d'invitation possible : l'accès de cette fiche est fermé.</p>
+              </div>
+            </section>
+            <p class="crumb">Propriétaires › Paul Ferrand</p>
+            <section class="dcard" aria-labelledby="a4">
+              <h2 id="a4">Accès à l'espace membre</h2>
+              <div class="stack">
+                <div class="access"><svg class="ico"><use href="#i-lock"/></svg><p><strong>Compte ouvert.</strong> Paul Ferrand peut se connecter à son espace avec paul.ferrand@exemple.fr.</p></div>
+                <div><span class="btn btn-outline btn-block"><svg class="ico"><use href="#i-send"/></svg>Envoyer l'invitation</span></div>
+                <p class="hint">Un email part à l'adresse active, avec son propre lien de connexion, valable 7 jours.</p>
+              </div>
+            </section>
+            <p class="crumb">Propriétaires › Henri Blanc (courrier uniquement)</p>
+            <section class="dcard" aria-labelledby="a5">
+              <h2 id="a5">Accès à l'espace membre</h2>
+              <div class="stack">
+                <div class="access"><svg class="ico"><use href="#i-lock"/></svg><div>
+                  <p><strong>Joignable par courrier uniquement.</strong> Aucun compte : ajoutez une adresse email pour lui ouvrir son espace.</p>
+                  <p><strong>Accès ouvert jusqu'au <span class="data">14/12/2026</span>.</strong> Henri Blanc n'est plus propriétaire depuis la vente du <span class="data">15/06/2026</span>. Une adresse ajoutée d'ici là ouvrira son espace jusqu'à cette date.</p>
+                </div></div>
+                <p class="hint">Pas d'invitation possible : ce membre reçoit tout par courrier.</p>
+              </div>
+            </section>
+          </div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== B — Réglages ===================== -->
+<section class="state">
+  <p class="state-label">Écran B · états B1, B3, B4, B5</p>
+  <h2 class="state-title">Réglages — carte « Accès à l'espace membre », vue du SuperAdmin</h2>
+  <p class="note">Rendu généré du type « Nombre » (§3.1) : champ en data, unité à droite. B1 : valeur enregistrée. B3 : vide, le défaut s'applique. B4 : refus de champ. B5 : enregistré (bandeau commun de la page, en tête du formulaire).</p>
+  <div class="frames">
+    <div class="frame desktop">
+      <div class="frame-cap">Ordinateur · /bureau/reglages</div>
+      <div class="bo">
+        <nav class="bo-side"><div class="item">Accueil</div><div class="item">Propriétaires</div><div class="item">Campagnes</div><div class="item active">Réglages</div></nav>
+        <div class="bo-wrap">
+          <div class="bo-top"><div class="mark"><div class="mono-square">CF</div><span class="mark-name">Clos-Fleuri</span></div><svg class="ico"><use href="#i-menu"/></svg></div>
+          <div class="bo-main"><div class="bo-col">
+            <div role="status" class="alert"><svg class="ico"><use href="#i-check"/></svg><p>Réglages enregistrés. Les prochains messages partiront vers ces adresses.</p></div>
+            <section class="scard">
+              <div><h3>Accès à l'espace membre</h3><p class="lead">Ce qui arrive à l'espace d'un membre qui n'est plus propriétaire d'aucune parcelle de sa fiche.</p></div>
+              <div class="field">
+                <label for="b1">Délai d'accès après la vente <span class="opt">— facultatif</span></label>
+                <p class="help">Nombre de mois pendant lesquels l'ancien propriétaire garde l'accès à son espace après la vente de sa dernière parcelle. Un changement s'applique tout de suite à toutes les fiches vendues, y compris aux accès déjà fermés. Par défaut : 6.</p>
+                <div class="num"><div class="input" id="b1">6</div><span>mois</span></div>
+              </div>
+            </section>
+            <section class="scard">
+              <div><h3>Accès à l'espace membre</h3><p class="lead">Ce qui arrive à l'espace d'un membre qui n'est plus propriétaire d'aucune parcelle de sa fiche.</p></div>
+              <div class="field">
+                <label for="b3">Délai d'accès après la vente <span class="opt">— facultatif</span></label>
+                <p class="help">Nombre de mois pendant lesquels l'ancien propriétaire garde l'accès à son espace après la vente de sa dernière parcelle. Un changement s'applique tout de suite à toutes les fiches vendues, y compris aux accès déjà fermés. Par défaut : 6.</p>
+                <div class="num"><div class="input empty" id="b3">&nbsp;</div><span>mois</span></div>
+                <p class="after">Vide : la valeur par défaut s'applique (6).</p>
+              </div>
+            </section>
+            <section class="scard">
+              <div><h3>Accès à l'espace membre</h3><p class="lead">Ce qui arrive à l'espace d'un membre qui n'est plus propriétaire d'aucune parcelle de sa fiche.</p></div>
+              <div class="field">
+                <label for="b4">Délai d'accès après la vente <span class="opt">— facultatif</span></label>
+                <p class="help">Nombre de mois pendant lesquels l'ancien propriétaire garde l'accès à son espace après la vente de sa dernière parcelle. Un changement s'applique tout de suite à toutes les fiches vendues, y compris aux accès déjà fermés. Par défaut : 6.</p>
+                <div class="num"><div class="input err" id="b4">0</div><span>mois</span></div>
+                <p class="field-error"><svg class="ico"><use href="#i-alert"/></svg><span>Saisissez un nombre entier de mois supérieur à 0.</span></p>
+              </div>
+            </section>
+            <span class="btn btn-default submit">Enregistrer les réglages</span>
+          </div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="state">
+  <p class="state-label">Écran B · état B2</p>
+  <h2 class="state-title">Réglages — la même carte, vue d'un membre du bureau (lecture seule)</h2>
+  <p class="note">Forme s52 / s27b : champ en lecture seule sur fond muted, phrase propre sous le champ. Le champ n'entre pas dans l'envoi du formulaire.</p>
+  <div class="frames">
+    <div class="frame desktop">
+      <div class="frame-cap">Ordinateur · /bureau/reglages</div>
+      <div class="bo">
+        <nav class="bo-side"><div class="item">Accueil</div><div class="item">Propriétaires</div><div class="item">Campagnes</div><div class="item active">Réglages</div></nav>
+        <div class="bo-wrap">
+          <div class="bo-top"><div class="mark"><div class="mono-square">CF</div><span class="mark-name">Clos-Fleuri</span></div><svg class="ico"><use href="#i-menu"/></svg></div>
+          <div class="bo-main"><div class="bo-col">
+            <section class="scard">
+              <div><h3>Accès à l'espace membre</h3><p class="lead">Ce qui arrive à l'espace d'un membre qui n'est plus propriétaire d'aucune parcelle de sa fiche.</p></div>
+              <div class="field">
+                <label for="b2">Délai d'accès après la vente <span class="opt">— facultatif</span></label>
+                <p class="help">Nombre de mois pendant lesquels l'ancien propriétaire garde l'accès à son espace après la vente de sa dernière parcelle. Un changement s'applique tout de suite à toutes les fiches vendues, y compris aux accès déjà fermés. Par défaut : 6.</p>
+                <div class="num"><div class="input ro" id="b2">6</div><span>mois</span></div>
+                <p class="help">Réglé par l'équipe technique de la plateforme, après avis du conseil RGPD : vous ne pouvez pas le modifier.</p>
+              </div>
+            </section>
+          </div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+</div>
+
+<script>
+  /* Chaque cadre ordinateur est recopié en cadre mobile 390 px : même contenu, mêmes états. */
+  document.querySelectorAll('.frame.desktop').forEach(function (desktop) {
+    var mobile = desktop.cloneNode(true);
+    mobile.className = 'frame mobile';
+    var cap = mobile.querySelector('.frame-cap');
+    if (cap) cap.textContent = cap.textContent.replace(/^[^·]+/, 'Mobile 390 px ');
+    mobile.querySelectorAll('[id]').forEach(function (el) { el.id = el.id + '-m'; });
+    mobile.querySelectorAll('[for]').forEach(function (el) { el.setAttribute('for', el.getAttribute('for') + '-m'); });
+    mobile.querySelectorAll('[aria-labelledby]').forEach(function (el) { el.setAttribute('aria-labelledby', el.getAttribute('aria-labelledby') + '-m'); });
+    desktop.parentNode.appendChild(mobile);
+  });
+</script>
+</body>
+</html>

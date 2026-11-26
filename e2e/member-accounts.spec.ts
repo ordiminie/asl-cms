@@ -1380,3 +1380,455 @@ test.describe('Plusieurs adresses par membre — s54', () => {
     }
   })
 })
+
+/**
+ * Accès après la vente — s57 (ADR 075). Les périodes sont posées en SQL
+ * **relativement au jour réel** de Paris, jamais à dates fixes : une fixture
+ * datée basculerait d'état avec le temps. Le délai est celui du seed de
+ * TechCorp (6 mois). L'horloge doublée du critère 3 se prouve en unitaire ;
+ * ici, la coupure se prouve par un rechargement réel.
+ */
+const AFTER_SALE_MONTHS = 6
+const NOT_FOUND_TITLE = 'Page non trouvée'
+const DAY_MS = 24 * 60 * 60 * 1000
+
+const parisToday = () =>
+  new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Paris',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date())
+
+const shiftDays = (day: string, days: number) =>
+  new Date(Date.parse(`${day}T00:00:00Z`) + days * DAY_MS)
+    .toISOString()
+    .slice(0, 10)
+
+/** Le jour `months` mois plus tard, ramené au dernier jour du mois. */
+const shiftMonths = (day: string, months: number) => {
+  const [year, month, date] = day.split('-').map(Number)
+  const lastDay = new Date(Date.UTC(year, month - 1 + months + 1, 0))
+  const clamped = Math.min(date, lastDay.getUTCDate())
+  return new Date(
+    Date.UTC(lastDay.getUTCFullYear(), lastDay.getUTCMonth(), clamped)
+  )
+    .toISOString()
+    .slice(0, 10)
+}
+
+const frenchDay = (day: string) => day.split('-').reverse().join('/')
+
+/** Une vente dans le délai : il y a 30 jours. */
+const recentSale = () => shiftDays(parisToday(), -30)
+/** Une vente hors délai : il y a 220 jours, plus de six mois. */
+const oldSale = () => shiftDays(parisToday(), -220)
+
+/** Une parcelle de l'essai et sa période sur la fiche, close ou ouverte. */
+const ownParcel = (input: {
+  profileId: string
+  number: string
+  startsOn: string
+  endsOn: string | null
+}) =>
+  inTenant(TENANT_A_SLUG, async (client, organizationId) => {
+    const {rows} = await client.query<{id: string}>(
+      `insert into parcel (organization_id, number) values ($1, $2) returning id`,
+      [organizationId, input.number]
+    )
+    await client.query(
+      `insert into parcel_ownership
+         (organization_id, parcel_id, member_profile_id, starts_on, ends_on)
+       values ($1, $2, $3, $4, $5)`,
+      [
+        organizationId,
+        rows[0].id,
+        input.profileId,
+        input.startsOn,
+        input.endsOn,
+      ]
+    )
+    return rows[0].id
+  })
+
+/** Clôt toutes les périodes ouvertes de la fiche à cette date. */
+const sellAll = (profileId: string, endsOn: string) =>
+  inTenant(TENANT_A_SLUG, (client) =>
+    client.query(
+      `update parcel_ownership set ends_on = $2
+        where member_profile_id = $1 and ends_on is null`,
+      [profileId, endsOn]
+    )
+  )
+
+/** Relie un compte existant à une fiche, comme une adresse active (ADR 054). */
+const linkAccount = (profileId: string, email: string) =>
+  inTenant(TENANT_A_SLUG, async (client, organizationId) => {
+    const {rows} = await client.query<{id: string}>(
+      `select id from "user" where lower(email) = lower($1)`,
+      [email]
+    )
+    await client.query(
+      `insert into member_profile_account (organization_id, member_profile_id, user_id)
+       values ($1, $2, $3)`,
+      [organizationId, profileId, rows[0].id]
+    )
+  })
+
+const insertSiteInvoice = (input: {
+  profileId: string
+  parcelId: string
+  issuedOn: string
+  amountCents: number
+  status: string
+}) =>
+  inTenant(TENANT_A_SLUG, (client, organizationId) =>
+    client.query(
+      `insert into member_invoice
+         (organization_id, member_profile_id, parcel_id, source, year, issued_on, due_on, amount_cents, status)
+       values ($1, $2, $3, 'site', $4, $5, $6, $7, $8)`,
+      [
+        organizationId,
+        input.profileId,
+        input.parcelId,
+        Number(input.issuedOn.slice(0, 4)),
+        input.issuedOn,
+        shiftDays(input.issuedOn, 30),
+        input.amountCents,
+        input.status,
+      ]
+    )
+  )
+
+/** Un document posé en base, sans fichier : il ne sert qu'à la liste. */
+const insertListedDocument = (input: {
+  profileId: string
+  title: string
+  documentDate: string
+}) =>
+  asMaintenance(async (client) => {
+    await client.query(
+      `insert into member_document
+         (organization_id, member_profile_id, title, category_id, document_date, file_key, file_bytes)
+       select p.organization_id, p.id, $2::text, c.id, $3::date,
+              p.organization_id::text || '/member-documents/' || p.id::text || '/' || gen_random_uuid()::text || '.pdf',
+              10
+         from member_profile p
+         join association_category c
+           on c.organization_id = p.organization_id
+          and c.domain = 'member_document' and c.name = 'Facture'
+          and c.deleted_at is null
+        where p.id = $1`,
+      [input.profileId, input.title, input.documentDate]
+    )
+  })
+
+/** Les factures et documents de l'essai, avant les fiches qui les portent. */
+const cleanUpAfterSaleRun = async () => {
+  await asMaintenance(async (client) => {
+    for (const table of ['member_invoice', 'member_document']) {
+      await client.query(
+        `delete from ${table}
+          where member_profile_id in (select id from member_profile where name like $1)`,
+        [`% s12d-${RUN}`]
+      )
+    }
+  })
+  await cleanUpRun()
+}
+
+const myInvoices = (page: Page) =>
+  page.getByRole('region', {name: 'Mes factures'})
+const myDocuments = (page: Page) =>
+  page.getByRole('region', {name: 'Mes documents'})
+
+test.describe('Accès après la vente — s57', () => {
+  test.beforeEach(async () => {
+    await resetRateLimits()
+  })
+
+  test.afterAll(async () => {
+    await cleanUpAfterSaleRun()
+  })
+
+  test('critères 6 et 8 — vendeur en délai : il se connecte, voit factures et documents d’avant la vente, pas ceux d’après ; le bureau lit la date de fin d’accès', async ({
+    browser,
+  }) => {
+    test.setTimeout(180_000)
+    const name = nameOf('Vendeur en délai')
+    const email = emailOf('vendeur-delai')
+    const sale = recentSale()
+    const closesOn = shiftMonths(sale, AFTER_SALE_MONTHS)
+
+    const bureau = await bureauSession(browser, TENANT_A, OWNER_A)
+    const member = await freshPage(browser)
+    try {
+      const id = await createProfile(bureau, TENANT_A, {name, email})
+      const parcelId = await ownParcel({
+        profileId: id,
+        number: parcelOf('V1'),
+        startsOn: '2005-01-10',
+        endsOn: sale,
+      })
+      await insertSiteInvoice({
+        profileId: id,
+        parcelId,
+        issuedOn: shiftDays(sale, -10),
+        amountCents: 11111,
+        status: 'En attente',
+      })
+      await insertSiteInvoice({
+        profileId: id,
+        parcelId,
+        issuedOn: shiftDays(sale, 5),
+        amountCents: 22222,
+        status: 'En attente',
+      })
+      const before = `Avant la vente s57-${RUN}`
+      const after = `Jour de la vente s57-${RUN}`
+      await insertListedDocument({
+        profileId: id,
+        title: before,
+        documentDate: shiftDays(sale, -1),
+      })
+      await insertListedDocument({
+        profileId: id,
+        title: after,
+        documentDate: sale,
+      })
+
+      await loginByLink(member, TENANT_A, email)
+      await expect(myInvoices(member)).toContainText('111,11', {
+        timeout: 15_000,
+      })
+      await expect(myInvoices(member)).not.toContainText('222,22')
+      await expect(myDocuments(member)).toContainText(before)
+      await expect(myDocuments(member)).not.toContainText(after)
+
+      await bureau.goto(`${TENANT_A}${LIST_ROUTE}/${id}`, {
+        waitUntil: 'networkidle',
+      })
+      await expect(accessCard(bureau)).toContainText(
+        `Accès ouvert jusqu’au ${frenchDay(shiftDays(closesOn, -1))}.`,
+        {timeout: 15_000}
+      )
+      await expect(accessCard(bureau)).toContainText(
+        `n’est plus propriétaire depuis la vente du ${frenchDay(sale)}`
+      )
+      await expect(
+        accessCard(bureau).getByRole('button', {name: /invitation/})
+      ).toBeVisible()
+    } finally {
+      await member.context().close()
+      await bureau.context().close()
+    }
+  })
+
+  test('critères 2, 3, 7 et 8 — hors délai, session ouverte : coupée au rechargement, rien n’est supprimé ; une nouvelle période rouvre l’accès', async ({
+    browser,
+  }) => {
+    test.setTimeout(240_000)
+    const name = nameOf('Vendeur fermé')
+    const email = emailOf('vendeur-ferme')
+    const sale = oldSale()
+    const closesOn = shiftMonths(sale, AFTER_SALE_MONTHS)
+
+    const bureau = await bureauSession(browser, TENANT_A, OWNER_A)
+    const member = await freshPage(browser)
+    try {
+      const id = await createProfile(bureau, TENANT_A, {name, email})
+      await ownParcel({
+        profileId: id,
+        number: parcelOf('F1'),
+        startsOn: '2005-01-10',
+        endsOn: null,
+      })
+
+      await loginByLink(member, TENANT_A, email)
+      await expect(
+        member.getByRole('heading', {level: 1, name: `Bonjour ${name}`})
+      ).toBeVisible()
+
+      await sellAll(id, sale)
+
+      // Un rechargement réel : la requête suivante rejoue la règle (ADR 038).
+      await member.reload()
+      await expect(member).toHaveURL(`${TENANT_A}/login?acces=ferme`, {
+        timeout: 15_000,
+      })
+      await expect(member.getByRole('status')).toContainText(
+        'Votre accès à l’espace membre est fermé.'
+      )
+
+      // Rien n'est supprimé : la ligne `member` et le lien restent.
+      expect((await accountOf(email)).members).toEqual([
+        {slug: TENANT_A_SLUG, role: 'member'},
+      ])
+      expect(await linksOf(TENANT_A_SLUG, email)).toHaveLength(1)
+      await expectNoLinkSent(member, TENANT_A, email)
+
+      await bureau.goto(`${TENANT_A}${LIST_ROUTE}/${id}`, {
+        waitUntil: 'networkidle',
+      })
+      await expect(accessCard(bureau)).toContainText(
+        `Accès fermé depuis le ${frenchDay(closesOn)}.`,
+        {timeout: 15_000}
+      )
+      await expect(accessCard(bureau)).toContainText(
+        'Pas d’invitation possible : l’accès de cette fiche est fermé.'
+      )
+      await expect(accessCard(bureau).getByRole('button')).toHaveCount(0)
+
+      // Rachat sur la même fiche : une nouvelle période ouverte.
+      await ownParcel({
+        profileId: id,
+        number: parcelOf('F2'),
+        startsOn: parisToday(),
+        endsOn: null,
+      })
+      await loginByLink(member, TENANT_A, email)
+      await expect(myParcels(member)).toContainText(
+        `Parcelle ${parcelOf('F2')}`
+      )
+    } finally {
+      await member.context().close()
+      await bureau.context().close()
+    }
+  })
+
+  test('critère 4 — un compte à deux fiches, l’une fermée : la session reste, la fiche fermée sort de « Mes terrains »', async ({
+    browser,
+  }) => {
+    test.setTimeout(180_000)
+    const kept = nameOf('Garde un terrain')
+    const sold = nameOf('Terrain vendu')
+    const email = emailOf('garde-un-terrain')
+
+    const bureau = await bureauSession(browser, TENANT_A, OWNER_A)
+    const member = await freshPage(browser)
+    try {
+      const keptId = await createProfile(bureau, TENANT_A, {name: kept, email})
+      await ownParcel({
+        profileId: keptId,
+        number: parcelOf('G1'),
+        startsOn: '2010-04-02',
+        endsOn: null,
+      })
+      const soldId = await createProfile(bureau, TENANT_A, {name: sold})
+      await ownParcel({
+        profileId: soldId,
+        number: parcelOf('G2'),
+        startsOn: '2010-04-02',
+        endsOn: oldSale(),
+      })
+      await linkAccount(soldId, email)
+
+      await loginByLink(member, TENANT_A, email)
+      await expect(myParcels(member)).toContainText(
+        `Parcelle ${parcelOf('G1')}`
+      )
+      await expect(myParcels(member)).not.toContainText(parcelOf('G2'))
+      await expect(myParcels(member)).not.toContainText(sold)
+    } finally {
+      await member.context().close()
+      await bureau.context().close()
+    }
+  })
+
+  test('critère 5 — le proche d’une fiche vendue, titulaire ailleurs : garde sa fiche, perd la fiche vendue ; le titulaire de la fiche vendue n’a plus de lien', async ({
+    browser,
+  }) => {
+    test.setTimeout(180_000)
+    const own = nameOf('Proche titulaire')
+    const seller = nameOf('Vendeur du proche')
+    const relative = emailOf('proche-titulaire')
+    const sellerEmail = emailOf('vendeur-du-proche')
+
+    const bureau = await bureauSession(browser, TENANT_A, OWNER_A)
+    const member = await freshPage(browser)
+    const other = await freshPage(browser)
+    try {
+      const ownId = await createProfile(bureau, TENANT_A, {
+        name: own,
+        email: relative,
+      })
+      await ownParcel({
+        profileId: ownId,
+        number: parcelOf('P1'),
+        startsOn: '2012-06-01',
+        endsOn: null,
+      })
+      const sellerId = await createProfile(bureau, TENANT_A, {
+        name: seller,
+        email: sellerEmail,
+      })
+      await ownParcel({
+        profileId: sellerId,
+        number: parcelOf('P2'),
+        startsOn: '2001-06-01',
+        endsOn: oldSale(),
+      })
+      await linkAccount(sellerId, relative)
+
+      await loginByLink(member, TENANT_A, relative)
+      await expect(myParcels(member)).toContainText(
+        `Parcelle ${parcelOf('P1')}`
+      )
+      await expect(myParcels(member)).not.toContainText(seller)
+
+      await expectNoLinkSent(other, TENANT_A, sellerEmail)
+    } finally {
+      await other.context().close()
+      await member.context().close()
+      await bureau.context().close()
+    }
+  })
+
+  test('accès croisé — fermé sur TechCorp, ouvert sur Marketing Pro ; le bureau de Marketing Pro n’obtient ni la fiche de TechCorp ni sa date', async ({
+    browser,
+  }) => {
+    test.setTimeout(240_000)
+    const nameA = nameOf('Deux associations A')
+    const nameB = nameOf('Deux associations B')
+    const email = emailOf('deux-associations')
+
+    const bureauA = await bureauSession(browser, TENANT_A, OWNER_A)
+    const bureauB = await bureauSession(browser, TENANT_B, BOARD_B)
+    const member = await freshPage(browser)
+    try {
+      const idA = await createProfile(bureauA, TENANT_A, {name: nameA, email})
+      await ownParcel({
+        profileId: idA,
+        number: parcelOf('X1'),
+        startsOn: '2004-01-01',
+        endsOn: oldSale(),
+      })
+      await createProfile(bureauB, TENANT_B, {name: nameB, email})
+      await attachParcel(bureauB, parcelOf('X2'), '01/03/2020')
+
+      await expectNoLinkSent(member, TENANT_A, email)
+
+      await loginByLink(member, TENANT_B, email)
+      await member.reload()
+      await expect(member).toHaveURL(`${TENANT_B}/dashboard`, {
+        timeout: 15_000,
+      })
+      await expect(myParcels(member)).toContainText(
+        `Parcelle ${parcelOf('X2')}`
+      )
+
+      await bureauB.goto(`${TENANT_B}${LIST_ROUTE}/${idA}`, {
+        waitUntil: 'load',
+      })
+      await expect(bureauB.getByText(NOT_FOUND_TITLE)).toBeVisible({
+        timeout: 15_000,
+      })
+      await expect(bureauB.getByText(nameA)).toHaveCount(0)
+      await expect(bureauB.getByText(/Accès fermé depuis le/)).toHaveCount(0)
+    } finally {
+      await member.context().close()
+      await bureauB.context().close()
+      await bureauA.context().close()
+    }
+  })
+})

@@ -11,10 +11,7 @@ import {
   purgeExpiredPendingEmailsDao,
   updateMemberProfileEmailDao,
 } from '@/db/repositories/member-profile-email-repository'
-import {
-  getMemberProfilesByUserIdDao,
-  MyMemberProfileRow,
-} from '@/db/repositories/member-profile-repository'
+import {MyMemberProfileRow} from '@/db/repositories/member-profile-repository'
 import {getOrganizationByIdDao} from '@/db/repositories/organization-repository'
 import {withTenant} from '@/db/tenant-scope'
 import {associationOriginOf} from '@/lib/better-auth/association-origin'
@@ -29,6 +26,7 @@ import {AuthorizationError} from './errors/authorization-error'
 import {NotFoundError} from './errors/not-found-error'
 import {ValidationParsedZodError} from './errors/validation-error'
 import {hashConfirmationToken, newConfirmationToken} from './member-email-token'
+import {getMyAccessibleProfiles} from './member-profile-access-service'
 import {sameEmail} from './rules/member-account-rules'
 import {
   canMemberManagePending,
@@ -37,7 +35,6 @@ import {
   decideMemberEmailAddition,
   visibleEmails,
 } from './rules/member-email-rules'
-import {orderMyProfiles} from './rules/my-profiles-order-rules'
 import {
   getAccentHue,
   getMemberEmailConfirmationDays,
@@ -136,15 +133,16 @@ type Mine = {
   emails: MemberProfileEmailRow[]
 }
 
-/** Mes fiches, dans l'ordre de l'ADR 054 §7, et leurs adresses visibles. */
+/**
+ * Mes fiches accessibles (une fiche fermee apres la vente en sort, s57), dans
+ * l'ordre de l'ADR 054 §7, et leurs adresses visibles.
+ */
 const loadMine = async (
   organizationId: string,
   userId: string,
   now: Date
 ): Promise<Mine> => {
-  const profiles = orderMyProfiles(
-    await getMemberProfilesByUserIdDao(organizationId, userId)
-  )
+  const profiles = await getMyAccessibleProfiles(organizationId, userId)
   const emails = visibleEmails(
     await getMemberProfileEmailsDao(profiles.map((profile) => profile.id)),
     now

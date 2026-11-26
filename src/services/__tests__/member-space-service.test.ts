@@ -4,11 +4,12 @@ const scope = vi.hoisted(() => ({current: undefined as string | undefined}))
 
 vi.mock('@/db/tenant-scope', () => ({
   withTenant: vi.fn(async (organizationId: string, callback: () => unknown) => {
+    const outer = scope.current
     scope.current = organizationId
     try {
       return await callback()
     } finally {
-      scope.current = undefined
+      scope.current = outer
     }
   }),
 }))
@@ -23,6 +24,10 @@ vi.mock('@/db/repositories/parcel-ownership-repository', () => ({
   getCurrentParcelsByMemberDao: vi.fn(),
   getFormerParcelsByMemberDao: vi.fn(),
   getMemberFormerParcelsDao: vi.fn(),
+  listOwnershipPeriodsByProfilesDao: vi.fn(),
+}))
+vi.mock('@/db/repositories/organization-setting-repository', () => ({
+  getOrganizationSettingsDao: vi.fn(async () => []),
 }))
 
 import {
@@ -33,6 +38,7 @@ import {
   getCurrentParcelsByMemberDao,
   getFormerParcelsByMemberDao,
   getMemberFormerParcelsDao,
+  listOwnershipPeriodsByProfilesDao,
 } from '@/db/repositories/parcel-ownership-repository'
 import {withTenant} from '@/db/tenant-scope'
 
@@ -95,6 +101,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   scope.current = undefined
   vi.mocked(getMemberProfilesByUserIdDao).mockResolvedValue([profileRow])
+  vi.mocked(listOwnershipPeriodsByProfilesDao).mockResolvedValue([])
   vi.mocked(getCurrentParcelsByMemberDao).mockResolvedValue([
     {
       parcelId: 'p21',
@@ -319,6 +326,7 @@ describe('[ORGANIZATION MEMBER] updateMyContactService — « Mes coordonnées �
     expect(updateMyMemberProfilesContactDao).toHaveBeenCalledWith(
       ORG_ID,
       userTest.id,
+      [PROFILE_ID],
       NEW_CONTACT
     )
   })
@@ -330,7 +338,7 @@ describe('[ORGANIZATION MEMBER] updateMyContactService — « Mes coordonnées �
       email: 'autre.membre@example.test',
     } as Parameters<typeof updateMyContactService>[0])
 
-    const written = vi.mocked(updateMyMemberProfilesContactDao).mock.calls[0][2]
+    const written = vi.mocked(updateMyMemberProfilesContactDao).mock.calls[0][3]
     expect(written).not.toHaveProperty('email')
   })
 
@@ -403,7 +411,7 @@ describe('[ORGANIZATION MEMBER] updateMyContactService — « Mes coordonnées �
       companyName: 'Épicerie fictive',
     } as Parameters<typeof updateMyContactService>[0])
 
-    const written = vi.mocked(updateMyMemberProfilesContactDao).mock.calls[0][2]
+    const written = vi.mocked(updateMyMemberProfilesContactDao).mock.calls[0][3]
     expect(written).toEqual(NEW_CONTACT)
     expect(written).not.toHaveProperty('landAddressLine')
     expect(written).not.toHaveProperty('companyName')
@@ -562,5 +570,81 @@ describe('getMyContactService — lecture de « Mes coordonnées » (s16)', () =
       [],
       ['SCI Les Pins'],
     ])
+  })
+})
+
+describe('[ORGANIZATION MEMBER] accès après la vente — l’espace membre écarte une fiche fermée (s57, critères 2 et 4)', () => {
+  const SOLD_ID = '77777777-7777-4777-8777-777777777777'
+  const soldRow = {
+    ...profileRow,
+    id: SOLD_ID,
+    name: 'Lucie Moreau',
+    phone: '05 00 00 00 00',
+    currentParcelNumbers: [],
+  }
+
+  beforeEach(() => {
+    setupAuthUserMocked(withRole('member'))
+    vi.mocked(getMemberProfilesByUserIdDao).mockResolvedValue([
+      soldRow,
+      {...profileRow, ...NEW_CONTACT},
+    ])
+    vi.mocked(listOwnershipPeriodsByProfilesDao).mockResolvedValue([
+      {
+        memberProfileId: SOLD_ID,
+        number: '9',
+        meterNumber: null,
+        startsOn: '2003-05-14',
+        endsOn: '2019-10-01',
+      },
+      {
+        memberProfileId: PROFILE_ID,
+        number: '21',
+        meterNumber: null,
+        startsOn: '2011-04-02',
+        endsOn: null,
+      },
+    ])
+  })
+
+  it('« Mes terrains » ne montre pas la fiche fermée', async () => {
+    const lands = await getMyLandsService(ORG_ID)
+
+    expect(lands?.lands).toHaveLength(1)
+    expect(getCurrentParcelsByMemberDao).toHaveBeenCalledWith(PROFILE_ID)
+    expect(getCurrentParcelsByMemberDao).not.toHaveBeenCalledWith(SOLD_ID)
+  })
+
+  it('les coordonnées ne lisent pas la fiche fermée', async () => {
+    expect(await getMyContactService(ORG_ID)).toEqual({
+      ...NEW_CONTACT,
+      landCount: 1,
+      divergent: false,
+      groups: [],
+    })
+  })
+
+  it('la correction des coordonnées n’écrit que les fiches accessibles', async () => {
+    vi.mocked(updateMyMemberProfilesContactDao).mockResolvedValue([
+      {...profileRow, ...NEW_CONTACT},
+    ])
+
+    await updateMyContactService({organizationId: ORG_ID, ...NEW_CONTACT})
+
+    expect(updateMyMemberProfilesContactDao).toHaveBeenCalledWith(
+      ORG_ID,
+      userTest.id,
+      [PROFILE_ID],
+      NEW_CONTACT
+    )
+  })
+
+  it('toutes les fiches fermées : rien n’est écrit, `not_found`', async () => {
+    vi.mocked(getMemberProfilesByUserIdDao).mockResolvedValue([soldRow])
+
+    expect(
+      await updateMyContactService({organizationId: ORG_ID, ...NEW_CONTACT})
+    ).toEqual({status: 'not_found'})
+    expect(updateMyMemberProfilesContactDao).not.toHaveBeenCalled()
   })
 })
