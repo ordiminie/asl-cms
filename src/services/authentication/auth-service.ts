@@ -19,8 +19,9 @@ import type {ActingContext} from '@/services/types/domain/impersonation-types'
  * A chaque lecture, la regle d'ouverture de session de l'ADR 034 est
  * rejouee sur l'association du domaine appele (s12d, ADR 038) : un compte
  * dont l'acces a ete ferme est traite comme non connecte, a la requete
- * suivante, meme si sa session est encore ouverte. Le SuperAdmin passe
- * partout.
+ * suivante, meme si sa session est encore ouverte — y compris un membre dont
+ * toutes les fiches sont fermees apres la vente (s57, ADR 075). Le SuperAdmin
+ * passe partout ; une session ouverte a la place d'un compte (s48) aussi.
  * @returns L'utilisateur connecté avec organizations et settings
  */
 export const getAuthUser = cache(async () => {
@@ -30,7 +31,11 @@ export const getAuthUser = cache(async () => {
   const organization = await organizationOfRequest(
     requestHostOf(await headers())
   )
-  if (!session.user || !canOpenSessionOn(session.user, organization)) return
+  if (!session.user) return
+  const impersonated = Boolean(session.session.impersonatedBy)
+  if (!(await canOpenSessionOn(session.user, organization, {impersonated}))) {
+    return
+  }
   return session.user
 })
 

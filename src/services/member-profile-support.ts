@@ -26,12 +26,14 @@ import {
   getMyMemberProfiles,
   replaceMemberAccount,
 } from './member-account-service'
+import {readProfileAccess} from './member-profile-access-service'
 import {sameEmail} from './rules/member-account-rules'
 import {
   planReplacementConfirmation,
   visibleEmails,
 } from './rules/member-email-rules'
 import {invitationStateOf} from './rules/member-invitation-rules'
+import {accessWindowOf} from './rules/member-profile-access-rules'
 import {toMemberProfileDto} from './rules/member-profile-rules'
 import {roleCardFor} from './rules/member-role-rules'
 import {orderMyProfiles} from './rules/my-profiles-order-rules'
@@ -288,7 +290,8 @@ const readInvitationStates = async (
 
 /**
  * La fiche, ses adresses avec le compte de chacune, l'etat du compte de la
- * titulaire et sa carte de role, pour l'ecran du bureau. Lecture de
+ * titulaire, la fin d'acces apres la vente (s57) et sa carte de role, pour
+ * l'ecran du bureau. Lecture de
  * l'appartenance de tiers, sous son `can*` (ADR 014). `isSelf` vaut pour
  * **tous** les comptes de la fiche (s54).
  */
@@ -324,6 +327,7 @@ export const readProfileView = async (
     (email) => email.status === 'active' && email.role === 'holder'
   )
   const holderView = holder ? views.get(holder.id) : undefined
+  const access = await readProfileAccess(organizationId, row.id, now)
   return {
     ...toMemberProfileDto(row),
     pennylaneCustomerId: row.pennylaneCustomerId,
@@ -331,6 +335,7 @@ export const readProfileView = async (
       toEmailDto(email, views.get(email.id), invitations.get(email.id) ?? null)
     ),
     account: toAccountDto(holderView),
+    accessWindow: accessWindowOf(access),
     roleCard: roleCardFor(
       {
         role:

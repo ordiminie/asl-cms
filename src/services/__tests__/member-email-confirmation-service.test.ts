@@ -31,6 +31,12 @@ vi.mock('@/db/repositories/user-repository', () => ({
   getUserByEmailDao: vi.fn(),
   getUserByIdDao: vi.fn(),
 }))
+vi.mock('@/db/repositories/parcel-ownership-repository', () => ({
+  listOwnershipPeriodsByProfilesDao: vi.fn(),
+}))
+vi.mock('@/db/repositories/organization-setting-repository', () => ({
+  getOrganizationSettingsDao: vi.fn(async () => []),
+}))
 vi.mock('@/db/repositories/member-role-event-repository', () => ({
   insertMemberRoleEventDao: vi.fn(),
 }))
@@ -62,6 +68,7 @@ import {
   createMemberIfAbsentTxnDao,
   getUserOrganizationDao,
 } from '@/db/repositories/organization-repository'
+import {listOwnershipPeriodsByProfilesDao} from '@/db/repositories/parcel-ownership-repository'
 import {
   createUserIfAbsentTxnDao,
   getUserByEmailDao,
@@ -136,13 +143,14 @@ beforeEach(() => {
       }) as never
   )
   vi.mocked(getMemberProfilesByUserIdDao).mockResolvedValue([
-    {id: PROFILE_ID} as never,
+    {id: PROFILE_ID, currentParcelNumbers: []} as never,
   ])
   vi.mocked(getMemberProfileByIdDao).mockResolvedValue({
     id: PROFILE_ID,
     name: 'Jean Dubois',
   } as never)
   vi.mocked(getLinkedAccountsDao).mockResolvedValue([])
+  vi.mocked(listOwnershipPeriodsByProfilesDao).mockResolvedValue([])
   vi.mocked(getCurrentParcelNumbersByProfileDao).mockResolvedValue({
     [PROFILE_ID]: ['21'],
   })
@@ -320,7 +328,7 @@ describe('[PUBLIC] l’auteur n’est plus relié à la fiche (revue C1, ADR 056
       pendingRow({id: OTHER_PENDING_ID, memberProfileId: OTHER_PROFILE_ID}),
     ] as never)
     vi.mocked(getMemberProfilesByUserIdDao).mockResolvedValue([
-      {id: OTHER_PROFILE_ID} as never,
+      {id: OTHER_PROFILE_ID, currentParcelNumbers: []} as never,
     ])
     vi.mocked(getMemberProfileByIdDao).mockResolvedValue({
       id: OTHER_PROFILE_ID,
@@ -393,8 +401,8 @@ describe('[PUBLIC] l’auteur n’est plus relié à la fiche (revue C1, ADR 056
     vi.mocked(getMemberProfilesByUserIdDao).mockImplementation(
       async (_org, userId) =>
         (userId === CLAIRE_NEW_ID
-          ? [{id: PROFILE_ID}]
-          : [{id: OTHER_PROFILE_ID}]) as never
+          ? [{id: PROFILE_ID, currentParcelNumbers: []}]
+          : [{id: OTHER_PROFILE_ID, currentParcelNumbers: []}]) as never
     )
     vi.mocked(getMemberProfileByIdDao).mockImplementation(
       async (id) => ({id, name: 'Jean Dubois'}) as never
@@ -423,5 +431,25 @@ describe('[PUBLIC] l’auteur n’est plus relié à la fiche (revue C1, ADR 056
       OTHER_PENDING_ID,
       expect.objectContaining({status: 'active'})
     )
+  })
+})
+
+describe('[PUBLIC] l’auteur relié à une fiche fermée après la vente (s57, ADR 075 §4)', () => {
+  it('l’attente d’une fiche fermée n’est plus activable : 3c, rien n’est activé ni relié', async () => {
+    vi.mocked(listOwnershipPeriodsByProfilesDao).mockResolvedValue([
+      {
+        memberProfileId: PROFILE_ID,
+        number: '21',
+        meterNumber: null,
+        startsOn: '2003-05-14',
+        endsOn: '2019-10-01',
+      },
+    ])
+
+    await expect(confirmMemberEmailService(input)).resolves.toEqual({
+      status: 'invalid',
+    })
+    expect(updateMemberProfileEmailDao).not.toHaveBeenCalled()
+    expect(linkMemberProfileAccountDao).not.toHaveBeenCalled()
   })
 })

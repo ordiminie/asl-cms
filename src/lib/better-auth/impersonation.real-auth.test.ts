@@ -34,11 +34,16 @@ vi.mock('@/db/repositories/user-repository', () => ({
 vi.mock('@/services/member-invitation-service', () => ({
   recordFirstSignIn: vi.fn(),
 }))
+/** Fiches toujours ouvertes ici : la regle de s57 se prouve ailleurs. */
+vi.mock('@/services/facades/member-profile-access-service-facade', () => ({
+  hasMemberSpaceAccessService: vi.fn(async () => true),
+}))
 vi.mock('@/services/facades/organization-service-facade', () => ({
   getOrganizationByDomainService: vi.fn(),
 }))
 
 import {getUserByIdDao} from '@/db/repositories/user-repository'
+import {hasMemberSpaceAccessService} from '@/services/facades/member-profile-access-service-facade'
 import {getOrganizationByDomainService} from '@/services/facades/organization-service-facade'
 import type {Organization} from '@/services/types/domain/organization-types'
 
@@ -194,6 +199,7 @@ const impersonate = async (
 describe('imitation sur un vrai Better Auth (s48)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(hasMemberSpaceAccessService).mockResolvedValue(true)
     vi.mocked(getOrganizationByDomainService).mockImplementation(
       async (domain: string) => ASSOCIATIONS[domain]
     )
@@ -324,6 +330,44 @@ describe('imitation sur un vrai Better Auth (s48)', () => {
       })
     ).rejects.toMatchObject({statusCode: 500})
     expect(memoryDb.session).toHaveLength(sessionsBefore)
+  })
+
+  it('le hook de création reçoit impersonatedBy : une imitation s’ouvre sur un compte dont l’accès est fermé (s57, ADR 075 §3)', async () => {
+    const {localAuth, superAdmin, member} = await world()
+    vi.mocked(hasMemberSpaceAccessService).mockClear()
+    vi.mocked(hasMemberSpaceAccessService).mockResolvedValue(false)
+
+    const {jar} = await impersonate(
+      localAuth,
+      superAdmin.jar,
+      HOST_A,
+      member.userId
+    )
+    const session = await localAuth.api.getSession({
+      headers: headersOf(jar, HOST_A),
+    })
+
+    expect(session?.user.id).toBe(member.userId)
+    expect(session?.session.impersonatedBy).toBe(superAdmin.userId)
+    expect(hasMemberSpaceAccessService).not.toHaveBeenCalled()
+  })
+
+  it('sans imitation, la création de session d’un compte fermé est refusée (s57)', async () => {
+    const {localAuth, memoryDb, member} = await world()
+    vi.mocked(hasMemberSpaceAccessService).mockResolvedValue(false)
+    const sessionsBefore = memoryDb.session.length
+
+    await expect(
+      localAuth.api.signInEmail({
+        headers: new Headers({host: HOST_A}),
+        body: {email: 'membre-a@exemple.test', password: PASSWORD},
+      })
+    ).rejects.toBeDefined()
+    expect(memoryDb.session).toHaveLength(sessionsBefore)
+    expect(hasMemberSpaceAccessService).toHaveBeenCalledWith(
+      'org-a',
+      member.userId
+    )
   })
 
   it('stopImpersonating rend la session SuperAdmin d’origine', async () => {

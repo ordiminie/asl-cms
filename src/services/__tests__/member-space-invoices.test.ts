@@ -18,8 +18,8 @@ vi.mock('@/db/repositories/member-invoice-repository', () => ({
 vi.mock('@/lib/pennylane/pennylane-client.server', () => ({
   getPennylaneClient: vi.fn(),
 }))
-vi.mock('../member-account-service', () => ({
-  getMyMemberProfiles: vi.fn(),
+vi.mock('../member-profile-access-service', () => ({
+  getMyAccessibleProfiles: vi.fn(),
 }))
 vi.mock('../association-settings-service', () => ({
   getAssociationSettingsService: vi.fn(),
@@ -38,7 +38,7 @@ import {getAssociationSettingsService} from '../association-settings-service'
 import type {MemberBillingProvider} from '../billing/member-billing-provider'
 import {resolveMemberBillingProvider} from '../billing/resolve-member-billing-provider'
 import {AuthorizationError} from '../errors/authorization-error'
-import {getMyMemberProfiles} from '../member-account-service'
+import {getMyAccessibleProfiles} from '../member-profile-access-service'
 import {
   getMyInvoicePdfUrlService,
   getMyInvoicesService,
@@ -65,14 +65,16 @@ const ACCOUNT_NAME = userTest.name
 const profile = (
   id: string,
   name: string,
-  pennylaneCustomerId: string | null = null
+  pennylaneCustomerId: string | null = null,
+  access: Record<string, string> = {status: 'owner'}
 ) =>
   ({
     id,
     name,
     pennylaneCustomerId,
     currentParcelNumbers: [],
-  }) as unknown as Awaited<ReturnType<typeof getMyMemberProfiles>>[number]
+    access,
+  }) as unknown as Awaited<ReturnType<typeof getMyAccessibleProfiles>>[number]
 
 const invoice = (overrides: Partial<MemberInvoice>): MemberInvoice => ({
   id: '99999999-9999-4999-8999-999999999999',
@@ -113,7 +115,7 @@ let provider: ReturnType<typeof doubleProvider>
 beforeEach(() => {
   vi.clearAllMocks()
   setupAuthUserMocked(userTest)
-  vi.mocked(getMyMemberProfiles).mockResolvedValue([
+  vi.mocked(getMyAccessibleProfiles).mockResolvedValue([
     profile(PROFILE_A, ACCOUNT_NAME),
     profile(PROFILE_B, ACCOUNT_NAME),
     profile(PROFILE_SCI, 'SCI Les Pins'),
@@ -186,7 +188,7 @@ describe('getMyInvoicesService — « Mes factures » du propriétaire connecté
   it('critère 7 : ne demande que les fiches du compte, jamais un identifiant venu de l’appelant', async () => {
     await getMyInvoicesService(ORG_ID)
 
-    expect(getMyMemberProfiles).toHaveBeenCalledWith(ORG_ID, userTest.id)
+    expect(getMyAccessibleProfiles).toHaveBeenCalledWith(ORG_ID, userTest.id)
     expect(provider.listInvoicesOf).toHaveBeenCalledWith(ORG_ID, [
       PROFILE_A,
       PROFILE_B,
@@ -252,7 +254,7 @@ describe('getMyInvoicesService — « Mes factures » du propriétaire connecté
   })
 
   it('un compte sans fiche dans l’association : rien, sans lire les factures', async () => {
-    vi.mocked(getMyMemberProfiles).mockResolvedValue([])
+    vi.mocked(getMyAccessibleProfiles).mockResolvedValue([])
 
     expect(await getMyInvoicesService(ORG_ID)).toBeUndefined()
     expect(provider.listInvoicesOf).not.toHaveBeenCalled()
@@ -264,12 +266,12 @@ describe('getMyInvoicesService — « Mes factures » du propriétaire connecté
     await expect(getMyInvoicesService(ORG_ID)).rejects.toThrow(
       AuthorizationError
     )
-    expect(getMyMemberProfiles).not.toHaveBeenCalled()
+    expect(getMyAccessibleProfiles).not.toHaveBeenCalled()
   })
 
   it('refuse un identifiant d’association invalide', async () => {
     await expect(getMyInvoicesService('pas-un-uuid')).rejects.toThrow()
-    expect(getMyMemberProfiles).not.toHaveBeenCalled()
+    expect(getMyAccessibleProfiles).not.toHaveBeenCalled()
   })
 })
 
@@ -295,7 +297,7 @@ describe('getMyInvoicesService — sous Pennylane (s20, ADR 062)', () => {
     vi.mocked(getAssociationSettingsService).mockResolvedValue(
       pennylaneSettings
     )
-    vi.mocked(getMyMemberProfiles).mockResolvedValue([
+    vi.mocked(getMyAccessibleProfiles).mockResolvedValue([
       profile(PROFILE_A, ACCOUNT_NAME, EXTERNAL_REF),
     ])
     provider = {
@@ -430,7 +432,7 @@ describe('getMyInvoicesService — sous Pennylane (s20, ADR 062)', () => {
   })
 
   it('aucune fiche du compte reliée à Pennylane : le compte est signalé non relié (1e)', async () => {
-    vi.mocked(getMyMemberProfiles).mockResolvedValue([
+    vi.mocked(getMyAccessibleProfiles).mockResolvedValue([
       profile(PROFILE_A, ACCOUNT_NAME, null),
     ])
 
@@ -480,7 +482,7 @@ describe('getMyInvoicePdfUrlService — le PDF relu au clic (s20, ADR 062 §6)',
       status: 'ready',
       url: PDF_URL,
     })
-    expect(getMyMemberProfiles).toHaveBeenCalledWith(ORG_ID, userTest.id)
+    expect(getMyAccessibleProfiles).toHaveBeenCalledWith(ORG_ID, userTest.id)
     expect(getInvoiceByIdDao).toHaveBeenCalledWith(INVOICE_ID)
     expect(getFile).toHaveBeenCalledWith('9001')
   })
@@ -617,5 +619,102 @@ describe('getMyInvoicesService — le règlement d’une facture (s21, ADR 063)'
     expect(
       await paymentOf({status: 'Statut jamais vu', paymentUrl: HTTPS_LINK})
     ).toBeNull()
+  })
+})
+
+describe('accès après la vente — factures d’avant la vente seulement (s57, critère 6)', () => {
+  const SOLD_ON = '2026-03-15'
+  const grace = {status: 'grace', soldOn: SOLD_ON, closesOn: '2026-09-15'}
+
+  beforeEach(() => {
+    vi.mocked(getMyAccessibleProfiles).mockResolvedValue([
+      profile(PROFILE_A, ACCOUNT_NAME, null, grace),
+      profile(PROFILE_B, ACCOUNT_NAME),
+    ])
+    provider = doubleProvider([
+      invoice({id: 'a-veille', issuedOn: '2026-03-14', status: 'Payée'}),
+      invoice({id: 'a-jour', issuedOn: SOLD_ON, status: 'Payée'}),
+      invoice({id: 'a-impayee-avant', issuedOn: '2025-11-02'}),
+      invoice({id: 'a-impayee-apres', issuedOn: '2026-05-01'}),
+      invoice({
+        id: 'b-apres',
+        memberProfileId: PROFILE_B,
+        issuedOn: '2026-05-01',
+      }),
+    ])
+    vi.mocked(resolveMemberBillingProvider).mockReturnValue(provider)
+  })
+
+  it('en délai : la facture de la veille de la vente et l’impayée d’avant restent, celles du jour et d’après sont masquées', async () => {
+    const result = await getMyInvoicesService(ORG_ID)
+
+    expect(
+      result?.invoices.map(({issuedOn, statusClass}) => ({
+        issuedOn,
+        statusClass,
+      }))
+    ).toEqual([
+      {issuedOn: '2026-05-01', statusClass: 'unpaid'},
+      {issuedOn: '2026-03-14', statusClass: 'settled'},
+      {issuedOn: '2025-11-02', statusClass: 'unpaid'},
+    ])
+    expect(result?.landCount).toBe(2)
+  })
+
+  it('l’impayée d’après la vente est masquée sur la fiche vendue, pas sur une fiche encore propriétaire', async () => {
+    const result = await getMyInvoicesService(ORG_ID)
+
+    expect(
+      result?.invoices.filter((row) => row.issuedOn === '2026-05-01')
+    ).toHaveLength(1)
+  })
+
+  it('identifiant forgé d’une facture d’après la vente : introuvable, Pennylane jamais appelé', async () => {
+    const getFile = vi.fn()
+    vi.mocked(getPennylaneClient).mockReturnValue({
+      listCustomers: vi.fn(),
+      listCustomerInvoices: vi.fn(),
+      getCustomerInvoiceFileUrl: getFile,
+    })
+    vi.mocked(getInvoiceByIdDao).mockResolvedValue({
+      id: '66666666-6666-4666-8666-666666666666',
+      memberProfileId: PROFILE_A,
+      source: 'pennylane',
+      externalId: '9001',
+      hasPdf: true,
+      issuedOn: SOLD_ON,
+    } as never)
+
+    expect(
+      await getMyInvoicePdfUrlService(
+        ORG_ID,
+        '66666666-6666-4666-8666-666666666666'
+      )
+    ).toEqual({status: 'not_found'})
+    expect(getFile).not.toHaveBeenCalled()
+  })
+
+  it('identifiant d’une facture d’avant la vente : le PDF est relu', async () => {
+    const getFile = vi.fn(async () => 'https://pennylane.test/pdf')
+    vi.mocked(getPennylaneClient).mockReturnValue({
+      listCustomers: vi.fn(),
+      listCustomerInvoices: vi.fn(),
+      getCustomerInvoiceFileUrl: getFile,
+    })
+    vi.mocked(getInvoiceByIdDao).mockResolvedValue({
+      id: '66666666-6666-4666-8666-666666666666',
+      memberProfileId: PROFILE_A,
+      source: 'pennylane',
+      externalId: '9001',
+      hasPdf: true,
+      issuedOn: '2026-03-14',
+    } as never)
+
+    expect(
+      await getMyInvoicePdfUrlService(
+        ORG_ID,
+        '66666666-6666-4666-8666-666666666666'
+      )
+    ).toEqual({status: 'ready', url: 'https://pennylane.test/pdf'})
   })
 })

@@ -21,7 +21,10 @@ import {getAuthUser} from './authentication/auth-service'
 import {resolveMemberBillingProvider} from './billing/resolve-member-billing-provider'
 import {AuthorizationError} from './errors/authorization-error'
 import {ValidationParsedZodError} from './errors/validation-error'
-import {getMyMemberProfiles} from './member-account-service'
+import {
+  type AccessibleProfile,
+  getMyAccessibleProfiles,
+} from './member-profile-access-service'
 import {
   classifyInvoiceStatus,
   composeInvoiceSubject,
@@ -30,6 +33,7 @@ import {
   getInvoiceSubjectTemplate,
   statusLabelOf,
 } from './rules/member-invoice-rules'
+import {isBeforeSale} from './rules/member-profile-access-rules'
 import {
   type OwnershipPeriod,
   parcelsOwnedOn,
@@ -108,7 +112,7 @@ export const getMyLandsService = async (
   }
 
   return withTenant(parsed.data, async () => {
-    const profiles = await getMyMemberProfiles(parsed.data, authUser.id)
+    const profiles = await getMyAccessibleProfiles(parsed.data, authUser.id)
     if (profiles.length === 0) return undefined
 
     const lands: MyLandDTO[] = []
@@ -223,7 +227,7 @@ export const getMyContactService = async (
   }
 
   return withTenant(parsed.data, async () => {
-    const profiles = await getMyMemberProfiles(parsed.data, authUser.id)
+    const profiles = await getMyAccessibleProfiles(parsed.data, authUser.id)
     return profiles.length > 0
       ? toMyContact(profiles, authUser.name)
       : undefined
@@ -232,8 +236,9 @@ export const getMyContactService = async (
 
 /**
  * Le proprietaire connecte corrige son telephone et son domicile
- * (s16, ADR 040, s55), pour **toutes** ses fiches d'un coup (s53, arbitrage du
- * 16/11). Les fiches se resolvent par la session et le domaine appele : un
+ * (s16, ADR 040, s55), pour **toutes** ses fiches accessibles d'un coup (s53,
+ * arbitrage du 16/11 ; une fiche fermee apres la vente n'est pas ecrite,
+ * s57). Les fiches se resolvent par la session et le domaine appele : un
  * identifiant ou un email glisse dans l'entree est retire par Zod.
  */
 export const updateMyContactService = async (
@@ -251,9 +256,15 @@ export const updateMyContactService = async (
 
   const {organizationId, ...contact} = parsed.data
   return withTenant(organizationId, async () => {
+    const accessible = await getMyAccessibleProfiles(
+      organizationId,
+      authUser.id
+    )
+    if (accessible.length === 0) return {status: 'not_found'}
     const rows = await updateMyMemberProfilesContactDao(
       organizationId,
       authUser.id,
+      accessible.map((profile) => profile.id),
       contact
     )
     if (rows.length === 0) return {status: 'not_found'}
@@ -375,9 +386,29 @@ const readSyncState = async (
 }
 
 /**
+ * Les factures que le membre voit (s57, ADR 075 §5) : sur une fiche vendue
+ * encore dans son delai, celles emises avant la vente seulement, meme
+ * impayees ; les autres fiches ne sont pas filtrees.
+ */
+const visibleInvoicesOf = <
+  Invoice extends {memberProfileId: string; issuedOn: string},
+>(
+  invoices: readonly Invoice[],
+  profiles: readonly AccessibleProfile[]
+): Invoice[] => {
+  const accessById = new Map(profiles.map(({id, access}) => [id, access]))
+  return invoices.filter((invoice) => {
+    const access = accessById.get(invoice.memberProfileId)
+    return access !== undefined && isBeforeSale(invoice.issuedOn, access)
+  })
+}
+
+/**
  * « Mes factures » du proprietaire connecte (s19, criteres 1 a 7 et 10) :
- * les factures de **toutes** les fiches reliees a son compte, lues par le
- * fournisseur de l'association, quel qu'il soit, emission decroissante.
+ * les factures de **toutes** les fiches accessibles reliees a son compte (s57 :
+ * une fiche fermee en sort, une fiche en delai ne montre que les factures
+ * d'avant la vente), lues par le fournisseur de l'association, quel qu'il
+ * soit, emission decroissante.
  * Aucun identifiant en entree ; rien pour un compte sans fiche.
  */
 export const getMyInvoicesService = async (
@@ -394,13 +425,16 @@ export const getMyInvoicesService = async (
   }
 
   return withTenant(parsed.data, async () => {
-    const profiles = await getMyMemberProfiles(parsed.data, authUser.id)
+    const profiles = await getMyAccessibleProfiles(parsed.data, authUser.id)
     if (profiles.length === 0) return undefined
 
     const settings = await getAssociationSettingsService(parsed.data)
     const provider = resolveMemberBillingProvider(settings)
     const profileIds = profiles.map((profile) => profile.id)
-    const invoices = await provider.listInvoicesOf(parsed.data, profileIds)
+    const invoices = visibleInvoicesOf(
+      await provider.listInvoicesOf(parsed.data, profileIds),
+      profiles
+    )
     const fromPennylane = provider.id === BILLING_PROVIDER_PENNYLANE
     const periods = invoices.some(
       (invoice) => invoice.source === MemberInvoiceSourceConst.PENNYLANE
@@ -429,8 +463,9 @@ export const getMyInvoicesService = async (
 
 /**
  * Le PDF d'une facture du membre connecte (s20, ADR 062 §6), relu chez
- * Pennylane **au clic** : la facture doit appartenir a l'une des fiches du
- * compte et venir de Pennylane. L'adresse rendue expire ; elle n'est ni
+ * Pennylane **au clic** : la facture doit appartenir a l'une des fiches
+ * accessibles du compte, etre visible (avant la vente pour une fiche en
+ * delai, s57) et venir de Pennylane. L'adresse rendue expire ; elle n'est ni
  * stockee, ni mise en cache, ni journalisee (l'intercepteur ne journalise
  * aucun resultat).
  */
@@ -452,14 +487,14 @@ export const getMyInvoicePdfUrlService = async (
   }
 
   const externalId = await withTenant(parsed.data.organizationId, async () => {
-    const profiles = await getMyMemberProfiles(
+    const profiles = await getMyAccessibleProfiles(
       parsed.data.organizationId,
       authUser.id
     )
     const invoice = await getInvoiceByIdDao(parsed.data.invoiceId)
     const owned =
       invoice !== undefined &&
-      profiles.some((profile) => profile.id === invoice.memberProfileId)
+      visibleInvoicesOf([invoice], profiles).length === 1
     return owned &&
       invoice.source === MemberInvoiceSourceConst.PENNYLANE &&
       invoice.externalId

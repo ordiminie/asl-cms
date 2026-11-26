@@ -68,7 +68,11 @@ import {
 } from './member-contact-fields'
 import {dayOfInstant} from './member-email-format'
 import {type MemberNoteActions, MemberNotesCard} from './member-notes-card'
-import {IncompleteBadge, MailOnlyBadge} from './member-profile-badges'
+import {
+  BoardRoleBadge,
+  IncompleteBadge,
+  MailOnlyBadge,
+} from './member-profile-badges'
 import {DetailCard} from './member-profile-detail-card'
 import type {MemberProfileEmailActions} from './member-profile-email-validation'
 import {MemberProfileEmailsCard} from './member-profile-emails-card'
@@ -490,16 +494,24 @@ const strong = (chunks: ReactNode) => <strong>{chunks}</strong>
  * L'etat **enregistre** de l'acces a l'espace membre (s12d), reduit a sa
  * phrase d'ouverture depuis s54 : chaque adresse active se connecte, et son
  * role au bureau comme les autres fiches de son compte s'ecrivent par
- * adresse, dans la carte « Adresses email ».
+ * adresse, dans la carte « Adresses email ». Une fiche vendue (s57, ecran A)
+ * y ajoute sa date de fin d'acces ; fermee, elle remplace la phrase
+ * d'ouverture.
  */
 function AccessState({
   name,
   account,
+  accessWindow,
 }: {
   name: string
   account: MemberProfileAccountDTO
+  accessWindow: MemberProfileDTO['accessWindow']
 }) {
   const t = useTranslations('BureauMemberProfilesPage.detail.access')
+  const opening =
+    account.status === 'open'
+      ? t.rich('open', {name, email: account.loginEmail, strong})
+      : t.rich('mailOnly', {strong})
 
   return (
     <div className="flex items-start gap-3">
@@ -508,12 +520,73 @@ function AccessState({
         className="text-primary mt-0.5 size-5 shrink-0"
         strokeWidth={1.75}
       />
-      <p className="text-[17px]">
-        {account.status === 'open'
-          ? t.rich('open', {name, email: account.loginEmail, strong})
-          : t.rich('mailOnly', {strong})}
-      </p>
+      {accessWindow ? (
+        <div className="flex flex-col gap-2 text-[17px]">
+          <AfterSaleAccess
+            name={name}
+            account={account}
+            accessWindow={accessWindow}
+            opening={opening}
+          />
+        </div>
+      ) : (
+        <p className="text-[17px]">{opening}</p>
+      )}
     </div>
+  )
+}
+
+/** Les phrases d'une fiche vendue (s57, etats A2, A3, A3-bureau et A5). */
+function AfterSaleAccess({
+  name,
+  account,
+  accessWindow,
+  opening,
+}: {
+  name: string
+  account: MemberProfileAccountDTO
+  accessWindow: NonNullable<MemberProfileDTO['accessWindow']>
+  opening: ReactNode
+}) {
+  const t = useTranslations('BureauMemberProfilesPage.detail.access')
+  const soldOn = isoToFrenchDate(accessWindow.soldOn)
+  const open = account.status === 'open'
+
+  if (accessWindow.status === 'grace') {
+    return (
+      <>
+        <p>{opening}</p>
+        <p>
+          {t.rich(open ? 'grace' : 'graceMailOnly', {
+            name,
+            soldOn,
+            openUntil: isoToFrenchDate(accessWindow.openUntil),
+            strong,
+          })}
+        </p>
+      </>
+    )
+  }
+
+  const closedSince = isoToFrenchDate(accessWindow.closedSince)
+  if (!open) {
+    return (
+      <>
+        <p>{t.rich('closedMailOnly', {name, soldOn, closedSince, strong})}</p>
+        <p>{opening}</p>
+      </>
+    )
+  }
+  return (
+    <>
+      <p>{t.rich('closed', {name, soldOn, closedSince, strong})}</p>
+      <p>{t('closedKept')}</p>
+      {account.boardRole && (
+        <p>
+          <BoardRoleBadge role={account.boardRole} /> {t('closedBoard')}
+        </p>
+      )}
+    </>
   )
 }
 
@@ -565,8 +638,16 @@ function MemberInvitation({
   return (
     <div className="flex flex-col gap-4">
       {result && <InvitationOutcome ref={resultRef} result={result} />}
-      <AccessState name={profile.name} account={profile.account} />
-      {profile.mailOnly || count === 0 ? (
+      <AccessState
+        name={profile.name}
+        account={profile.account}
+        accessWindow={profile.accessWindow}
+      />
+      {profile.accessWindow?.status === 'closed' ? (
+        <p className="text-muted-foreground text-[15px]">
+          {t('accessClosedHint')}
+        </p>
+      ) : profile.mailOnly || count === 0 ? (
         <p className="text-muted-foreground text-[15px]">{t('mailOnlyHint')}</p>
       ) : (
         <form action={formAction} className="flex flex-col gap-2">
@@ -649,7 +730,9 @@ function InvitationOutcome({
               })
             : result.status === 'deferred'
               ? t.rich('deferred', {strong})
-              : t.rich('mailOnlyRefused', {strong})}
+              : result.status === 'access_closed'
+                ? t.rich('accessClosedRefused', {strong})
+                : t.rich('mailOnlyRefused', {strong})}
         </p>
       </AlertDescription>
     </Alert>

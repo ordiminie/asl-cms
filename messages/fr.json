@@ -2297,6 +2297,13 @@
         "errors": {
           "outOfRange": "Indiquez un nombre de jours entre 1 et 30."
         }
+      },
+      "memberAccessAfterSaleMonths": {
+        "label": "Délai d’accès après la vente",
+        "help": "Nombre de mois pendant lesquels l’ancien propriétaire garde l’accès à son espace après la vente de sa dernière parcelle. Un changement s’applique tout de suite à toutes les fiches vendues, y compris aux accès déjà fermés. Par défaut : 6.",
+        "errors": {
+          "invalid": "Saisissez un nombre entier de mois supérieur à 0."
+        }
       }
     },
     "hues": {
@@ -2317,7 +2324,8 @@
       "millimeters": "mm",
       "reminderWeeks1": "semaines après l’échéance",
       "reminderWeeks2": "semaines après la première",
-      "reminderWeeks3": "semaines après la deuxième"
+      "reminderWeeks3": "semaines après la deuxième",
+      "months": "mois"
     },
     "counter": "{count} / {max}",
     "billingProviders": {
@@ -2389,6 +2397,10 @@
       "invitation": {
         "title": "Invitation des membres",
         "description": "L’email qui invite un membre à se connecter à son espace, depuis sa fiche ou lors du lancement, et le courrier envoyé à ceux qui n’ont pas d’adresse email."
+      },
+      "member_access": {
+        "title": "Accès à l’espace membre",
+        "description": "Ce qui arrive à l’espace d’un membre qui n’est plus propriétaire d’aucune parcelle de sa fiche."
       }
     },
     "submit": "Enregistrer les réglages",
@@ -3863,6 +3875,12 @@
         "board": "Membre du bureau : son adresse peut être modifiée, pas supprimée.",
         "owner": "Président(e) : son adresse peut être modifiée, pas supprimée.",
         "sharedWith": "Ce compte réunit aussi :",
+        "grace": "<strong>Accès ouvert jusqu’au {openUntil}.</strong> {name} n’est plus propriétaire depuis la vente du {soldOn} ; il voit encore ses factures et documents d’avant cette date. Ensuite, aucune adresse de cette fiche ne s’y connectera plus.",
+        "graceMailOnly": "<strong>Accès ouvert jusqu’au {openUntil}.</strong> {name} n’est plus propriétaire depuis la vente du {soldOn}. Une adresse ajoutée d’ici là ouvrira son espace jusqu’à cette date.",
+        "closed": "<strong>Accès fermé depuis le {closedSince}.</strong> {name} n’est plus propriétaire depuis la vente du {soldOn} : aucune adresse de cette fiche ne s’y connecte plus. Ses autres fiches ne sont pas touchées.",
+        "closedMailOnly": "<strong>Accès fermé depuis le {closedSince}.</strong> {name} n’est plus propriétaire depuis la vente du {soldOn}.",
+        "closedKept": "Rien n’est supprimé : ses factures et ses documents restent consultables par le bureau, plus bas sur cette fiche.",
+        "closedBoard": "Son compte garde l’accès au back-office ; cette fiche sort seulement de son espace membre.",
         "invitation": {
           "send": "Envoyer l’invitation",
           "resend": "Renvoyer l’invitation",
@@ -3872,7 +3890,9 @@
           "sent": "<strong>Invitation envoyée</strong> à {emails}.",
           "deferred": "<strong>L’invitation partira demain matin</strong> : l’association a atteint sa limite d’envois du jour. Un lien neuf sera créé au moment de l’envoi.",
           "mailOnlyHint": "Pas d’invitation possible : ce membre reçoit tout par courrier.",
+          "accessClosedHint": "Pas d’invitation possible : l’accès de cette fiche est fermé.",
           "mailOnlyRefused": "<strong>Ce membre relève du courrier.</strong> Il n’a plus d’adresse email active : ajoutez-en une pour l’inviter.",
+          "accessClosedRefused": "<strong>L’accès de cette fiche est fermé.</strong> Aucune invitation n’a été envoyée.",
           "failed": "<strong>L’invitation n’est pas partie.</strong> Aucun email n’a été envoyé ; réessayez dans quelques minutes.",
           "partial": "<strong>L’invitation n’est partie qu’à {emails}.</strong> Réessayez pour les autres adresses."
         }

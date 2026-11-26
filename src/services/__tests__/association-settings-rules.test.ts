@@ -48,6 +48,7 @@ import {
   getInvitationText,
   getLetterAddressOffset,
   getMagicLinkDailyRequestLimit,
+  getMemberAccessAfterSaleMonths,
   getMemberEmailConfirmationDays,
   getSettingsForPage,
   getStatutoryTemplateIds,
@@ -61,6 +62,7 @@ import {
   LETTER_ADDRESS_OFFSET_X_SETTING_KEY,
   LETTER_ADDRESS_OFFSET_Y_SETTING_KEY,
   MAGIC_LINK_REQUESTS_PER_DAY_SETTING_KEY,
+  MEMBER_ACCESS_AFTER_SALE_MONTHS_SETTING_KEY,
   MEMBER_DEFAULT_LAND_CITY_SETTING_KEY,
   MEMBER_DEFAULT_LAND_POSTAL_CODE_SETTING_KEY,
   MEMBER_EMAIL_CONFIRMATION_DAYS_SETTING_KEY,
@@ -295,6 +297,12 @@ describe('registre de production', () => {
       },
       {
         key: INVITATION_LINK_DAYS_SETTING_KEY,
+        type: 'number',
+        required: false,
+        page: 'settings',
+      },
+      {
+        key: MEMBER_ACCESS_AFTER_SALE_MONTHS_SETTING_KEY,
         type: 'number',
         required: false,
         page: 'settings',
@@ -934,6 +942,7 @@ describe('registre de production', () => {
       INVITATION_TEXT_SETTING_KEY,
       INVITATION_LETTER_TEXT_SETTING_KEY,
       INVITATION_LINK_DAYS_SETTING_KEY,
+      MEMBER_ACCESS_AFTER_SALE_MONTHS_SETTING_KEY,
     ])
     expect(
       getSettingsForPage(ASSOCIATION_SETTINGS_REGISTRY, 'identity').map(
@@ -1325,6 +1334,7 @@ describe('registre — carte « Referencement » (s11)', () => {
       INVITATION_TEXT_SETTING_KEY,
       INVITATION_LETTER_TEXT_SETTING_KEY,
       INVITATION_LINK_DAYS_SETTING_KEY,
+      MEMBER_ACCESS_AFTER_SALE_MONTHS_SETTING_KEY,
     ])
   })
 
@@ -1501,7 +1511,7 @@ describe('limite d’envoi et réserve de connexion (s52, ADR 053)', () => {
     expect(parseSettingValue(reserve(), '0')).toMatchObject({valid: true})
   })
 
-  it('seules la limite, la réserve, la nature des envois (s27b) et la source des factures (s19) sont réservées au SuperAdmin', () => {
+  it('seules la limite, la réserve, la nature des envois (s27b), la source des factures (s19) et le délai d’accès après la vente (s57) sont réservées au SuperAdmin', () => {
     expect(
       ASSOCIATION_SETTINGS_REGISTRY.filter(isSuperAdminOnlySetting).map(
         ({key}) => key
@@ -1511,6 +1521,7 @@ describe('limite d’envoi et réserve de connexion (s52, ADR 053)', () => {
       EMAIL_LOGIN_RESERVE_SETTING_KEY,
       ...CAMPAIGN_SEND_KINDS.map(campaignNatureSettingKeyOf),
       BILLING_PROVIDER_SETTING_KEY,
+      MEMBER_ACCESS_AFTER_SALE_MONTHS_SETTING_KEY,
     ])
   })
 
@@ -2235,5 +2246,87 @@ describe('lancement des invitations — réglages (s42b, ADR 072)', () => {
       {title: string; description: string}
     >
     expect(cards.invitation.description).toContain('lancement')
+  })
+})
+
+describe('accès après la vente — réglage (s57, ADR 075)', () => {
+  const months = definitionOf(
+    ASSOCIATION_SETTINGS_REGISTRY,
+    MEMBER_ACCESS_AFTER_SALE_MONTHS_SETTING_KEY
+  )
+
+  it('un entier de 1 à 60 mois, 6 par défaut, carte « Accès à l’espace membre »', () => {
+    expect(MEMBER_ACCESS_AFTER_SALE_MONTHS_SETTING_KEY).toBe(
+      'member.access_after_sale_months'
+    )
+    expect(months).toMatchObject({
+      type: 'number',
+      required: false,
+      integer: true,
+      min: 1,
+      max: 60,
+      default: {value: '6'},
+      unitKey: 'units.months',
+      page: 'settings',
+      section: 'member_access',
+      readOnlyHelpKey: 'campaignNature.superAdminOnly',
+    })
+  })
+
+  it('refuse 0, un négatif, un décimal, du texte et plus de 60 ; accepte 1 et 60', () => {
+    for (const raw of ['0', '-1', '1,5', '1.5', 'six']) {
+      expect(parseSettingValue(months, raw), raw).toMatchObject({valid: false})
+    }
+    expect(parseSettingValue(months, '61')).toMatchObject({
+      valid: false,
+      error: {code: 'aboveMax', max: 60},
+    })
+    expect(parseSettingValue(months, '1')).toMatchObject({valid: true})
+    expect(parseSettingValue(months, '60')).toMatchObject({valid: true})
+  })
+
+  it('un refus de saisie dit « un nombre entier de mois », le maximum garde le message commun', () => {
+    expect(months.errorMessageKeys).toEqual({
+      invalidNumber: 'fields.memberAccessAfterSaleMonths.errors.invalid',
+      belowMin: 'fields.memberAccessAfterSaleMonths.errors.invalid',
+    })
+    const fields = fr.AssociationSettings.fields as unknown as Record<
+      string,
+      {label: string; help: string; errors?: Record<string, string>}
+    >
+    expect(fields.memberAccessAfterSaleMonths.errors?.invalid).toBe(
+      'Saisissez un nombre entier de mois supérieur à 0.'
+    )
+    expect(fields.memberAccessAfterSaleMonths.label).toBe(
+      'Délai d’accès après la vente'
+    )
+    expect(fields.memberAccessAfterSaleMonths.help).toContain('Par défaut : 6.')
+    const units = fr.AssociationSettings.units as Record<string, string>
+    expect(units.months).toBe('mois')
+    const cards = fr.BureauSettingsPage.cards as unknown as Record<
+      string,
+      {title: string; description: string}
+    >
+    expect(cards.member_access.title).toBe('Accès à l’espace membre')
+    expect(cards.member_access.description).toEqual(expect.any(String))
+  })
+
+  it('est réservé au SuperAdmin', () => {
+    expect(isSuperAdminOnlySetting(months)).toBe(true)
+  })
+
+  it('accesseur : absent → 6, valeur enregistrée sinon', () => {
+    expect(
+      getMemberAccessAfterSaleMonths(
+        resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, [])
+      )
+    ).toBe(6)
+    expect(
+      getMemberAccessAfterSaleMonths(
+        resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, [
+          {key: MEMBER_ACCESS_AFTER_SALE_MONTHS_SETTING_KEY, value: '12'},
+        ])
+      )
+    ).toBe(12)
   })
 })

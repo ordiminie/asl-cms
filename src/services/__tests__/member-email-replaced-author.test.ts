@@ -53,7 +53,10 @@ vi.mock('@/db/repositories/member-profile-repository', () => ({
   getMemberProfileByIdDao: vi.fn(),
   getMemberProfilesByEmailDao: vi.fn(async () => []),
   getMemberProfilesByUserIdDao: vi.fn(async (_org: string, userId: string) =>
-    [...(store.links.get(userId) ?? [])].map((id) => ({id}))
+    [...(store.links.get(userId) ?? [])].map((id) => ({
+      id,
+      currentParcelNumbers: [],
+    }))
   ),
   linkMemberProfileAccountDao: vi.fn(
     async ({
@@ -75,6 +78,12 @@ vi.mock('@/db/repositories/member-profile-repository', () => ({
     }
   ),
   getUnlinkedMemberProfilesWithEmailDao: vi.fn(),
+}))
+vi.mock('@/db/repositories/parcel-ownership-repository', () => ({
+  listOwnershipPeriodsByProfilesDao: vi.fn(async () => []),
+}))
+vi.mock('@/db/repositories/organization-setting-repository', () => ({
+  getOrganizationSettingsDao: vi.fn(async () => []),
 }))
 vi.mock('@/db/repositories/user-repository', () => ({
   createUserIfAbsentTxnDao: vi.fn(),

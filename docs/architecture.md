@@ -593,6 +593,18 @@ returning count`, sans verrou applicatif) ; le changement de jour remet le compt
   de chaque mode, rendue comme celle d'un compte inconnu. **Fermé par défaut** : contexte nul, en-têtes
   absents ou domaine sans association refusent tout compte sauf le SuperAdmin. Toute action qui ouvre une
   session par `auth.api.*` doit donc transmettre les `headers` de la requête.
+- **Accès après la vente** (s57, [ADR 075](decisions/075-acces-apres-la-vente-regle-par-fiche-calculee-a-chaque-lecture.md),
+  complète l'ADR 038) : `canOpenSessionOn(user, organization, {impersonated})` est **asynchrone** et reste la
+  règle unique de ses quatre appelants (`getAuthUser`, hook `session.create.before`, `sendMagicLink`,
+  `issueInvitation`). SuperAdmin → oui ; pas de ligne `member` → non ; session ouverte à la place d'un compte
+  (s48, `impersonatedBy`, reçu par le hook) → oui ; rôle `board` / `owner` → oui ; sinon la façade
+  `hasMemberSpaceAccessService`, chargée par `import()`, décide : oui sans fiche reliée ou si une fiche reliée
+  est hors `closed`. Erreur de lecture → refus journalisé. L'état d'une fiche (`out_of_rule`, `owner`,
+  `grace`, `closed`) est recalculé à chaque lecture depuis `parcel_ownership` et le paramètre
+  `member.access_after_sale_months` (mois, seed 6, SuperAdmin seul, carte « Accès à l'espace membre ») :
+  rien n'est stocké, rien n'est supprimé. Côté membre, `getMyAccessibleProfiles` remplace « mes fiches »
+  dans tous les lecteurs et écrivains (une fiche `closed` en sort ; une fiche `grace` ne montre que les
+  factures et documents d'avant la vente) ; le bureau garde `getMyMemberProfiles` et voit tout.
 - **Inscription fermée** (s46b) : `disableSignUp` sur le mot de passe, sur Google (configuré, sans écran)
   et sur le lien magique ; plus de `/register`, et le webhook Stripe ne crée plus aucun compte.
 - **Destination après connexion** (s46b) : `postLoginPathOf` rend une **page finale** (`POST_LOGIN_PATHS`) :

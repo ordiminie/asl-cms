@@ -20,6 +20,9 @@
  * objet et texte fictifs, nature statutaire. Marketing Pro ne l'active pas.
  * La duree du lien d'invitation (s42a, arbitrage du 24/11/2026) est une
  * valeur de seed du premier tenant : 7 jours.
+ * Le delai d'acces apres la vente (s57, ADR 075) est une valeur de seed du
+ * premier tenant : 6 mois, en attente de l'avis du conseil RGPD. Marketing
+ * Pro n'en declare aucun (defaut du registre).
  */
 export type TestTenantSetting = {
   organizationSlug: string
@@ -47,6 +50,11 @@ export const TEST_TENANT_SETTINGS: readonly TestTenantSetting[] = [
     organizationSlug: 'techcorp-solutions',
     key: 'invitation.link_days',
     value: '7',
+  },
+  {
+    organizationSlug: 'techcorp-solutions',
+    key: 'member.access_after_sale_months',
+    value: '6',
   },
   {
     organizationSlug: 'techcorp-solutions',

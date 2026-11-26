@@ -105,6 +105,7 @@ const profile = (
   incomplete: true,
   emails: [],
   account: {status: 'mail_only'},
+  accessWindow: null,
   pennylaneCustomerId: null,
   roleCard: {
     reading: 'no_account',
@@ -1086,6 +1087,17 @@ describe('inviteMemberProfileAction (s42a, écran 2)', () => {
 
     expect(await inviteMemberProfileAction(undefined, inviteForm())).toEqual({
       status: 'mail_only',
+    })
+    expect(revalidatePath).not.toHaveBeenCalled()
+  })
+
+  it('rend le refus d’une fiche fermée après la vente sans revalider (s57)', async () => {
+    vi.mocked(inviteMemberProfileService).mockResolvedValue({
+      status: 'access_closed',
+    })
+
+    expect(await inviteMemberProfileAction(undefined, inviteForm())).toEqual({
+      status: 'access_closed',
     })
     expect(revalidatePath).not.toHaveBeenCalled()
   })

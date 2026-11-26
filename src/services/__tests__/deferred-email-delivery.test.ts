@@ -92,6 +92,9 @@ vi.mock('@/lib/better-auth/invitation-link', () => ({
 vi.mock('@/db/repositories/member-profile-repository', () => ({
   getMemberProfilesByUserIdDao: vi.fn(),
 }))
+vi.mock('@/db/repositories/parcel-ownership-repository', () => ({
+  listOwnershipPeriodsByProfilesDao: vi.fn(async () => []),
+}))
 vi.mock('@/db/repositories/organization-repository', () => ({
   getOrganizationByIdDao: vi.fn(),
   getUserOrganizationDao: vi.fn(),
@@ -581,8 +584,8 @@ describe('deliverDeferredEmailService — lien de confirmation reporté (s54, re
       pending({id: OTHER_PENDING_ID, memberProfileId: 'profile-2'}),
     ] as never)
     vi.mocked(getMemberProfilesByUserIdDao).mockResolvedValue([
-      {id: 'profile-1'},
-      {id: 'profile-2'},
+      {id: 'profile-1', currentParcelNumbers: []},
+      {id: 'profile-2', currentParcelNumbers: []},
     ] as never)
   })
 
@@ -827,7 +830,7 @@ describe('deliverDeferredEmailService — lien reporté refusé puis renvoyé (s
       return true
     })
     vi.mocked(getMemberProfilesByUserIdDao).mockResolvedValue([
-      {id: 'profile-1'},
+      {id: 'profile-1', currentParcelNumbers: []},
     ] as never)
   })
 

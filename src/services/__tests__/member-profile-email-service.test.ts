@@ -40,6 +40,12 @@ vi.mock('@/db/repositories/user-repository', () => ({
   createUserIfAbsentTxnDao: vi.fn(),
   getUserByEmailDao: vi.fn(),
 }))
+vi.mock('@/db/repositories/parcel-ownership-repository', () => ({
+  listOwnershipPeriodsByProfilesDao: vi.fn(async () => []),
+}))
+vi.mock('@/db/repositories/organization-setting-repository', () => ({
+  getOrganizationSettingsDao: vi.fn(async () => []),
+}))
 vi.mock('@/db/repositories/member-role-event-repository', () => ({
   insertMemberRoleEventDao: vi.fn(),
 }))

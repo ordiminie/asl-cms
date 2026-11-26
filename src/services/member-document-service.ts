@@ -31,8 +31,12 @@ import {AuthorizationError} from './errors/authorization-error'
 import {NotFoundError} from './errors/not-found-error'
 import {UnauthenticatedError} from './errors/unauthenticated-error'
 import {ValidationParsedZodError} from './errors/validation-error'
-import {getMyMemberProfiles} from './member-account-service'
+import {
+  type AccessibleProfile,
+  getMyAccessibleProfiles,
+} from './member-profile-access-service'
 import {referenceOfBatchFileName} from './rules/member-document-batch-rules'
+import {isBeforeSale} from './rules/member-profile-access-rules'
 import {
   OwnershipPeriod,
   parcelsOwnedOn,
@@ -509,8 +513,28 @@ const terrainOfDocument = (
 }
 
 /**
+ * Les documents que le membre voit (s57, ADR 075 §5) : ceux de ses fiches
+ * accessibles ; sur une fiche vendue encore dans son delai, ceux dates
+ * d'avant la vente seulement.
+ */
+const visibleDocumentsOf = <
+  Row extends {memberProfileId: string; documentDate: string},
+>(
+  rows: readonly Row[],
+  profiles: readonly AccessibleProfile[]
+): Row[] => {
+  const accessById = new Map(profiles.map(({id, access}) => [id, access]))
+  return rows.filter((row) => {
+    const access = accessById.get(row.memberProfileId)
+    return access !== undefined && isBeforeSale(row.documentDate, access)
+  })
+}
+
+/**
  * « Mes documents » du compte connecte (criteres 1, 3 et 5) : les documents
- * de **toutes** les fiches reliees au compte, et d'elles seules, chacun avec
+ * de **toutes** les fiches accessibles reliees au compte (s57 : une fiche
+ * fermee en sort, une fiche en delai ne montre que les documents d'avant la
+ * vente), et d'elles seules, chacun avec
  * le terrain de sa fiche a la date du document, date decroissante. La
  * lecture suit la **possession** (ADR 073 §6) : aucune action du registre.
  * Un compte sans fiche n'a pas de dossier : rien.
@@ -529,11 +553,14 @@ export const getMyMemberDocumentsService = async (
   }
 
   return withTenant(parsed.data, async () => {
-    const profiles = await getMyMemberProfiles(parsed.data, authUser.id)
+    const profiles = await getMyAccessibleProfiles(parsed.data, authUser.id)
     if (profiles.length === 0) return []
 
     const profileIds = profiles.map((profile) => profile.id)
-    const rows = await listMemberDocumentsByProfilesDao(profileIds)
+    const rows = visibleDocumentsOf(
+      await listMemberDocumentsByProfilesDao(profileIds),
+      profiles
+    )
     const periods =
       rows.length > 0 ? await listOwnershipPeriodsByProfilesDao(profileIds) : []
     const names = new Map(profiles.map(({id, name}) => [id, name]))
@@ -560,8 +587,10 @@ export const getMyMemberDocumentsService = async (
  * Trois controles **independants**, chacun suffisant a refuser (ADR 073 §4) :
  *
  * 1. la ligne est relue sous le tenant du domaine (RLS) ;
- * 2. possession : la fiche de la ligne est l'une des fiches du compte, ou
- *    l'utilisateur a `member.document.manage` dans cette association ;
+ * 2. possession : la fiche de la ligne est l'une des fiches accessibles du
+ *    compte et le document y est visible (avant la vente pour une fiche en
+ *    delai, s57), ou l'utilisateur a `member.document.manage` dans cette
+ *    association ;
  * 3. coherence cle ↔ fiche : la cle lue en base vit dans le dossier de
  *    **cette** fiche, et le stockage est ouvert sur ce dossier.
  *
@@ -595,8 +624,8 @@ export const readMemberDocumentFileService = async (
     ) {
       return found
     }
-    const profiles = await getMyMemberProfiles(orgId, authUser.id)
-    return profiles.some((profile) => profile.id === found.memberProfileId)
+    const profiles = await getMyAccessibleProfiles(orgId, authUser.id)
+    return visibleDocumentsOf([found], profiles).length === 1
       ? found
       : undefined
   })

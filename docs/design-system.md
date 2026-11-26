@@ -661,6 +661,11 @@ enregistré : facultatif. ». Modifiable par le SuperAdmin seul ; le bureau la l
 (forme s52), avec l'aide propre « Réglé par l'équipe technique de la plateforme, après avis du
 conseil RGPD : vous ne pouvez pas le modifier. ».
 
+**Carte « Accès à l'espace membre »** (s57, gap 1 du design) — section du registre `member_access`,
+juste après « Invitation des membres », même gabarit généré. Un réglage « Nombre » (délai d'accès après
+la vente, unité « mois ») ; modifiable par le SuperAdmin seul, lu en lecture seule par le bureau avec la
+même aide que « Nature des envois ».
+
 ### 3.2 États — vide, chargement, erreur, succès
 
 | État           | Forme imposée                                                                                                                                                                                                                   |

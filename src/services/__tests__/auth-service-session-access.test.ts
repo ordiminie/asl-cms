@@ -14,6 +14,9 @@ vi.mock('next/headers', () => ({
 vi.mock('@/lib/better-auth/auth', () => ({
   auth: {api: {getSession: vi.fn()}},
 }))
+vi.mock('@/services/facades/member-profile-access-service-facade', () => ({
+  hasMemberSpaceAccessService: vi.fn(),
+}))
 vi.mock('@/lib/better-auth/association-membership', async (importOriginal) => ({
   ...(await importOriginal<
     typeof import('@/lib/better-auth/association-membership')
@@ -23,6 +26,7 @@ vi.mock('@/lib/better-auth/association-membership', async (importOriginal) => ({
 
 import {organizationOfRequest} from '@/lib/better-auth/association-membership'
 import {auth} from '@/lib/better-auth/auth'
+import {hasMemberSpaceAccessService} from '@/services/facades/member-profile-access-service-facade'
 
 import type * as AuthService from '../authentication/auth-service'
 import {Organization} from '../types/domain/organization-types'
@@ -54,12 +58,14 @@ const memberOf = (organizationId: string): User => ({
   ],
 })
 
-const sessionOf = (user: User) => ({session: {userId: user.id}, user}) as never
+const sessionOf = (user: User, impersonatedBy: string | null = null) =>
+  ({session: {userId: user.id, impersonatedBy}, user}) as never
 
 beforeEach(() => {
   vi.clearAllMocks()
   requestHeaders.current = new Headers({host: 'clos-fleuri.test'})
   vi.mocked(organizationOfRequest).mockResolvedValue(association)
+  vi.mocked(hasMemberSpaceAccessService).mockResolvedValue(true)
 })
 
 describe('getAuthUser — accès vérifié à chaque lecture (ADR 038)', () => {
@@ -101,5 +107,31 @@ describe('getAuthUser — accès vérifié à chaque lecture (ADR 038)', () => {
     vi.mocked(auth.api.getSession).mockResolvedValue(null)
 
     expect(await getAuthUser()).toBeUndefined()
+  })
+})
+
+describe('getAuthUser — accès après la vente (s57, ADR 075 §3)', () => {
+  it('refuse un membre dont toutes les fiches sont fermées, même avec une session ouverte', async () => {
+    vi.mocked(auth.api.getSession).mockResolvedValue(
+      sessionOf(memberOf(ORG_ID))
+    )
+    vi.mocked(hasMemberSpaceAccessService).mockResolvedValue(false)
+
+    expect(await getAuthUser()).toBeUndefined()
+    expect(hasMemberSpaceAccessService).toHaveBeenCalledWith(
+      ORG_ID,
+      userTest.id
+    )
+  })
+
+  it('garde une session ouverte à la place du compte fermé (s48)', async () => {
+    const member = memberOf(ORG_ID)
+    vi.mocked(auth.api.getSession).mockResolvedValue(
+      sessionOf(member, userTestSuperAdmin.id)
+    )
+    vi.mocked(hasMemberSpaceAccessService).mockResolvedValue(false)
+
+    expect(await getAuthUser()).toEqual(member)
+    expect(hasMemberSpaceAccessService).not.toHaveBeenCalled()
   })
 })

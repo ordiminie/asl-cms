@@ -109,7 +109,7 @@ describe('getMemberProfilesByUserIdDao — « mes fiches »', () => {
 
 describe('updateMyMemberProfilesContactDao', () => {
   it('écrit téléphone et adresse de toutes les fiches du compte, jamais l’email', async () => {
-    await updateMyMemberProfilesContactDao(ORG_ID, USER_ID, {
+    await updateMyMemberProfilesContactDao(ORG_ID, USER_ID, [PROFILE_ID], {
       phone: '06 12 34 56 78',
       homeAddressLine: null,
       homeAddressComplement: null,
@@ -126,8 +126,38 @@ describe('updateMyMemberProfilesContactDao', () => {
     expect(params).toEqual(expect.arrayContaining([ORG_ID, USER_ID]))
   })
 
+  it('n’écrit que les fiches données, toujours bornées par le lien au compte (s57)', async () => {
+    await updateMyMemberProfilesContactDao(ORG_ID, USER_ID, [PROFILE_ID], {
+      phone: null,
+      homeAddressLine: null,
+      homeAddressComplement: null,
+      homePostalCode: null,
+      homeCity: null,
+    })
+
+    const [{sql, params}] = sent
+    expect(sql).toContain('"member_profile"."id" in ($')
+    expect(sql).toContain(
+      '"member_profile"."id" in (select "member_profile_id" from "member_profile_account"'
+    )
+    expect(params).toEqual(expect.arrayContaining([PROFILE_ID, USER_ID]))
+  })
+
+  it('aucune fiche donnée : rien n’est écrit', async () => {
+    expect(
+      await updateMyMemberProfilesContactDao(ORG_ID, USER_ID, [], {
+        phone: null,
+        homeAddressLine: null,
+        homeAddressComplement: null,
+        homePostalCode: null,
+        homeCity: null,
+      })
+    ).toEqual([])
+    expect(sent).toHaveLength(0)
+  })
+
   it('n’écrit que le domicile : jamais le terrain ni le nom de l’entreprise, propres à chaque fiche (s55)', async () => {
-    await updateMyMemberProfilesContactDao(ORG_ID, USER_ID, {
+    await updateMyMemberProfilesContactDao(ORG_ID, USER_ID, [PROFILE_ID], {
       phone: null,
       homeAddressLine: '4 chemin des Oliviers',
       homeAddressComplement: null,

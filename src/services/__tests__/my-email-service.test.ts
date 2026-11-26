@@ -24,6 +24,9 @@ vi.mock('@/db/repositories/member-profile-repository', () => ({
 vi.mock('@/db/repositories/organization-repository', () => ({
   getOrganizationByIdDao: vi.fn(),
 }))
+vi.mock('@/db/repositories/parcel-ownership-repository', () => ({
+  listOwnershipPeriodsByProfilesDao: vi.fn(),
+}))
 vi.mock('@/services/association-settings-service', async () => {
   const settings =
     await import('@/services/types/domain/association-settings-types')
@@ -49,6 +52,7 @@ import {
 } from '@/db/repositories/member-profile-email-repository'
 import {getMemberProfilesByUserIdDao} from '@/db/repositories/member-profile-repository'
 import {getOrganizationByIdDao} from '@/db/repositories/organization-repository'
+import {listOwnershipPeriodsByProfilesDao} from '@/db/repositories/parcel-ownership-repository'
 import {sendMemberEmailConfirmationEmailService} from '@/services/email-service'
 
 import {AuthorizationError} from '../errors/authorization-error'
@@ -148,6 +152,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   setupAuthUserMocked(claire)
   givenProfiles(LOT_21)
+  vi.mocked(listOwnershipPeriodsByProfilesDao).mockResolvedValue([])
   givenEmails(jeanEmail, claireEmail, marcPending)
   vi.mocked(getActiveEmailCarriersDao).mockResolvedValue([])
   vi.mocked(getMemberProfileEmailsByTokenHashDao).mockResolvedValue([
@@ -501,5 +506,41 @@ describe('[MEMBRE] correctMyPendingEmailService — attentes échues purgées d�
     const [written] = vi.mocked(updateMemberProfileEmailDao).mock
       .invocationCallOrder
     expect(purged).toBeLessThan(written)
+  })
+})
+
+describe('[MEMBRE] accès après la vente — une fiche fermée ne reçoit plus d’adresse (s57, ADR 075 §4)', () => {
+  beforeEach(() => {
+    givenProfiles(LOT_21, LOT_40)
+    vi.mocked(listOwnershipPeriodsByProfilesDao).mockResolvedValue([
+      {
+        memberProfileId: LOT_21,
+        number: '21',
+        meterNumber: null,
+        startsOn: '2011-04-02',
+        endsOn: null,
+      },
+      {
+        memberProfileId: LOT_40,
+        number: '40',
+        meterNumber: null,
+        startsOn: '2003-05-14',
+        endsOn: '2019-10-01',
+      },
+    ])
+  })
+
+  it('l’adresse ajoutée n’est écrite que sur la fiche encore ouverte', async () => {
+    await addMyEmailService({
+      organizationId: ORG_ID,
+      email: 'sophie@exemple.fr',
+    })
+
+    expect(
+      vi
+        .mocked(insertMemberProfileEmailDao)
+        .mock.calls.map(([input]) => input.memberProfileId)
+    ).toEqual([LOT_21])
+    expect(getMemberProfileEmailsDao).toHaveBeenCalledWith([LOT_21])
   })
 })

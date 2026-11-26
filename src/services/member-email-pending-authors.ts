@@ -1,8 +1,8 @@
 import 'server-only'
 
-import {getMemberProfilesByUserIdDao} from '@/db/repositories/member-profile-repository'
 import {getUserOrganizationDao} from '@/db/repositories/organization-repository'
 
+import {getMyAccessibleProfiles} from './member-profile-access-service'
 import {pendingRowsStillAuthored} from './rules/member-email-rules'
 
 type PendingRowOfAuthor = {
@@ -13,7 +13,8 @@ type PendingRowOfAuthor = {
 /**
  * Les fiches auxquelles un auteur est encore relie, aucune s'il n'a plus de
  * ligne `member` dans l'association (revue s54 round 4, MA-r4) : un lien
- * fiche ↔ compte survit au retrait de la ligne par le SuperAdmin.
+ * fiche ↔ compte survit au retrait de la ligne par le SuperAdmin. Une fiche
+ * fermee apres la vente n'en fait plus partie (s57, ADR 075 §4).
  */
 const profileIdsOfMemberAuthor = async (
   organizationId: string,
@@ -22,10 +23,7 @@ const profileIdsOfMemberAuthor = async (
   if (!(await getUserOrganizationDao(authorUserId, organizationId))) {
     return new Set()
   }
-  const profiles = await getMemberProfilesByUserIdDao(
-    organizationId,
-    authorUserId
-  )
+  const profiles = await getMyAccessibleProfiles(organizationId, authorUserId)
   return new Set(profiles.map((profile) => profile.id))
 }
 

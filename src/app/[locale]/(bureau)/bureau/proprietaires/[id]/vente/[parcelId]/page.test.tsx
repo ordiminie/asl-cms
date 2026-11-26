@@ -97,6 +97,7 @@ beforeEach(() => {
     incomplete: true,
     emails: [],
     account: {status: 'mail_only'},
+    accessWindow: null,
     pennylaneCustomerId: null,
     roleCard: {
       reading: 'no_account',

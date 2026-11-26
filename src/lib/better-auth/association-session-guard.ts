@@ -21,13 +21,16 @@ type SessionRequestContext = {
 /**
  * Le point de controle unique de la connexion (s46b, ADR 034) : toute creation
  * de session, quel que soit le mode, n'aboutit que pour le SuperAdmin ou pour
- * un membre de l'association du domaine appele. Contexte nul, en-tetes
+ * un membre de l'association du domaine appele qui garde l'espace membre
+ * (ADR 075 §3 ; une session ouverte a sa place par le SuperAdmin, s48, passe
+ * toujours : le plugin `admin()` pose `impersonatedBy` sur la session creee,
+ * que ce hook recoit). Contexte nul, en-tetes
  * absents, domaine sans association : refus (ferme par defaut). Le refus est un
  * `false`, pour que chaque mode rende son erreur generique, celle d'un compte
  * inconnu.
  */
 const openSessionOnRequestDomain = async (
-  session: {userId: string},
+  session: {userId: string; impersonatedBy?: string | null},
   context: SessionRequestContext
 ): Promise<boolean | void> => {
   const user = await getUserByIdDao(session.userId)
@@ -35,7 +38,10 @@ const openSessionOnRequestDomain = async (
 
   const headers = context?.headers ?? context?.request?.headers
   const organization = await organizationOfRequest(requestHostOf(headers))
-  if (!canOpenSessionOn(user, organization)) return false
+  const impersonated = Boolean(session.impersonatedBy)
+  if (!(await canOpenSessionOn(user, organization, {impersonated}))) {
+    return false
+  }
 }
 
 /** Ce que le hook lit de la session creee. */

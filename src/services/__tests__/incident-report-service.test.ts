@@ -4,11 +4,12 @@ const scope = vi.hoisted(() => ({current: undefined as string | undefined}))
 
 vi.mock('@/db/tenant-scope', () => ({
   withTenant: vi.fn(async (organizationId: string, callback: () => unknown) => {
+    const outer = scope.current
     scope.current = organizationId
     try {
       return await callback()
     } finally {
-      scope.current = undefined
+      scope.current = outer
     }
   }),
 }))
@@ -24,6 +25,9 @@ vi.mock('@/db/repositories/incident-report-repository', () => ({
 }))
 vi.mock('@/db/repositories/member-profile-repository', () => ({
   getMemberProfilesByUserIdDao: vi.fn(),
+}))
+vi.mock('@/db/repositories/parcel-ownership-repository', () => ({
+  listOwnershipPeriodsByProfilesDao: vi.fn(),
 }))
 vi.mock('@/db/repositories/association-category-repository', () => ({
   listActiveCategoriesDao: vi.fn(),
@@ -56,6 +60,7 @@ import {
 } from '@/db/repositories/incident-report-repository'
 import {getMemberProfilesByUserIdDao} from '@/db/repositories/member-profile-repository'
 import * as organizationRepository from '@/db/repositories/organization-repository'
+import {listOwnershipPeriodsByProfilesDao} from '@/db/repositories/parcel-ownership-repository'
 import * as userRepository from '@/db/repositories/user-repository'
 import {EmailTransportError} from '@/lib/emails/transport/email-transport'
 import {logger} from '@/lib/logger'
@@ -160,6 +165,7 @@ const writeDaos = () => [
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.mocked(listOwnershipPeriodsByProfilesDao).mockResolvedValue([])
   scope.current = undefined
   vi.mocked(listActiveCategoriesDao).mockResolvedValue([categoryRow()])
   vi.mocked(createIncidentReportTxnDao).mockResolvedValue(reportRow() as never)
@@ -1175,5 +1181,56 @@ describe('[ORGANIZATION MEMBER] signalements d’un compte à deux fiches (s53)'
       PROFILE_ID,
       SECOND_PROFILE_ID,
     ])
+  })
+})
+
+describe('[ORGANIZATION MEMBER] accès après la vente — une fiche fermée n’est jamais la « première fiche » (s57, ADR 075 §4)', () => {
+  const SOLD_ID = '00000000-0000-4000-8000-000000000001'
+
+  beforeEach(() => {
+    setupAuthUserMocked(withRole(UserOrganizationRoleConst.MEMBER))
+    vi.mocked(getMemberProfilesByUserIdDao).mockResolvedValue([
+      {...profileRow(), id: SOLD_ID, currentParcelNumbers: []},
+      {...profileRow(), currentParcelNumbers: []},
+    ] as never)
+    vi.mocked(listOwnershipPeriodsByProfilesDao).mockResolvedValue([
+      {
+        memberProfileId: SOLD_ID,
+        number: '9',
+        meterNumber: null,
+        startsOn: '2003-05-14',
+        endsOn: '2019-10-01',
+      },
+    ])
+    vi.mocked(createIncidentReportTxnDao).mockResolvedValue(
+      reportRow({memberId: PROFILE_ID}) as never
+    )
+  })
+
+  it('le signalement est rattaché à la fiche encore ouverte', async () => {
+    await createMyIncidentReportService(submission())
+
+    expect(createIncidentReportTxnDao).toHaveBeenCalledWith(
+      expect.objectContaining({memberId: PROFILE_ID})
+    )
+  })
+
+  it('« Mes signalements » ne lit pas la fiche fermée', async () => {
+    vi.mocked(getMyIncidentReportsDao).mockResolvedValue([])
+
+    await getMyIncidentReportsService(ORG_ID)
+
+    expect(getMyIncidentReportsDao).toHaveBeenCalledWith([PROFILE_ID])
+  })
+
+  it('seule une fiche fermée : `not_found`, rien n’est écrit', async () => {
+    vi.mocked(getMemberProfilesByUserIdDao).mockResolvedValue([
+      {...profileRow(), id: SOLD_ID, currentParcelNumbers: []},
+    ] as never)
+
+    await expect(createMyIncidentReportService(submission())).resolves.toEqual({
+      status: 'not_found',
+    })
+    expect(createIncidentReportTxnDao).not.toHaveBeenCalled()
   })
 })
