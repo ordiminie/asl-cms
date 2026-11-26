@@ -46,6 +46,7 @@ const DOCUMENT_TITLE = `${MARKER} convocation AG`
 const LOT_TITLE = `${MARKER} lot`
 const GROUP_NAME = `${MARKER} groupe`
 const DOCUMENT_DATE = '2026-11-25'
+const DOCUMENT_FRENCH_DATE = '25/11/2026'
 const DOCUMENT_FILE_NAME = 'document-25-11-2026.pdf'
 
 test.use({locale: 'fr-FR'})
@@ -260,6 +261,7 @@ test('critère 2 — le document d’une fiche du seed est produit et téléchar
     )
     await board.getByRole('combobox', {name: 'Modèle'}).click()
     await board.getByRole('option', {name: TEMPLATE_NAME}).click()
+    await fillDocumentDate(board)
     const download = board.waitForEvent('download')
     await board.getByRole('button', {name: 'Télécharger le PDF'}).click()
     expect((await download).suggestedFilename()).toBe(DOCUMENT_FILE_NAME)
@@ -284,6 +286,7 @@ test('critère 2 — case cochée : le document est déposé sur la fiche, servi
     )
     await board.getByRole('combobox', {name: 'Modèle'}).click()
     await board.getByRole('option', {name: TEMPLATE_NAME}).click()
+    await fillDocumentDate(board)
     await board
       .getByRole('checkbox', {
         name: 'Déposer aussi dans le dossier de la fiche',
@@ -403,3 +406,9 @@ test('critère 5 — les modèles de A ne sont jamais visibles de B', async ({
     await ownerB.context().close()
   }
 })
+
+async function fillDocumentDate(page: Page) {
+  const date = page.getByLabel('Date du document', {exact: true})
+  await date.fill(DOCUMENT_FRENCH_DATE)
+  await expect(date).toHaveValue(DOCUMENT_FRENCH_DATE)
+}
