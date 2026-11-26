@@ -1,98 +1,99 @@
-# Revue : story s56-import-annuel-coordonnees (tour 2)
+# Revue de la story s56-import-annuel-coordonnees (tour 3)
 
-> Revue en contexte neuf. Chaque problème est classé critique, majeur ou mineur.
-> Diff jugé : `git diff main...feature/s56-import-annuel-coordonnees`. Il compte deux commits : fdd11e09 (la story) et 69cab095 (les correctifs du tour 1). Seul le contenu commité est jugé : `docs/architecture.md` et `docs/logs/`, non commités, sont ignorés.
+> J'ai fait cette revue en contexte neuf et classé chaque problème en critique, majeur ou mineur.
+> Diff jugé : `git diff main...feature/s56-import-annuel-coordonnees`, soit trois commits de code : fdd11e09 (la story), 69cab095 (correctifs du tour 1) et 4cd96448 (correctif CI, le seul commit nouveau de ce tour). J'ai lu 4cd96448 comme du code neuf. Seul le contenu commité est jugé : `docs/architecture.md` et `docs/logs/`, non commités, sont ignorés.
 
-## Rappel du tour 1 et ce qui a été corrigé
+## Rappel des tours 1 et 2
 
-Le tour 1 concluait à un ship autorisé (`Max severity: major`) avec deux majeurs et sept mineurs. L'utilisatrice a choisi, le 2026-11-26, de corriger les majeurs avant la PR, avec deux mineurs de texte.
+- **Tour 1** (`Max severity: major`, ship autorisé) : deux majeurs et sept mineurs. L'utilisatrice a choisi de corriger les majeurs avant la PR.
+  - **M1, corrigé dans 69cab095.** `updateMemberProfileEmailService` acceptait une cible `disabled_by_import` : il réécrivait l'adresse et ouvrait ou reliait un compte.
+  - **M2, corrigé dans 69cab095.** La typographie du rapport et du formulaire de l'import annuel sortait de l'échelle du design system.
+  - **m3, corrigé dans 69cab095.** La case de la tâche 1 était cochée alors que le rejeu local de la migration n'avait pas été fait.
+  - **m5, corrigé dans 69cab095.** L'ADR 077 §1 ne disait pas que l'instantané de s13 porte le terrain par défaut.
+- **Tour 2** (`Max severity: minor`, ship autorisé) : il a confirmé ces correctifs, par mutation, et ajouté m8.
+  - Les mineurs m1, m2, m4, m6, m7 et m8 sont laissés ouverts par choix de l'utilisatrice, pour un tour final.
+- **Depuis** : la CI de la PR 90 échouait sur un seul test e2e (379 autres verts, tests unitaires et migrations verts). Ce test connectait OWNER_A (présidente de TechCorp) sur TENANT_B (Marketing Pro), ce que s46b refuse. `newSession` attendait alors en vain une sortie de `/login` et dépassait 15 s. 4cd96448 réécrit ce seul test et ajoute la section « Correctif CI (PR 90, 2026-11-26) » au plan.
 
-- **M1, corrigé.** `updateMemberProfileEmailService` acceptait une cible `disabled_by_import` : il réécrivait l'adresse et ouvrait ou reliait un compte.
-- **M2, corrigé.** La typographie du rapport et du formulaire de l'import annuel sortait de l'échelle du design system.
-- **m3, corrigé.** La case de la tâche 1 était cochée alors que le rejeu local de la migration n'avait pas été fait.
-- **m5, corrigé.** L'ADR 077 §1 ne disait pas que l'instantané de s13 porte le terrain par défaut.
-- **m1, m2, m4, m6, m7, laissés ouverts par choix de l'utilisatrice** pour un tour final. Ils sont reportés plus bas sans être relevés comme nouveaux.
+## Ce qu'a changé 4cd96448
+
+- **Fichiers touchés** : `git show 4cd96448 --name-only` ne liste que `e2e/member-annual-import.spec.ts` et `docs/plans/s56-import-annuel-coordonnees.md`. **Aucun code applicatif n'a changé.**
+- **Ce que fait le nouveau test** :
+  1. Il ouvre un contexte neuf (cookie `NEXT_LOCALE=fr` sur TENANT_B).
+  2. Il soumet les identifiants d'OWNER_A sur `TENANT_B/login/prestataire`.
+  3. Il vérifie le refus : `form .text-red-500` visible, l'URL reste sur `/login/prestataire`, aucun cookie `session_token` sur TENANT_B.
+  4. Il visite ensuite `TENANT_B/bureau/proprietaires/mise-a-jour` et vérifie qu'il arrive sur `/login`, sans bouton « Mettre à jour les fiches », sans marqueur `s56-e2e` et toujours sans cookie de session.
+
+## Les sélecteurs et les attentes sont-ils réels ?
+
+- **Sélecteur du refus** : `form .text-red-500` est identique à `refusalMessage` dans `e2e/auth.spec.ts:95-99`, avec le même délai de 15 s. Les tests s46b, qui passent en CI, s'en servent pour le même scénario (membre de A refusé sur B, `auth.spec.ts:181-205`).
+- **Cookie de session** : le filtre `cookie.name.includes('session_token')` est identique à `sessionCookiesOn` dans `auth.spec.ts:69-72`. Il couvre aussi le préfixe `__Secure-` de Better Auth.
+- **Saisie** : la séquence `goto /login/prestataire`, `waitForLoadState('networkidle')`, `form` visible, puis `fill` et `click` reprend `submitCredentials` (`auth.spec.ts:80-92`) à l'identique.
+- **Redirection** : `src/proxy.ts:43-45` redirige vers `/login` toute route authentifiée sans cookie de session. `/bureau` figure dans `AUTHENTICATED_SEGMENTS` (`src/lib/routing/authenticated-segments.ts:9-14`). Le matcher du proxy couvre la route. Le redirect est un 307 côté serveur : pas d'attente fragile.
+- **Constantes** : `TENANT_B`, `OWNER_A`, `PASSWORD`, `MARKER` et `ANNUAL_ROUTE` existent dans la spec (lignes 33-60). OWNER_A est bien la présidente de TechCorp, PASSWORD est celui du seed utilisé partout.
+
+## Le test peut-il passer à vide, ou être instable ?
+
+- **Pas à vide.** Si la connexion croisée réussissait (régression de s46b), il n'y aurait pas de message rouge dans le formulaire, l'URL quitterait `/login/prestataire` et un cookie `session_token` serait posé : trois attentes échoueraient. Si le proxy cessait de protéger `/bureau`, `toHaveURL(/\/login/)` échouerait, puisque l'URL resterait `/bureau/proprietaires/mise-a-jour`.
+- **Deux attentes sont triviales.** Après la redirection vers `/login`, le bouton absent et le marqueur absent ne prouvent rien de plus : ce sont les attentes d'URL et de cookie qui portent la preuve. Elles sont redondantes, pas trompeuses : je ne les relève pas.
+- **Risque d'instabilité faible.** Le schéma est le même que les tests s46b, verts en CI.
+
+## L'isolation entre associations reste-t-elle prouvée ?
+
+Oui. Le test d'accès croisé exigé par AGENTS.md est « accès croisé : déposé sur Marketing Pro, le fichier ne touche aucune fiche de TechCorp » (ligne 568).
+
+- La présidente de Marketing Pro dépose le même fichier sur son domaine.
+- Le rapport annonce 0 fiche mise à jour.
+- Les fiches et adresses de TechCorp sont relues en base sous RLS avant et après : elles sont inchangées.
+
+Deux autres tests complètent cette preuve :
+
+- le Bureau de Marketing Pro n'a ni l'écran ni le bouton (ligne 393) ;
+- le test réécrit prouve qu'une présidente d'une autre association n'obtient aucune session sur le domaine.
+
+L'ancien test supposait une session croisée qui n'existe plus depuis s46b. Cookies liés à l'hôte et refus à la connexion : il n'y a rien d'autre à prouver côté navigateur.
 
 ## Conformité au plan
 
-- [x] La section « Correctifs de revue (tour 1) » du plan a ses quatre points cochés, et chacun se retrouve dans 69cab095. Le commit ne contient rien d'autre, à une exception près : un retrait d'indentation dans les tâches 4 et 5 du plan (m8). Les dix tâches et les décisions A à D restent conformes au tour 1. Le commit de correctif ne touche pas aux règles ni au service d'import.
+- [x] **Le code fait ce que le plan demande, rien de plus.** La section « Correctif CI (PR 90, 2026-11-26) » décrit exactement la réécriture : refus, page restée sur `/login`, aucun cookie, route annuelle sans écran ni marqueur. Elle annonce aussi « pas de changement du code applicatif », ce qui est vérifié. Les décisions A à D et les correctifs du tour 1 sont inchangés depuis le tour 2.
 
 ## Anti-hallucination
 
-- [x] Aucun appel inventé. J'ai ouvert chaque nouvelle référence du correctif :
-  - `MemberEmailStatusConst.DISABLED_BY_IMPORT` existe (`src/services/types/domain/member-email-types.ts:27`) et était déjà importé dans `member-profile-email-service.ts` (l. 52).
-  - Les classes Tailwind utilisées (`text-[15px]`, `text-[17px]`, `text-[26px]`, `tabular-nums`) sont des utilitaires standard.
-- [x] Pas de logique plausible mais fausse. Le garde M1 est placé **avant** `findEmailHolder`, `decideMemberAccount`, `updateMemberProfileEmailDao` et `applyMemberAccountDecision`. Aucune écriture ni décision de compte n'est donc atteignable pour une cible désactivée. Le code fautif est :
-  ```ts
-  if (!target || target.status === MemberEmailStatusConst.DISABLED_BY_IMPORT) {
-    return {status: 'not_found'}
-  }
-  ```
-- [x] Les autres écrivains du bureau, comme le demande le point M1 du plan :
-  - **Désignation** : refusée (`planHolderDesignation` rend `not_active`, d'où `invalid_replacement`). C'est maintenant épinglé par un test.
-  - **Remplaçante `existing` lors d'un retrait** : refusée (`holderReplacementPlan` exige `isActive(successor)`).
-  - **Ajout** : réactive la ligne, ce qui est voulu.
-  - **Retrait** : se fait seul.
+- [x] **Aucune API, fonction ou import inventé.** J'ai ouvert chaque cible : `auth.spec.ts` (helpers), `src/proxy.ts`, `authenticated-segments.ts` et les constantes de la spec.
+- [x] **Pas de valeur ni de logique plausible mais fausse.** Sélecteur, nom de cookie et cible de redirection correspondent au code réel.
+- [x] **Le commit fait ce qu'il annonce.** Son message et la section du plan décrivent fidèlement le test.
 
-  Il ne reste aucun écrivain ouvert sur cet état, hors m1 (côté membre et purge, laissé ouvert).
+## Conformité aux règles
 
-## Respect des règles
-
-- [x] AGENTS.md : rien de nouveau dans le correctif (pas de `withRlsBypass`, pas de valeur en dur, libellés inchangés).
-- [~] ADR : aucun n'est contredit. Le texte ajouté à l'ADR 077 §1 décrit bien `snapshotOf` de s13. Les ADR 076 et 077 sont toujours `Status: proposed` (m2, ouvert).
-- [x] Design system : M2 est refermé. Valeurs comparées à `docs/design-system.md` §1.3 et §3.13 :
-  - **« Bilan »** : `h2` en `font-serif text-[26px] font-semibold`, soit Source Serif 4, 26 px, 600.
-  - **Titres de section** : `h3` en `text-[20px] font-semibold`, sans serif. C'est Public Sans par défaut (`--font-sans`).
-  - **Titres de carte du formulaire** : `font-serif` retiré. Ils restent à 20 px / 600 (`CardTitle` porte `font-semibold`).
-  - **Compteur** : libellés `dt` en `meta` 15 px `muted-foreground`, valeurs `dd` en `font-mono text-[17px] tabular-nums` au poids 400. C'est le `data` 17 px de §3.13 ; le `font-semibold` hors échelle a disparu.
-  - **Plancher de 15 px** : plus aucune taille en dessous dans `annual-import-report.tsx`, `annual-import-form.tsx` et `annual-import-screen.tsx`. J'ai fait l'inventaire de toutes les classes `text-[…]` et `font-*` :
-    - `h1` 34 px serif ;
-    - `h2` 26 px serif ;
-    - `h3` 20 px ;
-    - sous-titre « À vérifier » 15 px / 600 (`meta` 600) ;
-    - lignes des cartes mobiles 16 px (`label`) ;
-    - corps 17 px ;
-    - `meta` 15 px.
-  - **Intention du design s56** (compteur `dl`, sept sections `h3` avec décompte en `data`) : respectée.
-  - **Écran de s13** : le correctif n'y touche pas, comme prévu.
+- [x] **Conventions du dépôt (AGENTS.md) respectées.** La preuve d'isolation reste un e2e Playwright, comme le veut la règle « RLS non testable en unitaire ».
+- [x] **Aucun ADR accepté contredit.**
+- [x] **Design system** : rien de nouveau dans ce tour (M2 corrigé au tour 1).
 
 ## Tests
 
-- [x] J'ai lancé la suite moi-même, sur une copie sur disque local.
-  - **Préparation** : `git archive feature/s56-import-annuel-coordonnees` dans le scratchpad, avec `node_modules` en lien symbolique vers `/workspace/node_modules` (dépendances identiques à `main`) et les `.env*` copiés.
-  - **`pnpm test --run`** : **503/503 fichiers, 6960 réussis, 4 ignorés, 0 échec, 0 timeout**. C'est 6956 + 4 par rapport au tour 1, ce qui correspond aux quatre nouveaux tests.
-  - **`tsc --noEmit`** sur tout le projet : 0 erreur.
-  - **`eslint`** sur les fichiers du correctif : 0.
-  - **`pnpm check:rules`** : OK.
-  - Non lancés, comme demandé : e2e et `pnpm build`.
-- [x] Les tests du correctif échouent sans le correctif. Je l'ai vérifié par mutation : seconde copie avec les nouveaux tests et les trois sources d'avant le correctif (`git show fdd11e09:…`).
-  - « modifier une adresse désactivée… (revue M1) » : **échoue**.
-  - « typographie… (revue M2) », formulaire et rapport : **échouent tous les deux**.
-  - « désigner une adresse désactivée titulaire… » passe aussi avant le correctif. C'est attendu : ce comportement était déjà correct, le test l'épingle seulement.
-- [x] Les assertions sont réelles. Le test M1 vérifie `{status: 'not_found'}` et l'absence d'appel à `updateMemberProfileEmailDao`, `createUserIfAbsentTxnDao` et `linkMemberProfileAccountDao`. Les tests M2 vérifient les classes du `h2` et des `h3`, la paire libellé/valeur du compteur et l'absence de taille sous 15 px. Réserve légère : le détecteur `belowMetaFloor` ne voit que les tailles `text-[Npx]`, pas `text-sm` ou `text-xs`. J'ai vérifié à la main qu'il n'y en a aucune.
+- [x] **Contrôles lancés par moi :**
+  - `npx tsc --noEmit` : code 0, aucune sortie.
+  - `npx eslint e2e/member-annual-import.spec.ts` : code 0.
+  - Prettier sur la spec : conforme.
+- [x] **Tests non relancés.** L'e2e et `pnpm build` ne tournent pas ici (CI). Je n'ai pas relancé les tests unitaires : 4cd96448 ne touche aucun code couvert par eux. Le dernier passage vert date de 088795ff (6960 tests, sur une copie en disque local).
+- [x] **Les attentes fixent les critères.** Elles échoueraient sur une régression de s46b ou du proxy.
 
 ## Régressions
 
-- [x] Le garde M1 ne change le comportement que pour une cible `disabled_by_import`. Les cibles `active` et `pending` suivent le même chemin qu'avant, et la suite de `member-profile-email-service.test.ts` reste verte. Les changements de typographie sont confinés aux composants de s56.
+- [x] **Aucun impact sur l'existant.** Seul un test e2e et le plan changent.
 
 ## Constats
 
-**Critiques** : aucun.
-
-**Majeurs** : aucun. M1 et M2 sont refermés.
+**Critiques** : aucun. **Majeurs** : aucun.
 
 **Mineurs**
 
-- **m1 (ouvert, reporté)** : `my-email-service.ts` et `purgeExpiredPendingEmailsDao` / `deletePendingEmailsAddedByDao`. Une adresse désactivée par l'import, réajoutée par le membre, passe `pending`. Si l'attente est purgée, la ligne disparaît avec sa trace et son `unsubscribed_at`, contre l'ADR 076 §4.
-- **m2 (ouvert, reporté)** : `docs/decisions/076-*.md` et `077-*.md` sont encore `Status: proposed`.
-- **m4 (ouvert, reporté)** : le plan (décision 2, tâche 5) décrit toujours le chemin `replaceMemberAccount` et l'opération `demote`, alors que le code désactive puis ajoute en titulaire.
-- **m6 (ouvert, reporté)** : `member-annual-import-service.ts`, voie de défense `board_email_required`. Elle annule toute la transaction de la fiche, groupes domicile, terrain et téléphone compris. Elle est inatteignable en pratique.
+- **m1 (ouvert, reporté)** : `my-email-service.ts` et `purgeExpiredPendingEmailsDao` / `deletePendingEmailsAddedByDao`. Une adresse désactivée par l'import puis réajoutée par le membre passe en attente. Si cette attente est purgée, la ligne disparaît avec sa trace et son `unsubscribed_at`, ce qui contredit l'ADR 076 §4.
+- **m2 (ouvert, reporté)** : les ADR 076 et 077 sont encore `Status: proposed`.
+- **m4 (ouvert, reporté)** : le plan (décision 2, tâche 5) décrit toujours `replaceMemberAccount` et l'opération `demote`, alors que le code désactive l'adresse puis ajoute la titulaire.
+- **m6 (ouvert, reporté)** : dans `member-annual-import-service.ts`, la voie de défense `board_email_required` annule toute la transaction de la fiche. Elle est inatteignable en pratique.
 - **m7 (ouvert, reporté)** : le type de l'instantané existe en double, `PennylaneImportSnapshotModel` et `PennylaneImportSnapshot`, reliés seulement par un cast.
-- **m8 (nouveau, mineur)** : `docs/plans/s56-import-annuel-coordonnees.md`, tâches 4 et 5. Le correctif a retiré l'indentation de deux lignes de continuation (7 espaces devenus 4). C'est sans effet sur le rendu, mais le diff contient du bruit sans rapport avec les correctifs. Le fichier n'était déjà pas conforme à Prettier avant le correctif.
-
-## Verdict
-
-Les quatre correctifs choisis ferment chacun leur constat. Leurs tests auraient échoué avant, et ils n'introduisent pas de régression. Il ne reste que des mineurs : les cinq reportés par choix pour le tour final, plus un nouveau mineur de forme dans le plan.
+- **m8 (ouvert, reporté)** : dans le plan, tâches 4 et 5, l'indentation de deux lignes de continuation a été retirée (bruit de diff).
+- **m9 (nouveau)** : `docs/plans/s56-import-annuel-coordonnees.md`, section « Correctif CI ». La puce ajoutée indente ses lignes de continuation de 2 espaces, Prettier en attend une autre. `prettier --check` signale le fichier, qui ne passait déjà pas avant ce commit (même famille que m8). La CI ne lance pas `pnpm format` : sans effet sur le rendu ni sur la CI.
 
 Max severity: minor
 Ship allowed: yes
