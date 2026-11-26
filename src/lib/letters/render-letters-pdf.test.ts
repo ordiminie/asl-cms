@@ -646,3 +646,35 @@ describe('renderCalibrationPdf — la page de calage (ADR 067 §4)', () => {
     expect(sample.yMm).toBeCloseTo(real.yMm, 3)
   })
 })
+
+describe('renderLettersPdf — variables en plus (s36, ADR 074 §2)', () => {
+  it('imprime {association} dans l’objet et le corps, une valeur Markdown reste littérale', async () => {
+    const [page] = await readPdf(
+      await renderLettersPdf(
+        input({
+          subject: 'Convocation — {association}',
+          bodyMarkdown: 'Bonjour {nom}, membre de {association}.',
+          extraValues: {association: '**Clos-Fleuri**'},
+        })
+      )
+    )
+
+    const text = textOf(page)
+    expect(text).toContain('Convocation — **Clos-Fleuri**')
+    expect(text).toContain('membre de **Clos-Fleuri**.')
+    expect(text).not.toContain('{association}')
+  })
+
+  it('sans variables en plus, {association} reste telle quelle', async () => {
+    const [page] = await readPdf(
+      await renderLettersPdf(
+        input({
+          subject: 'Convocation — {association}',
+          bodyMarkdown: 'Membre de {association}.',
+        })
+      )
+    )
+
+    expect(textOf(page)).toContain('{association}')
+  })
+})

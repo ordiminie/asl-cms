@@ -325,7 +325,7 @@ const depositIntoProfile = async (
 
 /**
  * Depose un document nominatif pour une fiche (critere 1, ADR 073).
- * Appelable par un service (s33, s57), pas seulement par un formulaire.
+ * Appelable par un service (s36, s57), pas seulement par un formulaire.
  *
  * Ordre : `safeParse` -> `member.document.manage` -> fiche lue sous le
  * tenant -> titre, categorie active du domaine `member_document`, date et PDF

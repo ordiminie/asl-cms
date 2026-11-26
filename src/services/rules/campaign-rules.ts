@@ -65,16 +65,20 @@ export const escapeHtml = (value: string): string =>
  * Remplace les variables connues par les valeurs du destinataire, passees par
  * `escape` (HTML pour le corps rendu, identite pour le texte brut). Une
  * accolade qui n'est pas une variable reste telle quelle : c'est
- * `findUnknownVariables` qui la refuse avant l'envoi.
+ * `findUnknownVariables` qui la refuse avant l'envoi. `extra` remplace en plus
+ * des variables propres a un type d'ecrit (`{association}` des documents,
+ * s36, ADR 074 §2) ; vide par defaut.
  */
 export const substituteVariables = (
   text: string,
   values: CampaignVariableValues,
-  escape: (value: string) => string
+  escape: (value: string) => string,
+  extra: Readonly<Record<string, string>> = {}
 ): string =>
-  text.replace(VARIABLE_PATTERN, (whole, name: string) =>
-    isKnownVariable(name) ? escape(values[name]) : whole
-  )
+  text.replace(VARIABLE_PATTERN, (whole, name: string) => {
+    if (isKnownVariable(name)) return escape(values[name])
+    return Object.hasOwn(extra, name) ? escape(extra[name]) : whole
+  })
 
 const PARCEL_LIST_FORMAT = new Intl.ListFormat('fr', {
   style: 'long',

@@ -1,0 +1,24 @@
+import documentTemplateServiceInterceptor from './interceptors/document-template-service-logger-interceptor'
+
+export const canManageDocumentTemplatesService =
+  documentTemplateServiceInterceptor.canManageDocumentTemplatesService
+export const listDocumentTemplatesService =
+  documentTemplateServiceInterceptor.listDocumentTemplatesService
+export const getDocumentTemplateService =
+  documentTemplateServiceInterceptor.getDocumentTemplateService
+export const createDocumentTemplateService =
+  documentTemplateServiceInterceptor.createDocumentTemplateService
+export const updateDocumentTemplateService =
+  documentTemplateServiceInterceptor.updateDocumentTemplateService
+export const deleteDocumentTemplateService =
+  documentTemplateServiceInterceptor.deleteDocumentTemplateService
+export const renderTemplateDocumentService =
+  documentTemplateServiceInterceptor.renderTemplateDocumentService
+export const depositTemplateDocumentService =
+  documentTemplateServiceInterceptor.depositTemplateDocumentService
+export const getDocumentLotReachService =
+  documentTemplateServiceInterceptor.getDocumentLotReachService
+export const listDocumentLotGroupsService =
+  documentTemplateServiceInterceptor.listDocumentLotGroupsService
+export const getTemplateDocumentRecipientService =
+  documentTemplateServiceInterceptor.getTemplateDocumentRecipientService

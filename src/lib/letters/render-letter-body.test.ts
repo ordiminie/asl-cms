@@ -160,3 +160,31 @@ describe('letterTextBlocksOf — le courrier du lancement (s42b, ADR 072 §6)', 
     )
   })
 })
+
+describe('letterBodyBlocksOf — variables en plus (s36, ADR 074 §2)', () => {
+  it('remplace {association} dans le texte et dans un bloc de code, après l’analyse', () => {
+    const blocks = letterBodyBlocksOf(
+      'Bienvenue à {association}.\n\n```\n{association}\n```',
+      values,
+      {association: '**Clos-Fleuri**'}
+    )
+
+    expect(blocks.map(plainTextOfBlock)).toEqual([
+      'Bienvenue à **Clos-Fleuri**.',
+      '**Clos-Fleuri**',
+    ])
+    expect(
+      blocks.flatMap((block) =>
+        block.kind === 'paragraph' ? block.runs.map((run) => run.bold) : []
+      )
+    ).not.toContain(true)
+  })
+
+  it('sans variables en plus, {association} reste telle quelle', () => {
+    expect(
+      letterBodyBlocksOf('Bienvenue à {association}.', values).map(
+        plainTextOfBlock
+      )
+    ).toEqual(['Bienvenue à {association}.'])
+  })
+})

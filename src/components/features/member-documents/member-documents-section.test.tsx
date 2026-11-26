@@ -175,3 +175,26 @@ describe('MemberDocumentsCard — section « Documents » de la fiche (design s3
     expect(await screen.findByText('Raté.')).toBeInTheDocument()
   })
 })
+
+describe('MemberDocumentsCard — « Générer un document » (s36, écran 3a)', () => {
+  it('rendu avant « Déposer un document », en outline, vers la page de génération', () => {
+    renderCard([], {canGenerateDocument: true})
+
+    const generate = screen.getByRole('link', {name: 'Générer un document'})
+    expect(generate).toHaveAttribute(
+      'href',
+      `/bureau/proprietaires/${PROFILE_ID}/documents/generer`
+    )
+    const deposit = screen.getByRole('link', {name: 'Déposer un document'})
+    expect(
+      generate.compareDocumentPosition(deposit) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy()
+  })
+
+  it('non rendu sans document.template.manage', () => {
+    renderCard([])
+
+    expect(screen.queryByRole('link', {name: 'Générer un document'})).toBeNull()
+  })
+})

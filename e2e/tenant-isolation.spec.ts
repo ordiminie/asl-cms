@@ -897,3 +897,120 @@ test.describe('s32 — documents nominatifs : RLS de member_document (ADR 073)',
     })
   })
 })
+
+test.describe('s36 — modèles de documents : RLS de document_template (ADR 074)', () => {
+  /** Un modèle par association, écrit sous `bypass` puis retiré. */
+  const created: {a?: string; b?: string} = {}
+
+  const inScope = async <T>(
+    client: Client,
+    organizationId: string,
+    read: () => Promise<T>
+  ): Promise<T> => {
+    await client.query('begin')
+    try {
+      await client.query(`select set_config('app.organization_id', $1, true)`, [
+        organizationId,
+      ])
+      return await read()
+    } finally {
+      await client.query('rollback')
+    }
+  }
+
+  const inBypass = async <T>(client: Client, write: () => Promise<T>) => {
+    await client.query('begin')
+    try {
+      await client.query(`select set_config('app.bypass_rls', 'on', true)`)
+      const result = await write()
+      await client.query('commit')
+      return result
+    } catch (error) {
+      await client.query('rollback')
+      throw error
+    }
+  }
+
+  test.beforeAll(async () => {
+    await withAppRoleClient(async (client) => {
+      const {a, b} = await tenantIds(client)
+      await inBypass(client, async () => {
+        for (const [slot, organizationId] of [
+          ['a', a],
+          ['b', b],
+        ] as const) {
+          const template = await client.query<{id: string}>(
+            `insert into document_template
+               (organization_id, name, subject, body_markdown)
+             values ($1, $2, 'Objet', 'Bonjour {nom}') returning id`,
+            [organizationId, `RLS s36 ${Date.now().toString(36)} ${slot}`]
+          )
+          created[slot] = template.rows[0].id
+        }
+      })
+    })
+  })
+
+  test.afterAll(async () => {
+    await withAppRoleClient((client) =>
+      inBypass(client, () =>
+        client.query(
+          `delete from document_template where id = any($1::uuid[])`,
+          [[created.a, created.b].filter(Boolean)]
+        )
+      )
+    )
+  })
+
+  test('hors scope de tenant, aucun modèle ne sort', async () => {
+    await withAppRoleClient(async (client) => {
+      expect(
+        (await client.query('select id from document_template')).rowCount
+      ).toBe(0)
+    })
+  })
+
+  test('dans le scope de A, seuls les modèles de A sortent ; celui de A est invisible depuis B', async () => {
+    await withAppRoleClient(async (client) => {
+      const {a, b} = await tenantIds(client)
+
+      const fromA = await inScope(client, a, () =>
+        client.query<{id: string; organization_id: string}>(
+          'select id, organization_id from document_template'
+        )
+      )
+      const forgedFromB = await inScope(client, b, () =>
+        client.query('select id from document_template where id = $1', [
+          created.a,
+        ])
+      )
+
+      expect(fromA.rows.map((row) => row.id)).toContain(created.a)
+      expect(fromA.rows.map((row) => row.id)).not.toContain(created.b)
+      for (const row of fromA.rows) expect(row.organization_id).toBe(a)
+      expect(forgedFromB.rowCount).toBe(0)
+    })
+  })
+
+  test('écrire un modèle pour une autre association est refusé', async () => {
+    await withAppRoleClient(async (client) => {
+      const {a, b} = await tenantIds(client)
+
+      await client.query('begin')
+      await client.query(`select set_config('app.organization_id', $1, true)`, [
+        a,
+      ])
+
+      await expect(
+        client.query(
+          `insert into document_template
+             (organization_id, name, subject, body_markdown)
+           values ($1, 'Forgé', 'Objet', 'Texte')`,
+          [b]
+        )
+      ).rejects.toThrow(/row-level security/i)
+
+      await client.query('rollback')
+    })
+  })
+})

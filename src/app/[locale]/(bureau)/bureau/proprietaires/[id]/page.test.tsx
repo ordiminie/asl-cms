@@ -19,6 +19,9 @@ vi.mock('next-intl/server', async () => {
   return {...actual, setRequestLocale: vi.fn()}
 })
 vi.mock('@/app/dal/tenant-dal', () => ({requireCurrentTenantDal: vi.fn()}))
+vi.mock('@/app/dal/document-template-dal', () => ({
+  canManageCurrentDocumentTemplatesDal: vi.fn(),
+}))
 vi.mock('@/app/dal/member-profile-dal', () => ({
   canManageCurrentMemberProfilesDal: vi.fn(),
   getMemberParcelsForBureauDal: vi.fn(),
@@ -64,6 +67,7 @@ vi.mock('./actions', () => ({
 
 import {render, screen, userEvent, within} from '@/__tests__/customRender'
 import {getAssociationSettingsDal} from '@/app/dal/association-settings-dal'
+import {canManageCurrentDocumentTemplatesDal} from '@/app/dal/document-template-dal'
 import {getMemberDocumentsOfProfileForBureauDal} from '@/app/dal/member-document-dal'
 import {getMemberInvoicesForBureauDal} from '@/app/dal/member-invoice-dal'
 import {getMemberNotesForBureauDal} from '@/app/dal/member-note-dal'
@@ -544,5 +548,34 @@ describe('/bureau/proprietaires/[id] — section « Documents » (s32)', () => {
     expect(within(card).getByRole('status')).toHaveTextContent(
       'Document déposé. « Facture 2026 »'
     )
+  })
+})
+
+describe('/bureau/proprietaires/[id] — « Générer un document » (s36, 3a)', () => {
+  beforeEach(() => {
+    vi.mocked(canManageCurrentMemberProfilesDal).mockResolvedValue(true)
+    vi.mocked(getMemberDocumentsOfProfileForBureauDal).mockResolvedValue([])
+  })
+
+  it('rendu quand le compte porte document.template.manage', async () => {
+    vi.mocked(canManageCurrentDocumentTemplatesDal).mockResolvedValue(true)
+
+    await renderPage()
+
+    expect(
+      await screen.findByRole('link', {name: 'Générer un document'})
+    ).toHaveAttribute(
+      'href',
+      `/bureau/proprietaires/${PROFILE_ID}/documents/generer`
+    )
+  })
+
+  it('absent sans l’action des modèles', async () => {
+    vi.mocked(canManageCurrentDocumentTemplatesDal).mockResolvedValue(false)
+
+    await renderPage()
+
+    await screen.findByRole('link', {name: 'Déposer un document'})
+    expect(screen.queryByRole('link', {name: 'Générer un document'})).toBeNull()
   })
 })

@@ -2029,7 +2029,8 @@
       "campaigns": "Campagnes",
       "unpaidReminders": "Relances",
       "memberInvitations": "Invitations",
-      "sends": "Envois"
+      "sends": "Envois",
+      "documentTemplates": "Modèles de documents"
     },
     "cards": {
       "logo": {
@@ -5446,7 +5447,8 @@
         "weight": "Poids",
         "action": "Action"
       },
-      "empty": "Aucun document pour cette fiche."
+      "empty": "Aucun document pour cette fiche.",
+      "generate": "Générer un document"
     },
     "form": {
       "breadcrumb": {
@@ -5585,6 +5587,274 @@
     },
     "categories": {
       "back": "Documents nominatifs"
+    }
+  },
+  "DocumentTemplatesBureau": {
+    "pdf": {
+      "subjectLabel": "Objet :",
+      "dateLine": "Le {date}",
+      "footer": "Document établi par le bureau de l’association.",
+      "continuation": "{name} — suite, page {page}/{pageCount}"
+    },
+    "metadata": {
+      "title": "Modèles de documents",
+      "newTitle": "Nouveau modèle",
+      "lotTitle": "Générer en lot",
+      "generateTitle": "Générer un document"
+    },
+    "list": {
+      "title": "Modèles de documents",
+      "intro": "Convocations, procès-verbaux, courriers types : écrits une fois, pré-remplis pour chaque propriétaire au moment de générer le document.",
+      "create": "Créer un modèle",
+      "lot": "Générer en lot",
+      "empty": "Aucun modèle de document pour l’instant. Une convocation ou un courrier type s’écrit une fois, puis se génère pour chaque propriétaire.",
+      "createFirst": "Créer le premier modèle",
+      "columns": {
+        "name": "Nom",
+        "variables": "Variables",
+        "updatedAt": "Modifié le",
+        "action": "Action"
+      },
+      "noVariable": "Aucune",
+      "edit": "Modifier",
+      "deletedTitle": "Modèle supprimé.",
+      "deletedDescription": "Les documents déjà déposés avec ce modèle restent dans les dossiers des propriétaires, inchangés.",
+      "failedTitle": "La liste des modèles n’a pas pu être lue.",
+      "failedDescription": "Rien n’est perdu : vos modèles sont toujours enregistrés. Rechargez la page dans un instant."
+    },
+    "editor": {
+      "breadcrumb": {
+        "label": "Fil d’Ariane",
+        "parent": "Modèles de documents",
+        "new": "Nouveau modèle"
+      },
+      "newTitle": "Nouveau modèle",
+      "nameLabel": "Nom du modèle",
+      "nameHelp": "Le nom que vous retrouvez dans la liste. Il n’est pas imprimé.",
+      "subjectLabel": "Objet",
+      "subjectHelp": "Imprimé après « Objet : » en tête du document. Les variables y sont permises.",
+      "bodyLabel": "Texte du document",
+      "counter": "{count} / {max} caractères",
+      "variablesTitle": "Variables disponibles",
+      "variablesNote": "Elles sont remplacées pour chaque propriétaire. Un modèle qui contient une autre variable n’est pas enregistré.",
+      "submit": "Enregistrer le modèle",
+      "submitting": "Enregistrement…",
+      "errorSummaryTitle": "Le modèle n’a pas été enregistré.",
+      "errorSummaryDescription": "Rien n’est perdu : votre texte est toujours là. Corrigez ce point puis enregistrez à nouveau.",
+      "failed": "L’enregistrement a échoué. Rien n’est perdu : votre texte est toujours là. Réessayez dans un moment.",
+      "saved": {
+        "title": "Modèle enregistré.",
+        "description": "Il est dans la liste des modèles, prêt à générer un document depuis la fiche d’un propriétaire ou en lot.",
+        "lot": "Générer en lot avec ce modèle"
+      },
+      "fieldNames": {
+        "name": "Nom du modèle",
+        "subject": "Objet",
+        "bodyMarkdown": "Texte du document"
+      },
+      "issues": {
+        "nameMissing": "Saisissez le nom du modèle.",
+        "nameTooLong": "Le nom du modèle tient en {max} caractères au plus.",
+        "subjectMissing": "Saisissez l’objet du document.",
+        "subjectTooLong": "L’objet tient en {max} caractères au plus.",
+        "bodyMarkdownMissing": "Saisissez le texte du document.",
+        "bodyMarkdownTooLong": "Le texte du document tient en {max} caractères au plus.",
+        "unknownVariables": "{count, plural, one {Variable inconnue : {variables}.} other {Variables inconnues : {variables}.}} Les variables possibles sont {allowed}.",
+        "unknownVariablesSummary": "{field} : {count, plural, one {variable inconnue {variables}.} other {variables inconnues {variables}.}}"
+      },
+      "delete": {
+        "trigger": "Supprimer le modèle",
+        "title": "Supprimer le modèle « {name} » ?",
+        "description": "Il disparaît de la liste et ne peut plus servir à générer un document. Les documents déjà déposés avec ce modèle restent dans les dossiers des propriétaires, inchangés.",
+        "cancel": "Annuler",
+        "confirm": "Supprimer le modèle",
+        "failed": "La suppression a échoué. Le modèle est toujours là : réessayez dans un moment."
+      }
+    },
+    "variables": {
+      "nom": "le nom de la fiche du propriétaire",
+      "parcelle": "ses parcelles actuelles (« 12 et 13 »)",
+      "date": "la date choisie au moment de générer le document",
+      "association": "le nom de l’association"
+    },
+    "errors": {
+      "forbidden": "Seul le bureau de l’association peut gérer les modèles de documents.",
+      "notFound": "Ce modèle n’existe plus : il a peut-être été supprimé.",
+      "failed": "L’opération a échoué. Rien n’est perdu : réessayez dans un moment."
+    },
+    "generate": {
+      "breadcrumb": {
+        "label": "Fil d’Ariane",
+        "parent": "Propriétaires",
+        "current": "Générer un document"
+      },
+      "title": "Générer un document",
+      "forLabel": "Pour",
+      "templateLabel": "Modèle",
+      "templatePlaceholder": "Choisissez un modèle",
+      "manageTemplates": "Gérer les modèles",
+      "dateLabel": "Date du document",
+      "dateHelp": "Remplace {variable} dans le document. Aujourd’hui par défaut.",
+      "dateFormat": "jj/mm/aaaa",
+      "depositLabel": "Déposer aussi dans le dossier de la fiche",
+      "depositHelp": "Le document sera visible dans l’espace des comptes reliés à cette fiche, carte « Mes documents ». Sans cette case, il est seulement téléchargé : rien n’est conservé.",
+      "categoryLabel": "Catégorie",
+      "categoryPlaceholder": "Choisissez une catégorie",
+      "titleLabel": "Titre",
+      "titleHelp": "Le titre que lit le propriétaire dans son espace.",
+      "titleCounter": "{count} / {max} caractères",
+      "download": "Télécharger le PDF",
+      "downloadAndDeposit": "Télécharger et déposer le PDF",
+      "preparing": "Préparation du PDF…",
+      "cancel": "Annuler",
+      "noParcel": "Cette fiche n’a pas de parcelle actuelle : {variable} restera vide dans le document.",
+      "success": {
+        "title": "Document téléchargé.",
+        "file": "Le fichier {fileName} est dans vos téléchargements.",
+        "deposited": "Il est aussi déposé dans le dossier de {name}, catégorie « {category} » : visible dès maintenant dans l’espace des comptes reliés à cette fiche.",
+        "downloadFailed": "Le document est déposé dans le dossier de {name}, catégorie « {category} », mais son téléchargement a échoué. Retrouvez-le dans la section « Documents » de la fiche.",
+        "back": "Revenir à la fiche"
+      },
+      "errorSummaryTitle": "Le document n’a pas été généré.",
+      "errorSummaryDescription": "Rien n’a été téléchargé ni déposé. Corrigez ces points puis recommencez.",
+      "issues": {
+        "templateMissing": "Choisissez un modèle.",
+        "dateInvalid": "Saisissez une date au format jj/mm/aaaa.",
+        "categoryMissing": "Choisissez une catégorie.",
+        "categoryUnavailable": "Cette catégorie n’est plus active : choisissez-en une autre.",
+        "titleMissing": "Saisissez un titre.",
+        "titleTooLong": "Le titre tient en {max} caractères au plus."
+      },
+      "renderFailedTitle": "Le PDF n’a pas pu être produit.",
+      "renderFailedDescription": "Rien n’a été téléchargé ni déposé. Réessayez dans un moment.",
+      "noTemplate": {
+        "title": "Aucun modèle de document.",
+        "description": "Un document se génère depuis un modèle écrit par le bureau. Créez-en un d’abord, par exemple une convocation.",
+        "action": "Créer un modèle"
+      },
+      "noCategory": {
+        "title": "Aucune catégorie de document nominatif.",
+        "description": "Un document déposé se range dans une catégorie. Créez-en une d’abord, ou décochez la case pour télécharger seulement.",
+        "action": "Gérer les catégories"
+      }
+    },
+    "depositFailures": {
+      "not_found": "Le modèle ou la fiche est introuvable. Rien n’a été déposé.",
+      "invalid_date": "La date du document n’est pas valide. Rien n’a été déposé.",
+      "unknown_variables": "Le modèle contient une variable inconnue ({variables}). Rien n’a été déposé.",
+      "render_failed": "Le PDF n’a pas pu être produit pour cette fiche. Rien n’a été déposé.",
+      "rejected": "Le dépôt a été refusé : {details}. Rien n’a été déposé.",
+      "forbidden": "Votre compte ne peut pas déposer de document nominatif. Rien n’a été déposé.",
+      "failed": "Le dépôt a échoué. Rien n’a été déposé.",
+      "issues": {
+        "title_missing": "le titre est vide",
+        "title_too_long": "le titre est trop long",
+        "category_missing": "aucune catégorie n’est choisie",
+        "category_unavailable": "la catégorie choisie n’est plus active",
+        "date_invalid": "la date n’est pas valide",
+        "file_missing": "le PDF produit est vide",
+        "file_format": "le PDF produit n’a pas été reconnu",
+        "file_size": "le PDF produit dépasse la taille permise"
+      }
+    },
+    "lot": {
+      "breadcrumb": {
+        "label": "Fil d’Ariane",
+        "parent": "Modèles de documents",
+        "current": "Générer en lot"
+      },
+      "title": "Générer en lot",
+      "rule": "Un document est produit pour chaque fiche de la cible, puis déposé dans son dossier nominatif. Aucun fichier regroupé n’est téléchargé : pour un envoi papier, passez par le courrier postal d’une campagne.",
+      "templateLabel": "Modèle",
+      "templatePlaceholder": "Choisissez un modèle",
+      "targetLegend": "Pour qui ?",
+      "targets": {
+        "all_members": {
+          "label": "Tous les membres",
+          "help": "Toutes les fiches de l’association."
+        },
+        "unpaid_members": {
+          "label": "Les membres en impayé",
+          "help": "Calculé au lancement, d’après les factures. Une facture « à classer » ne compte pas."
+        },
+        "group": {
+          "label": "Un groupe",
+          "help": "Un groupe que le bureau a composé."
+        }
+      },
+      "groupLabel": "Groupe",
+      "groupPlaceholder": "Choisissez un groupe",
+      "groupOption": "{name} ({count, plural, one {# fiche} other {# fiches}})",
+      "manageGroups": "Gérer les groupes",
+      "counter": {
+        "profiles": "Fiches de la cible",
+        "withoutParcel": "dont sans parcelle actuelle",
+        "documents": "Documents à déposer",
+        "label": "Décompte"
+      },
+      "empty": {
+        "all_members": "L’association n’a encore aucune fiche. Aucun document à générer.",
+        "unpaid_members": "Aucun membre n’est en impayé aujourd’hui. Aucun document à générer.",
+        "group": "Ce groupe n’a encore aucune fiche. Aucun document à générer."
+      },
+      "reachErrors": {
+        "unpaidUnavailable": "La liste des membres en impayé n’a pas pu être lue. Aucun document n’a été généré. Réessayez dans un moment, ou choisissez une autre cible.",
+        "groupNotFound": "Ce groupe n’existe plus. Aucun document n’a été généré. Choisissez une autre cible.",
+        "failed": "La cible n’a pas pu être lue. Aucun document n’a été généré. Réessayez dans un moment."
+      },
+      "dateLabel": "Date des documents",
+      "dateHelp": "Remplace {variable} dans chaque document. Aujourd’hui par défaut.",
+      "dateFormat": "jj/mm/aaaa",
+      "categoryLabel": "Catégorie",
+      "categoryPlaceholder": "Choisissez une catégorie",
+      "titleLabel": "Titre des documents",
+      "titleHelp": "Le même titre pour tout le lot, celui que lit chaque propriétaire.",
+      "relaunchWarning": "Relancer un lot dépose une seconde fois les documents : vérifiez la cible avant de lancer.",
+      "submit": "{count, plural, one {Générer et déposer le document} other {Générer et déposer les # documents}}",
+      "submitUnknown": "Générer et déposer les documents",
+      "running": "Génération en cours…",
+      "cancel": "Annuler",
+      "errorSummaryTitle": "Le lot n’est pas parti.",
+      "errorSummaryDescription": "Rien n’est perdu. Corrigez ces points puis lancez à nouveau.",
+      "issues": {
+        "templateMissing": "Choisissez un modèle.",
+        "targetMissing": "Choisissez pour qui générer les documents.",
+        "groupMissing": "Choisissez un groupe.",
+        "targetEmpty": "La cible ne compte aucune fiche : aucun document à générer.",
+        "targetUnavailable": "La cible n’a pas pu être lue : choisissez-en une autre ou réessayez.",
+        "dateInvalid": "Saisissez une date au format jj/mm/aaaa.",
+        "categoryMissing": "Choisissez une catégorie.",
+        "titleMissing": "Saisissez un titre.",
+        "titleTooLong": "Le titre tient en {max} caractères au plus."
+      },
+      "progressLabel": "Avancement du lot",
+      "progress": "{done} {done, plural, one {fiche traitée} other {fiches traitées}} sur {total}",
+      "current": "Génération pour {name}…",
+      "stayTitle": "Restez sur cette page jusqu’à la fin.",
+      "stayDescription": "Si vous la quittez, les fiches restantes ne reçoivent pas leur document. Ceux déjà déposés le restent.",
+      "done": "Lot terminé : {deposited, plural, one {# document déposé} other {# documents déposés}}, {failed, plural, =0 {aucun échec} one {# échec} other {# échecs}}.",
+      "doneDescription": "Les documents déposés sont visibles dès maintenant dans l’espace des comptes reliés à leur fiche. Les fiches en échec n’ont rien reçu : générez leur document depuis leur fiche.",
+      "result": {
+        "deposited": "Déposés",
+        "failed": "Échecs",
+        "total": "Total"
+      },
+      "notKept": "Ce rapport n’est pas conservé : notez les fiches en échec avant de quitter la page.",
+      "interruptedTitle": "Le lot s’est arrêté à la fiche {at} sur {total}.",
+      "interruptedDescription": "La connexion au serveur a été perdue. {deposited, plural, =0 {Aucun document n’a été déposé} one {Le document déjà déposé le reste} other {Les # documents déjà déposés le restent}} ; {remaining, plural, one {la fiche suivante n’a rien reçu} other {les # fiches suivantes n’ont rien reçu}}.",
+      "columns": {
+        "profile": "Fiche",
+        "result": "Résultat",
+        "target": "Terrain ou raison"
+      },
+      "reportCaption": "Rapport du lot",
+      "resultDeposited": "Déposé",
+      "resultFailed": "Échec",
+      "reasonLabel": "Raison",
+      "terrainLabel": "Terrain",
+      "noParcel": "Aucune parcelle actuelle",
+      "backToTemplates": "Revenir aux modèles",
+      "memberDocuments": "Voir les documents nominatifs"
     }
   }
 }

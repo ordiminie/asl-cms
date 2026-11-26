@@ -915,6 +915,9 @@ et versés ici par le plan de s27. Aucun ne crée de token ni de composant : ils
 - **Option de `radio-group` à contenu révélé** (gap 2) — le champ révélé (le `select` « Groupe » sous
   « Un groupe ») suit son option, en retrait de 48 px en bureau, pleine largeur sans retrait sous
   640 px ; il suit l'option dans l'ordre de tabulation, le focus ne saute pas.
+  **Généralisé par s36** (manque 5 du design) : la même forme vaut pour le contenu révélé par une
+  `checkbox` (« Déposer aussi dans le dossier de la fiche » révèle Catégorie et Titre) — retrait de
+  48 px en bureau, pleine largeur sous 640 px, à la suite de la case dans l'ordre de tabulation.
 - **« Groupes » dans la barre latérale** (gap 3) — item propre du groupe « L'association », juste
   avant « Campagnes », route `/bureau/groupes`, actif sur un groupe ouvert. Pas un sous-niveau de
   « Campagnes » : les groupes se composent depuis « Propriétaires » et serviront au courrier (s28).
@@ -1219,6 +1222,12 @@ facture selon le modèle du tenant, montant en euros, date `jj/mm/aaaa` ; sans p
 omise). Elle est relue à l'envoi et à la génération d'une lettre, et se place seule sur sa ligne.
 Aucun lien de paiement dans la liste.
 
+**Les variables des documents (s36, ADR 074 §2)** : `{nom}` · `{parcelle}` · `{date}` ·
+`{association}`. Ce sont celles des campagnes plus `{association}` (nom affiché de l'association),
+propre aux modèles de documents : elle n'est pas reconnue dans les emails. `{date}` vaut la date
+choisie à la génération (aujourd'hui par défaut). Un modèle qui contient une autre variable n'est pas
+enregistré ; le message de champ nomme chaque variable fautive et rappelle les quatre possibles.
+
 **Les objets — la moitié du travail** : toujours préfixés « ASL La Fourche — » (une boîte
 encombrée doit trier au premier mot). Le préfixe est posé **une seule fois, par le gabarit de
 campagne** (`finalSubject`) : l'objet saisi ou figé d'un envoi s'écrit sans le nom de
@@ -1326,6 +1335,13 @@ un **document nominatif ou partagé**, une **analyse d'eau**.
   signature et les cartes de document. Marges de page 15 mm.
 
 ### 6.3 Gabarit de document institutionnel
+
+> **Cible non réalisée** (s36, manque 1 du design, ADR 074 §3). Les modèles de documents de s36
+> impriment la **lettre de publipostage** (§6.1) du moteur de s28 : en-tête au nom de l'association,
+> bloc adresse, « Le {date} », « Objet : … », corps, pied « Document établi par le bureau de
+> l'association. » puis mentions légales. Aucun réglage ne porte un signataire, des coordonnées, un
+> lieu ni un numéro de pièce ; le lot de s36 dépose un PDF par fiche (critère 3), sans fichier
+> regroupé ni bordereau. Ce gabarit reste à amender ou à réserver à une story ultérieure.
 
 Un seul gabarit couvre convocation, procès-verbal et courrier type, généré à l'unité **ou en
 lot** : **1.** en-tête (logo monochrome, nom et statut, coordonnées, date et lieu) · **2.**
@@ -1451,6 +1467,9 @@ des composants à improviser. À traiter en `/ks-design` ou `/ks-research` de la
 | Barre     | **Entrée « Invitations »** de la barre du bureau (s42b) — item sans icône, après « Relances », avant « Envois » : à inscrire avec les autres entrées du groupe « L'association »                                                                                                                                                                                                                                 | s42b             |
 | Documents | **« Fiche sans référence » dans un lot** (s32, manque 3) — un fichier ne peut pas nommer une fiche sans identifiant client Pennylane : ce n'est pas une raison de rejet détectable. Rendu par un encart du rapport (et l'état 5e) qui compte ces fiches ; le lien « Voir les propriétaires » mène à la liste entière, faute d'un filtre « sans identifiant Pennylane » à décider                                 | s32              |
 | Barre     | **Entrée « Documents nominatifs »** de la barre du bureau (s32, manque 7) — item sans icône du groupe « L'association », juste après « Documents », actif sur ses sous-routes : à inscrire avec les autres entrées du groupe                                                                                                                                                                                     | s32              |
+| Barre     | **Entrée « Modèles de documents »** de la barre du bureau (s36, manque 6) — item sans icône du groupe « L'association », juste après « Documents nominatifs », actif sur ses sous-routes (liste, éditeur, lot)                                                                                                                                                                                                   | s36              |
+| Documents | **Reprise d'un lot interrompu** (s36, manque 7) — un lot séquentiel depuis le navigateur peut s'arrêter (page quittée, connexion perdue) ; le relancer redépose les documents déjà servis (aucune unicité sur `member_document`). Seul l'état 4f dit ce qui est fait et ce qui ne l'est pas, sans action de reprise                                                                                              | s36              |
+| Documents | **Prévisualisation d'un document généré** (s36, manque 9) — aucun aperçu avant téléchargement ni avant un lot de 400 fiches (même manque que la prévisualisation PDF paginée ci-dessus). Contournement : générer d'abord un document unitaire sans dépôt pour le relire                                                                                                                                          | s36              |
 | Badge     | **« Désactivée par l'import »** (s42b, écran 2) — forme proposée `outline`, même `meta` que l'attente ; non utilisée tant que s56 n'est pas livrée                                                                                                                                                                                                                                                               | s42b, s56        |
 | Plan      | **Plan écrit d'un envoi du système** (s42b, écran 1) — la ligne « Lancement — date » + badge + liens reprend la ligne de rang de s29 (§3.13) hors des relances d'impayés ; à noter comme forme générale                                                                                                                                                                                                          | s29, s42b        |
 | Technique | **Échelle de `z-index`** — seules deux valeurs sont posées (`PreviewBar` 50, `ImpersonationBar` 60). Avec trois bandes persistantes, les dialogues, les popovers, les tiroirs et les toasts, une échelle explicite évite les conflits au cas par cas                                                                                                                                                             | s04, s07, s41    |

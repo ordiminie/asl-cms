@@ -170,6 +170,12 @@ export const ActionIdConst = {
    * action : elle suit la **possession** de la fiche, comme les factures.
    */
   MEMBER_DOCUMENT_MANAGE: 'member.document.manage',
+  /**
+   * Gerer les modeles de documents (s36, ADR 074 §6) : les ecrire, les
+   * modifier, les supprimer, telecharger un document genere et lire la cible
+   * d'un lot. Tout depot reste sous `MEMBER_DOCUMENT_MANAGE`, verifie en plus.
+   */
+  DOCUMENT_TEMPLATE_MANAGE: 'document.template.manage',
 } as const
 
 export const ACTION_REGISTRY: ActionRegistry = [
@@ -255,6 +261,10 @@ export const ACTION_REGISTRY: ActionRegistry = [
   },
   {
     id: ActionIdConst.MEMBER_DOCUMENT_MANAGE,
+    defaultRoles: ['owner', 'board'],
+  },
+  {
+    id: ActionIdConst.DOCUMENT_TEMPLATE_MANAGE,
     defaultRoles: ['owner', 'board'],
   },
 ]
