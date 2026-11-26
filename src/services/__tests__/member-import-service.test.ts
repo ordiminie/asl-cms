@@ -47,9 +47,13 @@ vi.mock('../organization-service', () => ({
 vi.mock('../association-settings-service', () => ({
   getAssociationSettingsService: vi.fn(),
 }))
+vi.mock('@/db/repositories/member-profile-repository', () => ({
+  setMemberProfileImportSnapshotDao: vi.fn(),
+}))
 
 import {z} from 'zod'
 
+import {setMemberProfileImportSnapshotDao} from '@/db/repositories/member-profile-repository'
 import {logger} from '@/lib/logger'
 
 import {getAssociationSettingsService} from '../association-settings-service'
@@ -847,5 +851,52 @@ describe('[SUPER_ADMIN] importMembersService — domicile, terrain et entreprise
     expect(report.rejections).toEqual([
       {line: 2, client: 'Terrain Faux', reason: 'invalid_postal_code'},
     ])
+  })
+})
+
+describe('[SUPER_ADMIN] instantané de la fiche créée (s56, ADR 077)', () => {
+  beforeEach(() => {
+    setupAuthUserMocked(userTestSuperAdmin)
+  })
+
+  it('écrit, à la création, les valeurs lues dans le fichier, terrain écrit compris', async () => {
+    settingRows.current = [
+      {key: MEMBER_DEFAULT_LAND_POSTAL_CODE_SETTING_KEY, value: '99500'},
+      {key: MEMBER_DEFAULT_LAND_CITY_SETTING_KEY, value: 'Terrainville'},
+    ]
+
+    await run()
+
+    expect(setMemberProfileImportSnapshotDao).toHaveBeenCalledWith(
+      'fiche-c-001',
+      {
+        snapshot: {
+          home: {
+            line: '1 allée des Essais',
+            postalCode: '99100',
+            city: 'Fictiville',
+          },
+          land: {line: null, postalCode: '99500', city: 'Terrainville'},
+          phone: null,
+          emails: ['lucie@exemple.test'],
+        },
+        importedAt: expect.any(Date),
+      }
+    )
+    expect(setMemberProfileImportSnapshotDao).not.toHaveBeenCalledWith(
+      'fiche-c-003',
+      expect.anything()
+    )
+  })
+
+  it('une fiche déjà présente ne reçoit pas d’instantané de l’import initial', async () => {
+    db.profiles.set('c-001', 'fiche-existante')
+
+    await run()
+
+    expect(setMemberProfileImportSnapshotDao).not.toHaveBeenCalledWith(
+      'fiche-existante',
+      expect.anything()
+    )
   })
 })

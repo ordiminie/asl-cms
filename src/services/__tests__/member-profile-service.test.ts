@@ -159,6 +159,8 @@ const profileRow = (overrides: Record<string, unknown> = {}) => ({
   landCity: null as string | null,
   companyName: null as string | null,
   pennylaneCustomerId: null as string | null,
+  pennylaneImportSnapshot: null,
+  pennylaneImportedAt: null as Date | null,
   mailOnly: true,
   createdAt: new Date('2026-09-01T08:00:00Z'),
   updatedAt: new Date('2026-09-01T08:00:00Z'),

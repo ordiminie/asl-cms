@@ -1,3 +1,4 @@
+import {Upload} from 'lucide-react'
 import Link from 'next/link'
 import {useTranslations} from 'next-intl'
 
@@ -27,6 +28,7 @@ import {
 } from './member-profile-badges'
 import {postalAddressLineOf} from './member-profile-format'
 import {
+  MEMBER_CONTACT_IMPORT_PATH,
   MEMBER_PROFILES_PATH,
   memberProfilePathOf,
   memberProfilesListPathOf,
@@ -49,6 +51,11 @@ type MemberProfileListProps = {
    * groupes de destinataires ; absent, la liste reste celle de s12.
    */
   groupSelection?: MemberProfileGroupSelection
+  /**
+   * La presidence met a jour les coordonnees depuis le fichier de l'annee
+   * (s56, ecran 0) : bouton d'entree, masque au Bureau.
+   */
+  canImportContacts?: boolean
 }
 
 /**
@@ -60,12 +67,14 @@ export function MemberProfileList({
   list,
   search,
   groupSelection,
+  canImportContacts,
 }: MemberProfileListProps) {
   const content = (
     <MemberProfileListContent
       list={list}
       search={search}
       groupSelection={groupSelection}
+      canImportContacts={canImportContacts}
     />
   )
   if (!groupSelection) return content
@@ -83,6 +92,7 @@ function MemberProfileListContent({
   list,
   search,
   groupSelection,
+  canImportContacts,
 }: MemberProfileListProps) {
   const t = useTranslations('BureauMemberProfilesPage')
   const groupId = groupSelection?.groupId
@@ -102,9 +112,23 @@ function MemberProfileListContent({
             })}
           </p>
         </div>
-        <Button asChild className="h-14 w-full sm:h-11 sm:w-auto">
-          <Link href={NEW_MEMBER_PROFILE_PATH}>{t('add')}</Link>
-        </Button>
+        <div className="flex flex-col gap-3 sm:flex-row">
+          {canImportContacts && (
+            <Button
+              asChild
+              variant="outline"
+              className="h-14 w-full sm:h-11 sm:w-auto"
+            >
+              <Link href={MEMBER_CONTACT_IMPORT_PATH}>
+                <Upload aria-hidden="true" />
+                {t('importContacts')}
+              </Link>
+            </Button>
+          )}
+          <Button asChild className="h-14 w-full sm:h-11 sm:w-auto">
+            <Link href={NEW_MEMBER_PROFILE_PATH}>{t('add')}</Link>
+          </Button>
+        </div>
       </div>
 
       {list.profileCount === 0 && !search ? (

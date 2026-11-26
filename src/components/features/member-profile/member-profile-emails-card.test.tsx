@@ -567,3 +567,55 @@ describe('MemberProfileEmailsCard — état de l’invitation par adresse (s42a,
     ).toBeInTheDocument()
   })
 })
+
+describe('MemberProfileEmailsCard — adresse désactivée par l’import (s56, ADR 076)', () => {
+  const DISABLED_ID = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd'
+  const disabled = email({
+    id: DISABLED_ID,
+    email: 'ancienne@exemple.fr',
+    status: 'disabled_by_import',
+    origin: 'file',
+  })
+
+  it('affiche le badge « Désactivée par l’import » et sa mention', () => {
+    renderCard([jean, disabled])
+
+    const [, row] = within(table()).getAllByRole('row').slice(1)
+    expect(within(row).getByText('Désactivée par l’import')).toBeVisible()
+    expect(
+      within(row).getByText(
+        'Absente du dernier fichier Pennylane : elle ne se connecte plus.'
+      )
+    ).toBeVisible()
+    expect(within(row).queryByText('Active')).toBeNull()
+  })
+
+  it('seule action : « Retirer », qui ouvre le retrait sans désignation', async () => {
+    calls.removeEmailAction.mockResolvedValue({
+      status: 'saved',
+      change: 'removed',
+      email: 'ancienne@exemple.fr',
+    })
+    renderCard([jean, disabled])
+
+    const [, row] = within(table()).getAllByRole('row').slice(1)
+    const buttons = within(row).getAllByRole('button')
+    expect(buttons).toHaveLength(1)
+    expect(buttons[0]).toHaveAccessibleName('Retirer ancienne@exemple.fr')
+    expect(within(row).queryByRole('button', {name: /Gérer/})).toBeNull()
+
+    await userEvent.click(buttons[0])
+    const dialog = screen.getByRole('alertdialog')
+    expect(
+      within(dialog).queryByRole('button', {name: 'Désigner titulaire'})
+    ).toBeNull()
+    await userEvent.click(
+      within(dialog).getByRole('button', {name: 'Retirer l’adresse'})
+    )
+
+    expect(sentForm(calls.removeEmailAction)).toEqual({
+      memberProfileId: PROFILE_ID,
+      emailId: DISABLED_ID,
+    })
+  })
+})

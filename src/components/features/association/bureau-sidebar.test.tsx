@@ -194,6 +194,21 @@ describe('BureauSidebar — « Propriétaires » (s12)', () => {
   })
 })
 
+describe('BureauSidebar — « Propriétaires » sur ses sous-routes (s56)', () => {
+  it.each([
+    '/bureau/proprietaires/mise-a-jour',
+    '/bureau/proprietaires/nouveau',
+    '/bureau/proprietaires/33333333-3333-4333-8333-333333333333',
+  ])('reste actif sur %s', (pathname) => {
+    renderSidebarAt(pathname)
+
+    expect(screen.getByRole('link', {name: 'Propriétaires'})).toHaveAttribute(
+      'aria-current',
+      'page'
+    )
+  })
+})
+
 describe('BureauSidebar — « Campagnes » (s25)', () => {
   it('ajoute l’entrée au groupe « L’association », après « Propriétaires », sans icône', () => {
     renderSidebarAt('/bureau/campagnes')

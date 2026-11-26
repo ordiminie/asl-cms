@@ -364,3 +364,33 @@ describe('invitationOverviewOf — suivi par adresse (critère 7)', () => {
     ])
   })
 })
+
+describe('adresse désactivée par l’import (s56, ADR 076)', () => {
+  it('le suivi et les décomptes écartent une adresse désactivée par l’import', () => {
+    const addresses = [
+      address('a', 'active@x.fr'),
+      address('b', 'desactivee@x.fr', {status: 'disabled_by_import'}),
+    ]
+    const overview = invitationOverviewOf({
+      addresses,
+      states: invitationStatesOf([]),
+      rows: [row('a', 'active@x.fr'), row('b', null)],
+      nature: 'statutaire',
+      now: NOW,
+      page: 1,
+    })
+
+    expect(overview.addresses.items.map((line) => line.email)).toEqual([
+      'active@x.fr',
+    ])
+    expect(overview.pending).toBe(0)
+    expect(
+      launchCountsOf({
+        rows: [row('a', 'active@x.fr')],
+        nature: 'statutaire',
+        addresses,
+        now: NOW,
+      }).pendingAddresses
+    ).toBe(0)
+  })
+})

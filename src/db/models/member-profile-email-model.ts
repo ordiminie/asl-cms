@@ -20,7 +20,7 @@ export const memberProfileEmailRoleEnum = pgEnum('member_profile_email_role', [
 
 export const memberProfileEmailStatusEnum = pgEnum(
   'member_profile_email_status',
-  ['active', 'pending']
+  ['active', 'pending', 'disabled_by_import']
 )
 
 export const memberProfileEmailOriginEnum = pgEnum(
@@ -38,6 +38,9 @@ export const memberProfileEmailOriginEnum = pgEnum(
  *   une des qu'une adresse est active (regle pure de succession).
  * - `status` : `pending` tant que le lien envoye par le membre n'est pas
  *   confirme ; une adresse en attente ne recoit rien et ne se connecte pas.
+ *   `disabled_by_import` : l'import annuel ne la porte plus (s56, ADR 076) ;
+ *   la ligne est conservee avec sa desinscription, n'est pas active, et se
+ *   reactive si un fichier suivant la porte a nouveau.
  * - `origin` : fichier Pennylane ou saisie sur le site, affichee au bureau.
  * - `added_by_user_id` : l'auteur d'un ajout par le membre, nul pour le
  *   fichier et le bureau.

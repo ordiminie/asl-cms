@@ -19,6 +19,7 @@ import {memberProfileEmail} from '@/db/models/member-profile-email-model'
 import {
   memberProfile,
   MemberProfileModel,
+  PennylaneImportSnapshotModel,
 } from '@/db/models/member-profile-model'
 import {parcel, parcelOwnership} from '@/db/models/parcel-model'
 import {recipientGroupMember} from '@/db/models/recipient-group-model'
@@ -676,3 +677,21 @@ export const listMemberProfilesByPennylaneIdIgnoringCaseDao = async (
         sql`lower(${memberProfile.pennylaneCustomerId}) = lower(${pennylaneCustomerId})`
       )
     )
+
+/**
+ * Ecrit l'instantane des valeurs lues dans le fichier et sa date (s56, ADR
+ * 077 §5) **sans toucher `updated_at`** : l'import ne doit pas faire passer
+ * ses propres valeurs pour des modifications du site.
+ */
+export const setMemberProfileImportSnapshotDao = async (
+  memberProfileId: string,
+  {
+    snapshot,
+    importedAt,
+  }: {snapshot: PennylaneImportSnapshotModel; importedAt: Date}
+): Promise<void> => {
+  await getDb()
+    .update(memberProfile)
+    .set({pennylaneImportSnapshot: snapshot, pennylaneImportedAt: importedAt})
+    .where(eq(memberProfile.id, memberProfileId))
+}

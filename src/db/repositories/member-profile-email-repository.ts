@@ -1,4 +1,4 @@
-import {and, asc, eq, inArray, lte, SQL, sql} from 'drizzle-orm'
+import {and, asc, eq, inArray, lte, ne, SQL, sql} from 'drizzle-orm'
 
 import {user} from '@/db/models/auth-model'
 import {
@@ -6,6 +6,7 @@ import {
   memberProfileEmail,
   MemberProfileEmailModel,
   MemberProfileEmailRoleModel,
+  MemberProfileEmailStatusModel,
 } from '@/db/models/member-profile-email-model'
 import {memberProfile} from '@/db/models/member-profile-model'
 import {getCurrentParcelNumbersForMembersDao} from '@/db/repositories/campaign-repository'
@@ -40,6 +41,8 @@ export type MemberProfileEmailPatch = Partial<
     | 'expiresAt'
     | 'replacesEmailId'
     | 'unsubscribedAt'
+    | 'origin'
+    | 'addedByUserId'
   >
 >
 
@@ -248,7 +251,8 @@ export type InvitationAddressRowModel = Pick<
 /**
  * Toutes les adresses de fiche de l'association, **actives et en attente**,
  * avec le nom et les parcelles actuelles de leur fiche (s42b, critere 7).
- * Les attentes echues sont rendues : la regle pure les masque.
+ * Les attentes echues sont rendues : la regle pure les masque. Une adresse
+ * desactivee par l'import (s56, ADR 076) n'en est pas.
  */
 export const getInvitationAddressesDao = async (
   organizationId: string
@@ -267,7 +271,12 @@ export const getInvitationAddressesDao = async (
       memberProfile,
       eq(memberProfile.id, memberProfileEmail.memberProfileId)
     )
-    .where(eq(memberProfileEmail.organizationId, organizationId))
+    .where(
+      and(
+        eq(memberProfileEmail.organizationId, organizationId),
+        ne(memberProfileEmail.status, 'disabled_by_import')
+      )
+    )
     .orderBy(asc(memberProfile.name), asc(memberProfileEmail.email))
 
   const numbers = await getCurrentParcelNumbersForMembersDao([
@@ -277,4 +286,22 @@ export const getInvitationAddressesDao = async (
     ...row,
     parcelNumbers: numbers[row.memberProfileId] ?? [],
   }))
+}
+
+/**
+ * Change le statut et le role d'une adresse (s56, ADR 076) : desactivee par
+ * l'import (toujours supplementaire), ou reactivee. La ligne est conservee,
+ * sa desinscription (`unsubscribed_at`) intacte.
+ */
+export const setMemberProfileEmailStatusDao = async (
+  emailId: string,
+  patch: {
+    status: MemberProfileEmailStatusModel
+    role: MemberProfileEmailRoleModel
+  }
+): Promise<void> => {
+  await getDb()
+    .update(memberProfileEmail)
+    .set({role: patch.role, status: patch.status, updatedAt: sql`now()`})
+    .where(eq(memberProfileEmail.id, emailId))
 }

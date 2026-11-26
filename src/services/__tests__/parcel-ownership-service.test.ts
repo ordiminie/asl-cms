@@ -100,6 +100,8 @@ const profileRow = (id: string) => ({
   companyName: null,
   userId: null,
   pennylaneCustomerId: null,
+  pennylaneImportSnapshot: null,
+  pennylaneImportedAt: null,
   mailOnly: true,
   createdAt: new Date('2026-09-01T08:00:00Z'),
   updatedAt: new Date('2026-09-01T08:00:00Z'),

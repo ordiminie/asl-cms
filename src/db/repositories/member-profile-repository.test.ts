@@ -32,6 +32,7 @@ import {
   linkMemberProfileAccountDao,
   listPennylaneLinkedProfilesDao,
   listProfilesWithoutPennylaneIdDao,
+  setMemberProfileImportSnapshotDao,
   unlinkMemberProfileAccountDao,
   updateMemberProfilePennylaneIdDao,
   updateMyMemberProfilesContactDao,
@@ -370,5 +371,37 @@ describe('listProfilesWithoutPennylaneIdDao (s20, critère 3)', () => {
     expect(sql).toContain('"member_profile"."pennylane_customer_id" is null')
     expect(sql).toContain('order by "member_profile"."name" asc')
     expect(params).toEqual([ORG_ID])
+  })
+})
+
+describe('setMemberProfileImportSnapshotDao (s56, ADR 077)', () => {
+  it('écrit l’instantané et sa date, sans toucher updated_at', async () => {
+    const at = new Date('2026-11-26T09:00:00Z')
+    const snapshot = {
+      home: {
+        line: '1 allée des Essais',
+        postalCode: '99100',
+        city: 'Fictiville',
+      },
+      land: null,
+      phone: null,
+      emails: ['lucie@exemple.test'],
+    }
+
+    await setMemberProfileImportSnapshotDao(PROFILE_ID, {
+      snapshot,
+      importedAt: at,
+    })
+
+    const [{sql, params}] = sent
+    expect(sql).toMatch(
+      /^update "member_profile" set "pennylane_import_snapshot" = \$1, "pennylane_imported_at" = \$2 where "member_profile"."id" = \$3/
+    )
+    expect(sql).not.toContain('updated_at')
+    expect(params).toEqual([
+      JSON.stringify(snapshot),
+      at.toISOString(),
+      PROFILE_ID,
+    ])
   })
 })

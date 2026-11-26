@@ -1,0 +1,4 @@
+"Identifiant Client";"Dénomination";"Adresse";"Code Postal";"Ville";"Pays";"Liste d’e-mails";"Téléphone";"Référence Client";"Prélèvement : IBAN"
+"s56-e2e-001";"Lucie Fictive s56-e2e";"1 allée des Essais";"99561";"Fictiville";"FR";"lucie@s56-e2e.test, extra@s56-e2e.test";"";"S56E2E-401 - 00XX000401";""
+"s56-e2e-002";"Marc Inventé s56-e2e";"2 rue du Test";"99562";"Fictiville";"FR";"marc@s56-e2e.test";"06 00 00 00 02";"S56E2E-402 - 00XX000402";""
+"s56-e2e-003";"Nora Essai s56-e2e";"3 place de l’Essai";"99563";"Fictiville";"FR";"nora@s56-e2e.test, claire@s56-e2e.test";"";"S56E2E-403 - 00XX000403";""

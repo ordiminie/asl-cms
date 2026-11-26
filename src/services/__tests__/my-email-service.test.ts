@@ -544,3 +544,49 @@ describe('[MEMBRE] accès après la vente — une fiche fermée ne reçoit plus 
     expect(getMemberProfileEmailsDao).toHaveBeenCalledWith([LOT_21])
   })
 })
+
+describe('[MEMBRE] adresse désactivée par l’import (s56, ADR 076)', () => {
+  const DISABLED_ID = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd'
+  const disabled = row({
+    id: DISABLED_ID,
+    email: 'sophie@exemple.fr',
+    status: 'disabled_by_import',
+    origin: 'file',
+    unsubscribedAt: new Date('2026-10-01T08:00:00Z'),
+  })
+
+  it('n’apparaît pas dans « Mes adresses email »', async () => {
+    givenEmails(jeanEmail, claireEmail, disabled)
+
+    const mine = await getMyEmailsService(ORG_ID)
+
+    expect(mine?.emails.map((email) => email.email)).toEqual([
+      'jean@exemple.fr',
+      'claire@exemple.fr',
+    ])
+  })
+
+  it('l’ajouter à nouveau : la ligne désactivée passe en attente, une nouvelle ligne sur l’autre fiche', async () => {
+    givenProfiles(LOT_21, LOT_40)
+    givenEmails(jeanEmail, claireEmail, disabled)
+
+    const result = await addMyEmailService({
+      organizationId: ORG_ID,
+      email: 'Sophie@exemple.fr',
+    })
+
+    expect(result).toMatchObject({status: 'sent'})
+    expect(updateMemberProfileEmailDao).toHaveBeenCalledWith(DISABLED_ID, {
+      role: 'additional',
+      status: 'pending',
+      origin: 'site',
+      addedByUserId: CLAIRE_USER_ID,
+      confirmationTokenHash: expect.stringMatching(/^[0-9a-f]{64}$/),
+      expiresAt: expect.any(Date),
+    })
+    const inserted = vi
+      .mocked(insertMemberProfileEmailDao)
+      .mock.calls.map(([input]) => input.memberProfileId)
+    expect(inserted).toEqual([LOT_40])
+  })
+})

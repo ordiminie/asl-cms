@@ -131,11 +131,17 @@ const readAssociation = async (
 type Mine = {
   profiles: MyMemberProfileRow[]
   emails: MemberProfileEmailRow[]
+  /** Les adresses desactivees par l'import (s56) : ni listees, ni actives. */
+  disabled: MemberProfileEmailRow[]
 }
+
+const isDisabledByImport = (row: MemberProfileEmailRow): boolean =>
+  row.status === MemberEmailStatusConst.DISABLED_BY_IMPORT
 
 /**
  * Mes fiches accessibles (une fiche fermee apres la vente en sort, s57), dans
- * l'ordre de l'ADR 054 §7, et leurs adresses visibles.
+ * l'ordre de l'ADR 054 §7, et leurs adresses visibles. Une adresse
+ * desactivee par l'import n'est pas visible au membre (ADR 076 §2).
  */
 const loadMine = async (
   organizationId: string,
@@ -143,11 +149,15 @@ const loadMine = async (
   now: Date
 ): Promise<Mine> => {
   const profiles = await getMyAccessibleProfiles(organizationId, userId)
-  const emails = visibleEmails(
+  const rows = visibleEmails(
     await getMemberProfileEmailsDao(profiles.map((profile) => profile.id)),
     now
   )
-  return {profiles, emails}
+  return {
+    profiles,
+    emails: rows.filter((row) => !isDisabledByImport(row)),
+    disabled: rows.filter(isDisabledByImport),
+  }
 }
 
 const sortNumbers = (numbers: string[]): string[] =>
@@ -313,7 +323,9 @@ const sendLink = async ({
 
 /**
  * Ajoute une adresse supplementaire, en attente, sur **toutes** les fiches
- * du compte, sous un seul lien ; puis envoie le lien (1b, 1c, 1f).
+ * du compte, sous un seul lien ; puis envoie le lien (1b, 1c, 1f). Sur une
+ * fiche ou l'import l'avait desactivee, la ligne passe en attente (ADR 076
+ * §4) : la confirmation la reactive, sa desinscription gardee.
  */
 export const addMyEmailService = async (
   input: AddMyEmailInput
@@ -340,17 +352,28 @@ export const addMyEmailService = async (
     )
     if (refusal) return {status: refusal} as const
 
+    const pending = {
+      role: MemberEmailRoleConst.ADDITIONAL,
+      status: MemberEmailStatusConst.PENDING,
+      origin: MemberEmailOriginConst.SITE,
+      addedByUserId: authUser.id,
+      confirmationTokenHash: link.tokenHash,
+      expiresAt: link.expiresAt,
+    }
     for (const profile of mine.profiles) {
+      const disabled = mine.disabled.find(
+        (row) =>
+          row.memberProfileId === profile.id && sameEmail(row.email, email)
+      )
+      if (disabled) {
+        await updateMemberProfileEmailDao(disabled.id, pending)
+        continue
+      }
       await insertMemberProfileEmailDao({
         organizationId,
         memberProfileId: profile.id,
         email,
-        role: MemberEmailRoleConst.ADDITIONAL,
-        status: MemberEmailStatusConst.PENDING,
-        origin: MemberEmailOriginConst.SITE,
-        addedByUserId: authUser.id,
-        confirmationTokenHash: link.tokenHash,
-        expiresAt: link.expiresAt,
+        ...pending,
       })
     }
     return {status: 'written', profiles: mine.profiles} as const

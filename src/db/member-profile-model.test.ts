@@ -69,6 +69,23 @@ describe('member_profile — domicile, terrain et nom de l’entreprise (s55, AD
   })
 })
 
+describe('member_profile — instantané du dernier import (s56, ADR 077)', () => {
+  const config = getTableConfig(memberProfile)
+
+  it('porte l’instantané en jsonb et sa date, facultatifs', () => {
+    const snapshot = config.columns.find(
+      (c) => c.name === 'pennylane_import_snapshot'
+    )
+    const importedAt = config.columns.find(
+      (c) => c.name === 'pennylane_imported_at'
+    )
+    expect(snapshot?.getSQLType()).toBe('jsonb')
+    expect(snapshot?.notNull).toBe(false)
+    expect(importedAt?.getSQLType()).toBe('timestamp with time zone')
+    expect(importedAt?.notNull).toBe(false)
+  })
+})
+
 describe('member_profile_account (ADR 054)', () => {
   const config = getTableConfig(memberProfileAccount)
 

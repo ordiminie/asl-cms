@@ -46,6 +46,11 @@ export const ImportRejectionConst = {
   INVALID_POSTAL_CODE: 'invalid_postal_code',
   INVALID_PHONE: 'invalid_phone',
   INVALID_FIELD: 'invalid_field',
+  /**
+   * Mise a jour annuelle (s56) : plusieurs fiches portent cet identifiant a
+   * la casse pres. Impossible depuis s20 ; defense.
+   */
+  AMBIGUOUS_CUSTOMER_ID: 'ambiguous_customer_id',
 } as const
 
 export type ImportRejection =

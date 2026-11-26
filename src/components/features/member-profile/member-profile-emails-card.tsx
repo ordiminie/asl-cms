@@ -46,7 +46,8 @@ const DATA_CLASS = 'font-mono font-medium break-all'
 /**
  * Carte « Adresses email » de la fiche (s54, ecran 4) : une ligne par
  * adresse, son role sur cette fiche, son origine et son statut ; une seule
- * action par ligne, « Gerer ». Tableau a partir de 640 px, cartes empilees
+ * action par ligne, « Gerer » (« Retirer » pour une adresse desactivee par
+ * l'import, s56, ADR 076 §5). Tableau a partir de 640 px, cartes empilees
  * en dessous. Aucun identifiant d'adresse dans le DOM : les fenetres
  * retrouvent l'adresse par sa position, l'action l'envoie en `FormData`.
  */
@@ -94,12 +95,20 @@ export function MemberProfileEmailsCard({
       ) : (
         <>
           <div className="hidden sm:block">
-            <EmailsTable emails={emails} onManage={setManaged} />
+            <EmailsTable
+              emails={emails}
+              onManage={setManaged}
+              onRemove={setRemoved}
+            />
           </div>
           <ul className="flex flex-col gap-4 sm:hidden">
             {emails.map((email, index) => (
               <li key={email.email}>
-                <EmailCard email={email} onManage={() => setManaged(index)} />
+                <EmailCard
+                  email={email}
+                  onManage={() => setManaged(index)}
+                  onRemove={() => setRemoved(index)}
+                />
               </li>
             ))}
           </ul>
@@ -154,9 +163,11 @@ export function MemberProfileEmailsCard({
 function EmailsTable({
   emails,
   onManage,
+  onRemove,
 }: {
   emails: MemberProfileEmailDTO[]
   onManage: (index: number) => void
+  onRemove: (index: number) => void
 }) {
   const t = useTranslations('BureauMemberProfilesPage.detail.emails')
 
@@ -188,7 +199,11 @@ function EmailsTable({
               <EmailStatus email={email} />
             </TableCell>
             <TableCell>
-              <ManageButton email={email} onClick={() => onManage(index)} />
+              <RowAction
+                email={email}
+                onManage={() => onManage(index)}
+                onRemove={() => onRemove(index)}
+              />
             </TableCell>
           </TableRow>
         ))}
@@ -200,9 +215,11 @@ function EmailsTable({
 function EmailCard({
   email,
   onManage,
+  onRemove,
 }: {
   email: MemberProfileEmailDTO
   onManage: () => void
+  onRemove: () => void
 }) {
   const t = useTranslations('BureauMemberProfilesPage.detail.emails')
 
@@ -219,7 +236,7 @@ function EmailCard({
         </dd>
       </dl>
       <OtherProfiles email={email} />
-      <ManageButton email={email} onClick={onManage} />
+      <RowAction email={email} onManage={onManage} onRemove={onRemove} />
     </Card>
   )
 }
@@ -258,6 +275,16 @@ function EmailStatus({email}: {email: MemberProfileEmailDTO}) {
               : t('invitation.never')}
           </span>
         )}
+      </span>
+    )
+  }
+  if (email.status === 'disabled_by_import') {
+    return (
+      <span className="flex flex-col gap-1">
+        <Badge variant="outline">{t('statuses.disabled_by_import')}</Badge>
+        <span className="text-muted-foreground text-[15px]">
+          {t('disabledByImport')}
+        </span>
       </span>
     )
   }
@@ -319,6 +346,37 @@ function ManageButton({
       onClick={onClick}
     >
       {t('manage')}
+    </Button>
+  )
+}
+
+/**
+ * L'action d'une ligne : « Gerer », ou « Retirer » seul pour une adresse
+ * desactivee par l'import, qui ne se modifie ni ne se designe.
+ */
+function RowAction({
+  email,
+  onManage,
+  onRemove,
+}: {
+  email: MemberProfileEmailDTO
+  onManage: () => void
+  onRemove: () => void
+}) {
+  const t = useTranslations('BureauMemberProfilesPage.detail.emails')
+
+  if (email.status !== 'disabled_by_import') {
+    return <ManageButton email={email} onClick={onManage} />
+  }
+  return (
+    <Button
+      type="button"
+      variant="link"
+      className="h-11 px-0 text-base"
+      aria-label={t('removeLabel', {email: email.email})}
+      onClick={onRemove}
+    >
+      {t('remove')}
     </Button>
   )
 }

@@ -6,8 +6,12 @@
 /** Role d'une adresse **sur une fiche** : titulaire ou supplementaire. */
 export type MemberEmailRole = 'holder' | 'additional'
 
-/** `pending` tant que le lien de confirmation n'est pas clique. */
-export type MemberEmailStatus = 'active' | 'pending'
+/**
+ * `pending` tant que le lien de confirmation n'est pas clique.
+ * `disabled_by_import` : le fichier de l'annee ne la porte plus (s56, ADR
+ * 076) ; conservee, pas active, reactivable.
+ */
+export type MemberEmailStatus = 'active' | 'pending' | 'disabled_by_import'
 
 /** Fichier Pennylane (import) ou saisie sur le site (bureau, membre). */
 export type MemberEmailOrigin = 'file' | 'site'
@@ -20,6 +24,7 @@ export const MemberEmailRoleConst = {
 export const MemberEmailStatusConst = {
   ACTIVE: 'active',
   PENDING: 'pending',
+  DISABLED_BY_IMPORT: 'disabled_by_import',
 } as const satisfies Record<string, MemberEmailStatus>
 
 export const MemberEmailOriginConst = {

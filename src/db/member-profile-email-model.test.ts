@@ -82,6 +82,7 @@ describe('member_profile_email (ADR 056)', () => {
     expect(memberProfileEmailStatusEnum.enumValues).toEqual([
       'active',
       'pending',
+      'disabled_by_import',
     ])
     expect(memberProfileEmailOriginEnum.enumValues).toEqual(['file', 'site'])
   })
