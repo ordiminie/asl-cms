@@ -102,14 +102,14 @@ page.
     `(prevState, formData)` (règle `rule-form-front`, comme les catégories) ; les actions existantes de
     l'écran gardent leurs arguments typés.
 11. **DTO en unions discriminées** : `MenuItemDTO = {kind: 'page'; …champs actuels} | {kind: 'link'; id;
-    rank; visible; label; address; target: 'internal' | 'external' | 'refused'}` (`target` calculé par le
+rank; visible; label; address; target: 'internal' | 'external' | 'refused'}` (`target` calculé par le
     prédicat : `refused` ne peut venir que d'une écriture hors application, la ligne l'annonce « Masquée
     sur le site public — adresse refusée. », sur le patron de `hiddenBecauseUnpublished`) ;
     `PublicMenuEntryDTO = {kind: 'internal'; id; title; href} | {kind: 'external'; id; title; href}`. Une
     entrée de page devient `{kind: 'internal', href: '/' + slug}` : le rendu ne connaît plus que des
     `href`, calculés **une fois** par le service.
 12. **Rendu** : `internal` → `Link` de `next/link` (inchangé) ; `external` → `<a href rel="noopener
-    noreferrer">`, **sans** `target`, dans la `nav` d'ordinateur **et** le tiroir mobile.
+noreferrer">`, **sans** `target`, dans la `nav` d'ordinateur **et** le tiroir mobile.
 13. **Manques du design** :
     - manque 1 (champs dans un `popover`) → question 1 ci-dessus, option (a) appliquée : `dialog`.
     - manque 2 (deux boutons sur une ligne : « Modifier » + « Retirer du menu ») → composé comme s48, qui a
@@ -138,7 +138,7 @@ page.
        `empty` : `''`, `'   '`.
 2. [x] **Modèle et migration générée** — `menu-item-model.ts` : `pageId` sans `.notNull()` (FK et cascade
        gardées), `label: text('label')`, `address: text('address')`, `check('menu_item_page_xor_address_check',
-       …)` (ADR 078 §1, patron `member-invoice-model.ts:85-96`), JSDoc de la table mis à jour ; puis
+    …)` (ADR 078 §1, patron `member-invoice-model.ts:85-96`), JSDoc de la table mis à jour ; puis
        `pnpm db:generate` → `drizzle/migrations/0087_*.sql` + journal + instantané, **jamais écrits à la
        main**. ADR 078 (déjà rédigé) relu et passé `accepted`. **Vérif** : le SQL généré contient
        exactement `ALTER COLUMN "page_id" DROP NOT NULL`, deux `ADD COLUMN`, un `ADD CONSTRAINT … CHECK`, et
@@ -148,8 +148,7 @@ page.
        et d'une ligne sans rien est refusée par la contrainte ; `src/db/rls-inventory.test.ts` reste vert
        (aucune table neuve).
 3. [x] **Lecture : jointure externe, DTO en union, validation au rendu** — `menu-item-repository.ts` :
-       `innerJoin` → `leftJoin`, `MenuItemRow` à `pageId` / `pageTitle` / `pageSlug` / `pageStatus` nullables
-       + `label` / `address` ; `site-navigation-types.ts` : unions de la décision 11, constantes de la
+       `innerJoin` → `leftJoin`, `MenuItemRow` à `pageId` / `pageTitle` / `pageSlug` / `pageStatus` nullables + `label` / `address` ; `site-navigation-types.ts` : unions de la décision 11, constantes de la
        décision 8 ; `site-navigation-service.ts` : `toMenuItemDto` par type (une ligne incohérente, impossible
        sous la contrainte, est écartée), `getPublicSiteNavigationService` filtre **par type** — page :
        `visible && pageStatus === 'published'` ; lien : `visible && classifyLinkAddress(address).ok` —
@@ -177,7 +176,7 @@ page.
        acceptées (pas de doublon sur `page_id` nul).
 5. [x] **Server Actions et libellés** — `menu-link-form-validation.ts` (décisions 9 et 10 :
        `createMenuLinkFormSchema(t)`, `MENU_LINK_FORM_FIELDS`, `MenuLinkActionResult = {status: 'saved';
-       item} | {status: 'invalid'; errors} | {status: 'error'; message}`) ; `navigation/actions.ts` :
+    item} | {status: 'invalid'; errors} | {status: 'error'; message}`) ; `navigation/actions.ts` :
        `addMenuLinkAction` et `updateMenuLinkAction` — `requireCurrentTenantDal` → `requireActionAuth` →
        schéma traduit → façade → `updateTag(siteNavigationTag(tenant.id))` **après succès seulement** ;
        `NotFoundError` et `ValidationParsedZodError` → `errors.failed` / `errors.invalidData` ;
@@ -299,6 +298,24 @@ L'utilisatrice a choisi de corriger le majeur avant le ship. Les mineurs restent
 `docs/reviews/s50-navigation-liens-libres.md` pour le tour final de fin de projet.
 
 10. [x] **Constat 1 (major)** — `src/lib/helper/link-address.ts`, `isExternalHttpsAddress` : remplacer
-    `URL.canParse` (absent de Safari 16.4, dans la cible de Next 16) par `new URL(address)` dans un
-    `try`/`catch` qui rend `false`. Test d'abord : un cas qui échoue quand `URL.canParse` est absent
-    (le retirer le temps du test), puis le correctif.
+        `URL.canParse` (absent de Safari 16.4, dans la cible de Next 16) par `new URL(address)` dans un
+        `try`/`catch` qui rend `false`. Test d'abord : un cas qui échoue quand `URL.canParse` est absent
+        (le retirer le temps du test), puis le correctif.
+
+## Correctif CI — e2e (2026-11-27)
+
+La CI de la PR 91 a échoué sur un seul test, sur 381 :
+`e2e/site-navigation.spec.ts:328`, « le bureau ajoute, modifie et retire une adresse… ». Après trois essais,
+le test expire sur `getByRole('dialog').getByLabel('Libellé')`.
+
+Cause : le `popover` « Ajouter une page » porte lui aussi `role="dialog"`, comme tout popover Radix.
+Juste après `addMenuEntry`, il est encore dans le DOM, le temps de son animation de fermeture.
+`openLinkDialog` le prend pour le `dialog` de l'adresse et ne clique donc pas « Ajouter une adresse ».
+Le popover se démonte ensuite, et aucun `dialog` ne reste à l'écran. L'instantané de la CI le confirme :
+pas de `dialog`, et le focus est revenu sur « Ajouter une page ».
+
+11. [x] **e2e s50 — viser le `dialog` par son nom** : `openLinkDialog` et ses appelants ciblent
+        `getByRole('dialog', {name: …})`, avec le titre du `dialog` (« Ajouter une adresse au menu »
+        ou « Modifier l'entrée »). Il ne faut plus jamais de `getByRole('dialog')` sans nom dans les
+        blocs s50. Même règle pour les attentes de fermeture (`toBeHidden`). Rien ne change dans le
+        code de l'application.

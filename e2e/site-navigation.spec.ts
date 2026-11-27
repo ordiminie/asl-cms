@@ -140,27 +140,43 @@ const publishPage = async (page: Page, editorUrl: string) => {
 const menuRow = (page: Page, label: string) =>
   page.locator('li', {hasText: label})
 
+/** Titres du `dialog` d'une entrée libre (s50), qui lui donnent son nom. */
+const ADD_LINK_DIALOG = 'Ajouter une adresse au menu'
+const EDIT_LINK_DIALOG = "Modifier l'entrée"
+
+/**
+ * Le `dialog` d'une entrée libre, visé par son nom : le popover « Ajouter une
+ * page » porte lui aussi `role="dialog"` pendant son animation de fermeture.
+ */
+const linkDialog = (page: Page, name: string) =>
+  page.getByRole('dialog', {name})
+
 /**
  * Ouvre le `dialog` d'une entrée libre (s50). Le clic peut précéder
  * l'hydratation : on réessaye jusqu'à ce que le `dialog` soit ouvert.
  */
-const openLinkDialog = async (page: Page, opener: () => Promise<void>) => {
+const openLinkDialog = async (
+  page: Page,
+  name: string,
+  opener: () => Promise<void>
+) => {
+  const dialog = linkDialog(page, name)
   await expect(async () => {
-    if (!(await page.getByRole('dialog').isVisible())) await opener()
-    await expect(page.getByRole('dialog')).toBeVisible({timeout: 2000})
+    if (!(await dialog.isVisible())) await opener()
+    await expect(dialog).toBeVisible({timeout: 2000})
   }).toPass({timeout: 30_000})
-  return page.getByRole('dialog')
+  return dialog
 }
 
 /** Ajoute une entrée libre au menu, effet immédiat (s50). */
 const addMenuLink = async (page: Page, label: string, address: string) => {
-  const dialog = await openLinkDialog(page, () =>
+  const dialog = await openLinkDialog(page, ADD_LINK_DIALOG, () =>
     page.getByRole('button', {name: 'Ajouter une adresse'}).click()
   )
   await dialog.getByLabel('Libellé', {exact: true}).fill(label)
   await dialog.getByLabel('Adresse', {exact: true}).fill(address)
   await dialog.getByRole('button', {name: 'Ajouter au menu'}).click()
-  await expect(page.getByRole('dialog')).toBeHidden({timeout: 20_000})
+  await expect(dialog).toBeHidden({timeout: 20_000})
   await expect(menuRow(page, label)).toBeVisible()
 }
 
@@ -373,14 +389,14 @@ test.describe('Navigation du site — entrées libres (s50)', () => {
     await expect(visitorPage.getByText(externalLabel)).toBeHidden()
 
     // Critère 6 : modifier met le menu à jour, sans redémarrage.
-    const dialog = await openLinkDialog(page, () =>
+    const dialog = await openLinkDialog(page, EDIT_LINK_DIALOG, () =>
       menuRow(page, internalLabel)
         .getByRole('button', {name: 'Modifier'})
         .click()
     )
     await dialog.getByLabel('Libellé', {exact: true}).fill(renamedLabel)
     await dialog.getByRole('button', {name: "Enregistrer l'entrée"}).click()
-    await expect(page.getByRole('dialog')).toBeHidden({timeout: 20_000})
+    await expect(dialog).toBeHidden({timeout: 20_000})
     await openNavigation(page, TENANT_A)
     await expect(menuRow(page, renamedLabel)).toBeVisible({timeout: 20_000})
 
@@ -415,7 +431,7 @@ test.describe('Navigation du site — entrées libres (s50)', () => {
     await login(page, TENANT_A, OWNER_A)
     await openNavigation(page, TENANT_A)
 
-    const dialog = await openLinkDialog(page, () =>
+    const dialog = await openLinkDialog(page, ADD_LINK_DIALOG, () =>
       page.getByRole('button', {name: 'Ajouter une adresse'}).click()
     )
     const address = dialog.getByLabel('Adresse', {exact: true})
