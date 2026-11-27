@@ -2,11 +2,13 @@ import 'server-only'
 
 import {
   addMenuItemDao,
+  addMenuLinkDao,
   getMenuItemsByOrganizationDao,
   MenuItemRow,
   removeMenuItemDao,
   reorderMenuItemsTxnDao,
   setMenuItemVisibilityDao,
+  updateMenuLinkDao,
 } from '@/db/repositories/menu-item-repository'
 import {
   getOrganizationSettingsDao,
@@ -14,6 +16,7 @@ import {
 } from '@/db/repositories/organization-setting-repository'
 import {getPageByIdDao} from '@/db/repositories/page-repository'
 import {withTenant} from '@/db/tenant-scope'
+import {classifyLinkAddress} from '@/lib/helper/link-address'
 
 import {getAuthUser} from './authentication/auth-service'
 import {canPerformAction} from './authorization/action-registry-authorization'
@@ -25,30 +28,93 @@ import {
   MENU_ITEM_ALREADY_IN_MENU,
   MenuItemDTO,
   MenuItemMutationResult,
+  MenuLinkItemDTO,
+  PublicMenuEntryDTO,
   SITE_FOOTER_SETTING_KEY,
   SiteNavigationDTO,
 } from './types/domain/site-navigation-types'
 import {
   addMenuItemServiceSchema,
+  addMenuLinkServiceSchema,
   menuItemMutationServiceSchema,
   reorderMenuItemsServiceSchema,
   saveSiteFooterServiceSchema,
   setMenuItemVisibilityServiceSchema,
   siteNavigationOrganizationIdSchema,
+  updateMenuLinkServiceSchema,
 } from './validation/site-navigation-validation'
 
 const MANAGE_DENIED =
   "Seul le bureau de l'association peut gérer la navigation du site"
 
-const toMenuItemDto = (row: MenuItemRow): MenuItemDTO => ({
-  id: row.id,
-  pageId: row.pageId,
-  rank: row.rank,
-  visible: row.visible,
-  pageTitle: row.pageTitle,
-  pageSlug: row.pageSlug,
-  pageStatus: row.pageStatus,
-})
+/**
+ * Lit une ligne de `menu_item` par son type. Une ligne incoherente (ni page
+ * complete ni libelle + adresse), impossible sous la contrainte
+ * `menu_item_page_xor_address_check`, est ecartee plutot que rendue a moitie.
+ */
+const toMenuItemDto = (row: MenuItemRow): MenuItemDTO | undefined => {
+  if (
+    row.pageId !== null &&
+    row.pageTitle !== null &&
+    row.pageSlug !== null &&
+    row.pageStatus !== null
+  ) {
+    return {
+      kind: 'page',
+      id: row.id,
+      pageId: row.pageId,
+      rank: row.rank,
+      visible: row.visible,
+      pageTitle: row.pageTitle,
+      pageSlug: row.pageSlug,
+      pageStatus: row.pageStatus,
+    }
+  }
+
+  if (row.pageId === null && row.label !== null && row.address !== null) {
+    return toMenuLinkDto({...row, label: row.label, address: row.address})
+  }
+
+  return undefined
+}
+
+const toMenuItemDtos = (rows: MenuItemRow[]): MenuItemDTO[] =>
+  rows.flatMap((row) => {
+    const item = toMenuItemDto(row)
+    return item ? [item] : []
+  })
+
+/**
+ * Une entree telle que le visiteur la voit, ou rien : entree masquee, page non
+ * publiee, adresse que la liste blanche refuse (ADR 078 §4). Le `href` est
+ * calcule ici, une seule fois, pour les deux rendus publics.
+ */
+const toPublicMenuEntry = (
+  item: MenuItemDTO
+): PublicMenuEntryDTO | undefined => {
+  if (!item.visible) return undefined
+
+  if (item.kind === 'page') {
+    return item.pageStatus === 'published'
+      ? {
+          kind: 'internal',
+          id: item.id,
+          title: item.pageTitle,
+          href: `/${item.pageSlug}`,
+        }
+      : undefined
+  }
+
+  const classified = classifyLinkAddress(item.address)
+  return classified.ok
+    ? {
+        kind: classified.kind,
+        id: item.id,
+        title: item.label,
+        href: classified.address,
+      }
+    : undefined
+}
 
 const requireNavigationManager = async (
   organizationId: string
@@ -107,8 +173,9 @@ export const addMenuItemService = async (input: {
     return {
       status: 'added',
       item: {
+        kind: 'page',
         id: created.id,
-        pageId: created.pageId,
+        pageId: parsed.data.pageId,
         rank: created.rank,
         visible: created.visible,
         pageTitle: targetPage.title,
@@ -200,7 +267,7 @@ export const getMenuItemsForBureauService = async (
   const rows = await withTenant(parsed.data, () =>
     getMenuItemsByOrganizationDao(parsed.data)
   )
-  return rows.map((row) => toMenuItemDto(row))
+  return toMenuItemDtos(rows)
 }
 
 /**
@@ -276,8 +343,9 @@ export const saveSiteFooterService = async (
  * **Sans controle d'autorisation, et c'est delibere**, comme
  * `getPageBySlugService` : cette navigation s'adresse au public. Une entree ne
  * parait que si le bureau l'a laissee visible **et** que sa page est publiee —
- * les deux conditions sont independantes (criteres 2 et 6), et une entree
- * ecartee est simplement absente, jamais un lien casse.
+ * ou, pour une entree libre, que son adresse passe la liste blanche (ADR 078).
+ * Les conditions sont independantes (criteres 2 et 6), et une entree ecartee
+ * est simplement absente, jamais un lien casse.
  */
 export const getPublicSiteNavigationService = async (
   organizationId: string
@@ -291,13 +359,10 @@ export const getPublicSiteNavigationService = async (
     const rows = await getMenuItemsByOrganizationDao(parsed.data)
 
     return {
-      menu: rows
-        .filter((row) => row.visible && row.pageStatus === 'published')
-        .map((row) => ({
-          id: row.id,
-          title: row.pageTitle,
-          slug: row.pageSlug,
-        })),
+      menu: toMenuItemDtos(rows).flatMap((item) => {
+        const entry = toPublicMenuEntry(item)
+        return entry ? [entry] : []
+      }),
       footerContent: await readFooterContent(parsed.data),
     }
   })
@@ -320,4 +385,96 @@ export const canManageSiteNavigationService = async (
     parsed.data,
     ActionIdConst.SITE_NAVIGATION_MANAGE
   )
+}
+
+const toMenuLinkDto = (row: {
+  id: string
+  rank: number
+  visible: boolean
+  label: string
+  address: string
+}): MenuLinkItemDTO => {
+  const classified = classifyLinkAddress(row.address)
+  return {
+    kind: 'link',
+    id: row.id,
+    rank: row.rank,
+    visible: row.visible,
+    label: row.label,
+    address: row.address,
+    target: classified.ok ? classified.kind : 'refused',
+  }
+}
+
+/**
+ * Ajoute une entree libre « libelle + adresse » (s50, ADR 078), en dernier rang.
+ *
+ * Ordre : `safeParse` (liste blanche comprise) -> controle d'acces -> ecriture
+ * sous le scope de l'association. Une adresse refusee n'atteint jamais la base.
+ */
+export const addMenuLinkService = async (input: {
+  organizationId: string
+  label: string
+  address: string
+}): Promise<MenuLinkItemDTO> => {
+  const parsed = addMenuLinkServiceSchema.safeParse(input)
+  if (!parsed.success) {
+    throw new ValidationParsedZodError(parsed.error)
+  }
+
+  await requireNavigationManager(parsed.data.organizationId)
+
+  return withTenant(parsed.data.organizationId, async () => {
+    const existing = await getMenuItemsByOrganizationDao(
+      parsed.data.organizationId
+    )
+    const created = await addMenuLinkDao({
+      organizationId: parsed.data.organizationId,
+      label: parsed.data.label,
+      address: parsed.data.address,
+      rank: existing.length,
+    })
+
+    return toMenuLinkDto({
+      ...created,
+      label: parsed.data.label,
+      address: parsed.data.address,
+    })
+  })
+}
+
+/**
+ * Modifie le libelle et l'adresse d'une entree libre. Une entree de page n'est
+ * jamais modifiee ainsi (arbitrage 2) : la DAO ne la trouve pas, et l'appel
+ * rend `NotFoundError`, comme une entree d'une autre association.
+ */
+export const updateMenuLinkService = async (input: {
+  organizationId: string
+  menuItemId: string
+  label: string
+  address: string
+}): Promise<MenuLinkItemDTO> => {
+  const parsed = updateMenuLinkServiceSchema.safeParse(input)
+  if (!parsed.success) {
+    throw new ValidationParsedZodError(parsed.error)
+  }
+
+  await requireNavigationManager(parsed.data.organizationId)
+
+  return withTenant(parsed.data.organizationId, async () => {
+    const updated = await updateMenuLinkDao(
+      parsed.data.organizationId,
+      parsed.data.menuItemId,
+      {label: parsed.data.label, address: parsed.data.address}
+    )
+    if (!updated) {
+      throw new NotFoundError('Entrée de menu introuvable')
+    }
+
+    return toMenuLinkDto({
+      ...updated,
+      label: parsed.data.label,
+      address: parsed.data.address,
+    })
+  })
 }

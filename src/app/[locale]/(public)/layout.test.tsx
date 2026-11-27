@@ -66,8 +66,13 @@ beforeEach(() => {
 describe('PublicLayout — la navigation composee par le bureau', () => {
   it('rend les entrees du menu dans leur ordre, vers les pages du site', async () => {
     withMenu([
-      {id: '1', title: "Qualité de l'eau", slug: 'qualite-de-leau'},
-      {id: '2', title: 'Adhérer', slug: 'adherer'},
+      {
+        kind: 'internal',
+        id: '1',
+        title: "Qualité de l'eau",
+        href: '/qualite-de-leau',
+      },
+      {kind: 'internal', id: '2', title: 'Adhérer', href: '/adherer'},
     ])
 
     await renderLayout()
@@ -81,6 +86,44 @@ describe('PublicLayout — la navigation composee par le bureau', () => {
     expect(links[0]).toHaveAttribute('href', '/qualite-de-leau')
   })
 
+  /**
+   * s50 : les entrees libres se melent aux entrees de page. L'externe porte
+   * `rel="noopener noreferrer"` et reste dans l'onglet : aucun `target`.
+   */
+  it('rend les entrées libres à leur place, l externe sans nouvel onglet', async () => {
+    withMenu([
+      {
+        kind: 'internal',
+        id: '1',
+        title: "Qualité de l'eau",
+        href: '/qualite-eau',
+      },
+      {kind: 'internal', id: '2', title: 'Nous contacter', href: '/contact'},
+      {
+        kind: 'external',
+        id: '3',
+        title: 'Mairie de Saint-Étang',
+        href: 'https://www.saint-etang.fr',
+      },
+    ])
+
+    await renderLayout()
+
+    const nav = screen.getByRole('navigation', {name: 'Menu du site'})
+    const links = [...nav.querySelectorAll('a')]
+    expect(links.map((link) => link.textContent)).toEqual([
+      "Qualité de l'eau",
+      'Nous contacter',
+      'Mairie de Saint-Étang',
+    ])
+    expect(links[0]).toHaveAttribute('href', '/qualite-eau')
+    expect(links[1]).toHaveAttribute('href', '/contact')
+    expect(links[1]).not.toHaveAttribute('rel')
+    expect(links[2]).toHaveAttribute('href', 'https://www.saint-etang.fr')
+    expect(links[2]).toHaveAttribute('rel', 'noopener noreferrer')
+    expect(links[2]).not.toHaveAttribute('target')
+  })
+
   it('ne rend aucune zone de navigation quand le menu est vide', async () => {
     withMenu([])
 
@@ -91,7 +134,14 @@ describe('PublicLayout — la navigation composee par le bureau', () => {
   })
 
   it('ne rend plus la navigation de demonstration du socle', async () => {
-    withMenu([{id: '1', title: "Qualité de l'eau", slug: 'qualite-de-leau'}])
+    withMenu([
+      {
+        kind: 'internal',
+        id: '1',
+        title: "Qualité de l'eau",
+        href: '/qualite-de-leau',
+      },
+    ])
 
     await renderLayout()
 

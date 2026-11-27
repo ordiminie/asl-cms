@@ -2659,13 +2659,41 @@
       "emptyAction": "Ajouter une page",
       "visible": "Visible",
       "remove": "Retirer du menu",
+      "edit": "Modifier",
       "hiddenBecauseUnpublished": "Masquée sur le site public — la page n'est pas publiée",
-      "add": "Ajouter une entrée",
+      "hiddenBecauseRefused": "Masquée sur le site public — adresse refusée.",
+      "linkInternal": "Adresse du site :",
+      "linkExternal": "Autre site :",
+      "addPage": "Ajouter une page",
+      "addLink": "Ajouter une adresse",
       "searchLabel": "Rechercher une page",
       "searchPlaceholder": "Rechercher une page…",
       "noResult": "Aucune page à ajouter.",
       "removedBanner": "Entrée « {title} » retirée du menu.",
       "undo": "Annuler"
+    },
+    "linkDialog": {
+      "addTitle": "Ajouter une adresse au menu",
+      "editTitle": "Modifier l'entrée",
+      "editLegend": "Une entrée vers une adresse reste une adresse. Pour viser une page, retirez l'entrée puis ajoutez la page.",
+      "label": "Libellé",
+      "labelHelp": "Le texte affiché dans le menu du site.",
+      "counter": "{count} / {max}",
+      "address": "Adresse",
+      "addressHelp": "Un chemin du site, qui commence par « / » (par exemple /contact), ou l'adresse d'un autre site, qui commence par https://.",
+      "cancel": "Annuler",
+      "add": "Ajouter au menu",
+      "adding": "Ajout…",
+      "save": "Enregistrer l'entrée",
+      "saving": "Enregistrement…"
+    },
+    "validation": {
+      "labelRequired": "Écrivez le libellé affiché dans le menu.",
+      "labelTooLong": "{count, plural, one {# caractère de trop.} other {# caractères de trop.}}",
+      "addressRequired": "Écrivez l'adresse de l'entrée.",
+      "addressHttp": "Cette adresse commence par http:// : seules les adresses en https:// sont acceptées.",
+      "addressRefused": "Adresse refusée : écrivez un chemin qui commence par une seule barre « / », ou une adresse qui commence par https://.",
+      "addressTooLong": "Cette adresse est trop longue : {max} caractères au plus."
     },
     "footer": {
       "title": "Pied de page",
@@ -2685,7 +2713,8 @@
       "forbidden": "Seul le bureau de l'association peut modifier la navigation du site.",
       "failed": "L'enregistrement a échoué. Rien n'est perdu : réessayez.",
       "invalidData": "Données invalides.",
-      "alreadyInMenu": "Cette page est déjà dans le menu."
+      "alreadyInMenu": "Cette page est déjà dans le menu.",
+      "summary": "{count, plural, one {# champ à corriger} other {# champs à corriger}}"
     }
   },
   "BureauNewsPage": {

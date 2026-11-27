@@ -18,6 +18,8 @@ vi.mock('@/app/dal/site-navigation-dal', () => ({
 vi.mock('@/app/dal/page-dal', () => ({getPagesForBureauDal: vi.fn()}))
 vi.mock('./actions', () => ({
   addMenuItemAction: vi.fn(),
+  addMenuLinkAction: vi.fn(),
+  updateMenuLinkAction: vi.fn(),
   removeMenuItemAction: vi.fn(),
   reorderMenuItemsAction: vi.fn(),
   setMenuItemVisibilityAction: vi.fn(),
@@ -53,6 +55,7 @@ beforeEach(() => {
   vi.mocked(getSiteNavigationForBureauDal).mockResolvedValue({
     menu: [
       {
+        kind: 'page',
         id: '22222222-2222-4222-8222-222222222222',
         pageId: '33333333-3333-4333-8333-333333333333',
         rank: 0,

@@ -2,6 +2,8 @@ import siteNavigationServiceInterceptor from './interceptors/site-navigation-ser
 
 export const addMenuItemService =
   siteNavigationServiceInterceptor.addMenuItemService
+export const addMenuLinkService =
+  siteNavigationServiceInterceptor.addMenuLinkService
 export const canManageSiteNavigationService =
   siteNavigationServiceInterceptor.canManageSiteNavigationService
 export const getPublicSiteNavigationService =
@@ -18,3 +20,5 @@ export const saveSiteFooterService =
   siteNavigationServiceInterceptor.saveSiteFooterService
 export const setMenuItemVisibilityService =
   siteNavigationServiceInterceptor.setMenuItemVisibilityService
+export const updateMenuLinkService =
+  siteNavigationServiceInterceptor.updateMenuLinkService

@@ -17,7 +17,8 @@ import {PublicMenuEntryDTO} from '@/services/types/domain/site-navigation-types'
 /**
  * Tiroir du site public sur petit ecran (s04b, ecran 2). Il porte **les memes
  * entrees que la navigation d'ordinateur**, dans le meme ordre : une seule
- * source, donc pas de divergence entre les deux tailles d'ecran. La connexion
+ * source, donc pas de divergence entre les deux tailles d'ecran. Un autre site
+ * s'ouvre dans le meme onglet, `rel="noopener noreferrer"` (s50). La connexion
  * reste toujours accessible, menu vide compris.
  */
 export function PublicMobileMenu({entries}: {entries: PublicMenuEntryDTO[]}) {
@@ -34,7 +35,13 @@ export function PublicMobileMenu({entries}: {entries: PublicMenuEntryDTO[]}) {
       <DropdownMenuContent align="end">
         {entries.map((entry) => (
           <DropdownMenuItem key={entry.id} asChild>
-            <Link href={`/${entry.slug}`}>{entry.title}</Link>
+            {entry.kind === 'external' ? (
+              <a href={entry.href} rel="noopener noreferrer">
+                {entry.title}
+              </a>
+            ) : (
+              <Link href={entry.href}>{entry.title}</Link>
+            )}
           </DropdownMenuItem>
         ))}
         {entries.length > 0 && <DropdownMenuSeparator />}

@@ -610,6 +610,13 @@
       "when": 1795694275455,
       "tag": "0086_charming_ego",
       "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "7",
+      "when": 1795773907800,
+      "tag": "0087_chilly_black_tarantula",
+      "breakpoints": true
     }
   ]
 }
