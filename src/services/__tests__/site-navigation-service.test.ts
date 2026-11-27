@@ -14,6 +14,8 @@ vi.mock('@/db/tenant-scope', () => ({
 }))
 vi.mock('@/db/repositories/menu-item-repository', () => ({
   addMenuItemDao: vi.fn(),
+  addMenuLinkDao: vi.fn(),
+  updateMenuLinkDao: vi.fn(),
   getMenuItemsByOrganizationDao: vi.fn(),
   removeMenuItemDao: vi.fn(),
   reorderMenuItemsTxnDao: vi.fn(),
@@ -31,10 +33,12 @@ vi.mock('@/db/repositories/organization-setting-repository', () => ({
 
 import {
   addMenuItemDao,
+  addMenuLinkDao,
   getMenuItemsByOrganizationDao,
   removeMenuItemDao,
   reorderMenuItemsTxnDao,
   setMenuItemVisibilityDao,
+  updateMenuLinkDao,
 } from '@/db/repositories/menu-item-repository'
 import {
   deleteOrganizationSettingsDao,
@@ -46,8 +50,10 @@ import {getPageByIdDao} from '@/db/repositories/page-repository'
 import {getAssociationSettingsService} from '../association-settings-service'
 import {AuthorizationError} from '../errors/authorization-error'
 import {NotFoundError} from '../errors/not-found-error'
+import {ValidationParsedZodError} from '../errors/validation-error'
 import {
   addMenuItemService,
+  addMenuLinkService,
   canManageSiteNavigationService,
   getMenuItemsForBureauService,
   getPublicSiteNavigationService,
@@ -56,8 +62,9 @@ import {
   reorderMenuItemsService,
   saveSiteFooterService,
   setMenuItemVisibilityService,
+  updateMenuLinkService,
 } from '../site-navigation-service'
-import {UserOrganizationRoleConst} from '../types/domain/auth-types'
+import {RoleConst, UserOrganizationRoleConst} from '../types/domain/auth-types'
 import {OrganizationRole} from '../types/domain/organization-types'
 import {User} from '../types/domain/user-types'
 import {setupAuthUserMocked} from './helper-service-test'
@@ -107,6 +114,24 @@ const menuRow = (overrides: Record<string, unknown> = {}) => ({
   pageTitle: "Qualité de l'eau",
   pageSlug: 'qualite-de-leau',
   pageStatus: 'published' as const,
+  label: null,
+  address: null,
+  ...overrides,
+})
+
+const LINK_ID = '77777777-7777-4777-8777-777777777777'
+
+const linkRow = (overrides: Record<string, unknown> = {}) => ({
+  id: LINK_ID,
+  organizationId: ORG_ID,
+  pageId: null,
+  rank: 0,
+  visible: true,
+  pageTitle: null,
+  pageSlug: null,
+  pageStatus: null,
+  label: 'Nous contacter',
+  address: '/contact',
   ...overrides,
 })
 
@@ -126,12 +151,44 @@ beforeEach(() => {
       id: ITEM_ID,
       organizationId: input.organizationId,
       pageId: input.pageId,
+      label: null,
+      address: null,
       rank: input.rank,
       visible: true,
       createdAt: new Date(),
       updatedAt: new Date(),
     }
   })
+  vi.mocked(addMenuLinkDao).mockImplementation(async (input) => {
+    expect(scope.current).toBe(ORG_ID)
+    return {
+      id: LINK_ID,
+      organizationId: input.organizationId,
+      pageId: null,
+      label: input.label,
+      address: input.address,
+      rank: input.rank,
+      visible: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+  })
+  vi.mocked(updateMenuLinkDao).mockImplementation(
+    async (organizationId, menuItemId, values) => {
+      expect(scope.current).toBe(ORG_ID)
+      return {
+        id: menuItemId,
+        organizationId,
+        pageId: null,
+        label: values.label,
+        address: values.address,
+        rank: 3,
+        visible: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }
+    }
+  )
   vi.mocked(removeMenuItemDao).mockImplementation(async () => {
     expect(scope.current).toBe(ORG_ID)
   })
@@ -157,7 +214,10 @@ describe('[BUREAU] gestion du menu', () => {
       pageId: PAGE_ID,
     })
 
-    expect(result.status).toBe('added')
+    expect(result).toEqual({
+      status: 'added',
+      item: expect.objectContaining({kind: 'page', pageId: PAGE_ID}),
+    })
     expect(addMenuItemDao).toHaveBeenCalledWith({
       organizationId: ORG_ID,
       pageId: PAGE_ID,
@@ -230,6 +290,7 @@ describe('[BUREAU] gestion du menu', () => {
 
     expect(items).toEqual([
       {
+        kind: 'page',
         id: ITEM_ID,
         pageId: PAGE_ID,
         rank: 0,
@@ -239,6 +300,56 @@ describe('[BUREAU] gestion du menu', () => {
         pageStatus: 'draft',
       },
     ])
+  })
+
+  it('liste les entrées libres à côté des entrées de page, dans l ordre du rang', async () => {
+    vi.mocked(getMenuItemsByOrganizationDao).mockResolvedValue([
+      menuRow({rank: 0}),
+      linkRow({rank: 1}),
+      linkRow({
+        id: OTHER_ITEM_ID,
+        rank: 2,
+        label: 'Mairie',
+        address: 'https://www.saint-etang.fr',
+      }),
+    ])
+
+    const items = await getMenuItemsForBureauService(ORG_ID)
+
+    expect(items.map((item) => item.kind)).toEqual(['page', 'link', 'link'])
+    expect(items[1]).toEqual({
+      kind: 'link',
+      id: LINK_ID,
+      rank: 1,
+      visible: true,
+      label: 'Nous contacter',
+      address: '/contact',
+      target: 'internal',
+    })
+    expect(items[2]).toEqual(
+      expect.objectContaining({kind: 'link', target: 'external'})
+    )
+  })
+
+  /**
+   * Une adresse dangereuse ne peut venir que d'une ecriture hors application :
+   * l'ecran la montre, annoncee comme refusee, pour que le bureau la corrige.
+   */
+  it.each([
+    'javascript:alert(1)',
+    '//hôte.example',
+    '/\\hôte.example',
+    'http://x.fr',
+  ])('signale au bureau l adresse refusée %j déjà en base', async (address) => {
+    vi.mocked(getMenuItemsByOrganizationDao).mockResolvedValue([
+      linkRow({address}),
+    ])
+
+    const [item] = await getMenuItemsForBureauService(ORG_ID)
+
+    expect(item).toEqual(
+      expect.objectContaining({kind: 'link', address, target: 'refused'})
+    )
   })
 })
 
@@ -418,8 +529,13 @@ describe('[PUBLIC] navigation rendue au visiteur', () => {
     const navigation = await getPublicSiteNavigationService(ORG_ID)
 
     expect(navigation.menu).toEqual([
-      {id: ITEM_ID, title: "Qualité de l'eau", slug: 'eau'},
-      {id: OTHER_ITEM_ID, title: 'Adhérer', slug: 'adherer'},
+      {kind: 'internal', id: ITEM_ID, title: "Qualité de l'eau", href: '/eau'},
+      {
+        kind: 'internal',
+        id: OTHER_ITEM_ID,
+        title: 'Adhérer',
+        href: '/adherer',
+      },
     ])
     expect(navigation.footerContent).toBe('Les Amis de l’Étang, depuis 1987.')
   })
@@ -445,7 +561,7 @@ describe('[PUBLIC] navigation rendue au visiteur', () => {
 
     const navigation = await getPublicSiteNavigationService(ORG_ID)
 
-    expect(navigation.menu.map((entry) => entry.slug)).toEqual(['adherer'])
+    expect(navigation.menu.map((entry) => entry.href)).toEqual(['/adherer'])
   })
 
   /** Critère 6 : la visibilité de l'entrée est propre, même page publiée. */
@@ -457,6 +573,85 @@ describe('[PUBLIC] navigation rendue au visiteur', () => {
     const navigation = await getPublicSiteNavigationService(ORG_ID)
 
     expect(navigation.menu).toEqual([])
+  })
+
+  it('mêle entrées de page et entrées libres dans l ordre du rang', async () => {
+    vi.mocked(getMenuItemsByOrganizationDao).mockResolvedValue([
+      linkRow({rank: 0}),
+      menuRow({rank: 1, pageSlug: 'eau'}),
+      linkRow({
+        id: OTHER_ITEM_ID,
+        rank: 2,
+        label: 'Mairie de Saint-Étang',
+        address: 'https://www.saint-etang.fr',
+      }),
+    ])
+
+    const navigation = await getPublicSiteNavigationService(ORG_ID)
+
+    expect(navigation.menu).toEqual([
+      {
+        kind: 'internal',
+        id: LINK_ID,
+        title: 'Nous contacter',
+        href: '/contact',
+      },
+      {kind: 'internal', id: ITEM_ID, title: "Qualité de l'eau", href: '/eau'},
+      {
+        kind: 'external',
+        id: OTHER_ITEM_ID,
+        title: 'Mairie de Saint-Étang',
+        href: 'https://www.saint-etang.fr',
+      },
+    ])
+  })
+
+  /** ADR 078 §4 : la liste blanche est revérifiée au rendu. */
+  it.each([
+    'javascript:alert(1)',
+    '//hôte.example',
+    '/\\hôte.example',
+    'http://x.fr',
+  ])('omet l entrée libre dont l adresse %j est refusée', async (address) => {
+    vi.mocked(getMenuItemsByOrganizationDao).mockResolvedValue([
+      linkRow({address}),
+      linkRow({id: OTHER_ITEM_ID, rank: 1, address: '/contact'}),
+    ])
+
+    const navigation = await getPublicSiteNavigationService(ORG_ID)
+
+    expect(navigation.menu.map((entry) => entry.id)).toEqual([OTHER_ITEM_ID])
+  })
+
+  it('omet l entrée libre masquée par le bureau', async () => {
+    vi.mocked(getMenuItemsByOrganizationDao).mockResolvedValue([
+      linkRow({visible: false}),
+    ])
+
+    const navigation = await getPublicSiteNavigationService(ORG_ID)
+
+    expect(navigation.menu).toEqual([])
+  })
+
+  /** Le service public s'execute dans le scope `'use cache'` du DAL. */
+  it('n appelle ni l horloge ni le journal', async () => {
+    const {logger} = await import('@/lib/logger')
+    const now = vi.spyOn(Date, 'now')
+    const clock = vi.spyOn(globalThis, 'Date')
+    vi.mocked(getMenuItemsByOrganizationDao).mockResolvedValue([
+      linkRow({rank: 0}),
+      linkRow({id: OTHER_ITEM_ID, rank: 1, address: 'https://x.fr'}),
+      menuRow({rank: 2}),
+    ])
+
+    await getPublicSiteNavigationService(ORG_ID)
+
+    expect(now).not.toHaveBeenCalled()
+    expect(clock).not.toHaveBeenCalled()
+    expect(logger.info).not.toHaveBeenCalled()
+    expect(logger.debug).not.toHaveBeenCalled()
+    now.mockRestore()
+    clock.mockRestore()
   })
 
   it('rend un pied de page vide quand aucun n est enregistré', async () => {
@@ -501,5 +696,176 @@ describe('pied de page et registre des réglages (s02) ne se croisent pas', () =
 
     expect(withFooter).toEqual(withoutFooter)
     expect(withFooter).not.toHaveProperty('site.footer_content')
+  })
+})
+
+/**
+ * s50 : entree libre « libelle + adresse ». Chaque refus du critere 3 est
+ * leve **avant** tout acces a la base.
+ */
+describe('[BUREAU] entrée libre du menu', () => {
+  const linkInput = (overrides: Record<string, unknown> = {}) => ({
+    organizationId: ORG_ID,
+    label: 'Nous contacter',
+    address: '/contact',
+    ...overrides,
+  })
+
+  it('ajoute une entrée libre au rang suivant, sous le scope de son association', async () => {
+    vi.mocked(getMenuItemsByOrganizationDao).mockImplementation(async () => {
+      expect(scope.current).toBe(ORG_ID)
+      return [menuRow({rank: 0}), linkRow({id: OTHER_ITEM_ID, rank: 1})]
+    })
+
+    const item = await addMenuLinkService(linkInput())
+
+    expect(addMenuLinkDao).toHaveBeenCalledWith({
+      organizationId: ORG_ID,
+      label: 'Nous contacter',
+      address: '/contact',
+      rank: 2,
+    })
+    expect(item).toEqual({
+      kind: 'link',
+      id: LINK_ID,
+      rank: 2,
+      visible: true,
+      label: 'Nous contacter',
+      address: '/contact',
+      target: 'internal',
+    })
+  })
+
+  it('écrit le libellé et l adresse après trim', async () => {
+    await addMenuLinkService(
+      linkInput({label: '  Mairie  ', address: '  https://x.fr  '})
+    )
+
+    expect(addMenuLinkDao).toHaveBeenCalledWith(
+      expect.objectContaining({label: 'Mairie', address: 'https://x.fr'})
+    )
+  })
+
+  /** La contrainte unique `(organization_id, page_id)` tient les NULL pour distincts. */
+  it('accepte deux entrées libres dans le même menu', async () => {
+    vi.mocked(getMenuItemsByOrganizationDao).mockResolvedValue([linkRow()])
+
+    await addMenuLinkService(linkInput({address: '/actualites'}))
+
+    expect(addMenuLinkDao).toHaveBeenCalledWith(
+      expect.objectContaining({address: '/actualites', rank: 1})
+    )
+  })
+
+  it.each([
+    ['libellé vide', {label: ''}],
+    ['libellé d espaces', {label: '   '}],
+    ['libellé de 41 caractères', {label: 'a'.repeat(41)}],
+    ['javascript:', {address: 'javascript:alert(1)'}],
+    ['data:', {address: 'data:text/html,<b>x</b>'}],
+    ['http:', {address: 'http://x.fr'}],
+    ['relative au protocole', {address: '//hôte.example'}],
+    ['barre inverse', {address: '/\\hôte.example'}],
+    ['adresse trop longue', {address: `/${'a'.repeat(2048)}`}],
+  ])(
+    'refuse à l ajout : %s, sans appel de la base',
+    async (_case, overrides) => {
+      await expect(addMenuLinkService(linkInput(overrides))).rejects.toThrow(
+        ValidationParsedZodError
+      )
+      expect(getMenuItemsByOrganizationDao).not.toHaveBeenCalled()
+      expect(addMenuLinkDao).not.toHaveBeenCalled()
+    }
+  )
+
+  it('accepte un libellé de 40 caractères', async () => {
+    await addMenuLinkService(linkInput({label: 'a'.repeat(40)}))
+
+    expect(addMenuLinkDao).toHaveBeenCalled()
+  })
+
+  it('modifie le libellé et l adresse d une entrée libre', async () => {
+    const item = await updateMenuLinkService({
+      ...linkInput({label: ' Mairie ', address: 'https://www.saint-etang.fr'}),
+      menuItemId: LINK_ID,
+    })
+
+    expect(updateMenuLinkDao).toHaveBeenCalledWith(ORG_ID, LINK_ID, {
+      label: 'Mairie',
+      address: 'https://www.saint-etang.fr',
+    })
+    expect(item).toEqual({
+      kind: 'link',
+      id: LINK_ID,
+      rank: 3,
+      visible: false,
+      label: 'Mairie',
+      address: 'https://www.saint-etang.fr',
+      target: 'external',
+    })
+  })
+
+  /** Arbitrage 2 : une entree de page reste une page ; la DAO ne la trouve pas. */
+  it('refuse de modifier une entrée de page', async () => {
+    vi.mocked(updateMenuLinkDao).mockResolvedValue(undefined)
+
+    await expect(
+      updateMenuLinkService({...linkInput(), menuItemId: ITEM_ID})
+    ).rejects.toThrow(NotFoundError)
+  })
+
+  it.each([
+    ['libellé vide', {label: ''}],
+    ['javascript:', {address: 'javascript:alert(1)'}],
+    ['http:', {address: 'http://x.fr'}],
+    ['relative au protocole', {address: '//hôte.example'}],
+  ])(
+    'refuse à la modification : %s, sans appel de la base',
+    async (_case, overrides) => {
+      await expect(
+        updateMenuLinkService({...linkInput(overrides), menuItemId: LINK_ID})
+      ).rejects.toThrow(ValidationParsedZodError)
+      expect(updateMenuLinkDao).not.toHaveBeenCalled()
+    }
+  )
+
+  it('accepte le SuperAdmin', async () => {
+    setupAuthUserMocked({...userTest, role: RoleConst.SUPER_ADMIN})
+
+    await addMenuLinkService(linkInput())
+
+    expect(addMenuLinkDao).toHaveBeenCalled()
+  })
+
+  it('accepte le bureau (board)', async () => {
+    setupAuthUserMocked(withRole(UserOrganizationRoleConst.ADMIN))
+
+    await updateMenuLinkService({...linkInput(), menuItemId: LINK_ID})
+
+    expect(updateMenuLinkDao).toHaveBeenCalled()
+  })
+
+  it.each([
+    ['membre simple', () => withRole(UserOrganizationRoleConst.MEMBER)],
+    ['visiteur anonyme', () => undefined],
+    [
+      'présidente d une autre association',
+      () =>
+        withRole(
+          UserOrganizationRoleConst.OWNER,
+          '22222222-2222-4222-8222-222222222222'
+        ),
+    ],
+  ])('refuse l ajout et la modification : %s', async (_case, user) => {
+    setupAuthUserMocked(user())
+
+    await expect(addMenuLinkService(linkInput())).rejects.toThrow(
+      AuthorizationError
+    )
+    await expect(
+      updateMenuLinkService({...linkInput(), menuItemId: LINK_ID})
+    ).rejects.toThrow(AuthorizationError)
+    expect(addMenuLinkDao).not.toHaveBeenCalled()
+    expect(updateMenuLinkDao).not.toHaveBeenCalled()
   })
 })

@@ -6,19 +6,31 @@ import {getTranslations} from 'next-intl/server'
 import {siteNavigationTag} from '@/app/dal/site-navigation-dal'
 import {requireCurrentTenantDal} from '@/app/dal/tenant-dal'
 import {requireActionAuth} from '@/app/dal/user-dal'
+import {
+  createMenuLinkFormSchema,
+  MENU_LINK_FORM_FIELDS,
+  type MenuLinkActionResult,
+  type MenuLinkFormField,
+} from '@/components/features/navigation/menu-link-form-validation'
 import type {
   SiteNavigationActionResult,
   SiteNavigationAddResult,
 } from '@/components/features/navigation/site-navigation-manager'
 import {AuthorizationError} from '@/services/errors/authorization-error'
+import {ValidationParsedZodError} from '@/services/errors/validation-error'
 import {
   addMenuItemService,
+  addMenuLinkService,
   removeMenuItemService,
   reorderMenuItemsService,
   saveSiteFooterService,
   setMenuItemVisibilityService,
+  updateMenuLinkService,
 } from '@/services/facades/site-navigation-service-facade'
-import {MENU_ITEM_ALREADY_IN_MENU} from '@/services/types/domain/site-navigation-types'
+import {
+  MENU_ITEM_ALREADY_IN_MENU,
+  type MenuLinkItemDTO,
+} from '@/services/types/domain/site-navigation-types'
 
 /**
  * Server Actions de l'ecran « Navigation du site » (s04b, ecran 1).
@@ -153,4 +165,91 @@ export async function saveSiteFooterAction(
   } catch (error) {
     return failure(error)
   }
+}
+
+const readField = (formData: FormData, key: string): string =>
+  formData.get(key)?.toString() ?? ''
+
+type Translator = Awaited<ReturnType<typeof getTranslations>>
+
+const toLinkFailure = (error: unknown, t: Translator): MenuLinkActionResult => {
+  if (error instanceof AuthorizationError) {
+    return {status: 'error', message: t('errors.forbidden')}
+  }
+  if (error instanceof ValidationParsedZodError) {
+    return {status: 'error', message: t('errors.invalidData')}
+  }
+  return {status: 'error', message: t('errors.failed')}
+}
+
+/**
+ * Gabarit commun de l'ajout et de la modification d'une entree libre (s50) :
+ * le schema traduit du formulaire est rejoue ici pour rendre chaque refus **sur
+ * son champ** (critere 3), avant tout appel de la facade ; le menu n'est
+ * invalide qu'apres un succes (critere 6). Une entree introuvable — une entree
+ * de page, ou celle d'une autre association — est un echec sans champ.
+ */
+const saveMenuLink = async (
+  formData: FormData,
+  save: (values: {
+    organizationId: string
+    label: string
+    address: string
+  }) => Promise<MenuLinkItemDTO>
+): Promise<MenuLinkActionResult> => {
+  const tenant = await requireCurrentTenantDal()
+  const t = await getTranslations('BureauNavigationPage')
+
+  try {
+    await requireActionAuth()
+
+    const validation = createMenuLinkFormSchema(t).safeParse(
+      Object.fromEntries(
+        MENU_LINK_FORM_FIELDS.map((field) => [
+          field,
+          readField(formData, field),
+        ])
+      )
+    )
+    if (!validation.success) {
+      return {
+        status: 'invalid',
+        errors: validation.error.issues.map((issue) => ({
+          field: issue.path[0] as MenuLinkFormField,
+          message: issue.message,
+        })),
+      }
+    }
+
+    const item = await save({organizationId: tenant.id, ...validation.data})
+
+    updateTag(siteNavigationTag(tenant.id))
+    return {status: 'saved', item}
+  } catch (error) {
+    return toLinkFailure(error, t)
+  }
+}
+
+/** « Ajouter au menu » depuis le `dialog` d'une adresse : en dernier rang. */
+export async function addMenuLinkAction(
+  _prevState: MenuLinkActionResult | undefined,
+  formData: FormData
+): Promise<MenuLinkActionResult> {
+  return saveMenuLink(formData, (values) => addMenuLinkService(values))
+}
+
+/**
+ * « Enregistrer l'entree » : libelle et adresse d'une entree **deja libre**.
+ * Le type d'une entree ne change jamais (arbitrage 2).
+ */
+export async function updateMenuLinkAction(
+  _prevState: MenuLinkActionResult | undefined,
+  formData: FormData
+): Promise<MenuLinkActionResult> {
+  return saveMenuLink(formData, (values) =>
+    updateMenuLinkService({
+      ...values,
+      menuItemId: readField(formData, 'menuItemId'),
+    })
+  )
 }

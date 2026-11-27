@@ -1,4 +1,4 @@
-import {and, asc, eq} from 'drizzle-orm'
+import {and, asc, eq, isNull} from 'drizzle-orm'
 
 import {menuItem, MenuItemModel} from '@/db/models/menu-item-model'
 import {page, PageModel} from '@/db/models/page-model'
@@ -12,18 +12,23 @@ import {getDb} from '@/db/tenant-scope'
 export type MenuItemRow = {
   id: string
   organizationId: string
-  pageId: string
+  pageId: string | null
   rank: number
   visible: boolean
-  pageTitle: string
-  pageSlug: string
-  pageStatus: PageModel['status']
+  pageTitle: string | null
+  pageSlug: string | null
+  pageStatus: PageModel['status'] | null
+  label: string | null
+  address: string | null
 }
 
 /**
  * Le menu d'une association, dans son ordre, joint a `page` pour le titre et le
  * statut : l'ecran de gestion affiche les deux, et le rendu public a besoin du
  * statut pour omettre une entree dont la page n'est plus publiee (critere 2).
+ *
+ * Jointure **externe** (ADR 078) : une entree libre n'a pas de page, une
+ * jointure interne la ferait disparaitre sans erreur.
  */
 export const getMenuItemsByOrganizationDao = async (
   organizationId: string
@@ -38,9 +43,11 @@ export const getMenuItemsByOrganizationDao = async (
       pageTitle: page.title,
       pageSlug: page.slug,
       pageStatus: page.status,
+      label: menuItem.label,
+      address: menuItem.address,
     })
     .from(menuItem)
-    .innerJoin(page, eq(menuItem.pageId, page.id))
+    .leftJoin(page, eq(menuItem.pageId, page.id))
     .where(eq(menuItem.organizationId, organizationId))
     .orderBy(asc(menuItem.rank))
 
@@ -108,4 +115,39 @@ export const reorderMenuItemsTxnDao = async (
         )
     }
   })
+}
+
+/** Ajoute une entree libre (s50) : libelle + adresse, sans page. */
+export const addMenuLinkDao = async (input: {
+  organizationId: string
+  label: string
+  address: string
+  rank: number
+}): Promise<MenuItemModel> => {
+  const [row] = await getDb().insert(menuItem).values(input).returning()
+  return row
+}
+
+/**
+ * Modifie le libelle et l'adresse d'une entree **deja libre** : le filtre
+ * `page_id is null` empeche de changer le type d'une entree de page
+ * (ADR 078 §5). Rien de modifie = `undefined`.
+ */
+export const updateMenuLinkDao = async (
+  organizationId: string,
+  menuItemId: string,
+  values: {label: string; address: string}
+): Promise<MenuItemModel | undefined> => {
+  const [row] = await getDb()
+    .update(menuItem)
+    .set({...values, updatedAt: new Date()})
+    .where(
+      and(
+        eq(menuItem.id, menuItemId),
+        eq(menuItem.organizationId, organizationId),
+        isNull(menuItem.pageId)
+      )
+    )
+    .returning()
+  return row
 }

@@ -25,7 +25,10 @@ export function generateStaticParams() {
 /**
  * Cadre du site public. La zone de navigation porte **le menu compose par le
  * bureau** (s04b, ecran 2) : les entrees laissees visibles dont la page est
- * publiee, dans leur ordre. Menu vide, aucune zone de navigation — pas de
+ * publiee, et les entrees libres dont l'adresse passe la liste blanche (s50),
+ * dans leur ordre. Le `href` vient du service : une adresse du site passe par
+ * `next/link`, un autre site par un lien simple `rel="noopener noreferrer"`,
+ * dans le meme onglet. Menu vide, aucune zone de navigation — pas de
  * conteneur vide. Le tiroir mobile recoit exactement les memes entrees.
  */
 export default async function PublicLayout({children}: PropsWithChildren) {
@@ -54,15 +57,26 @@ export default async function PublicLayout({children}: PropsWithChildren) {
                   aria-label={t('menuLabel')}
                   className="hidden items-center gap-4 sm:flex"
                 >
-                  {menu.map((entry) => (
-                    <Link
-                      key={entry.id}
-                      className="hover:text-primary text-[15px] transition"
-                      href={`/${entry.slug}`}
-                    >
-                      {entry.title}
-                    </Link>
-                  ))}
+                  {menu.map((entry) =>
+                    entry.kind === 'external' ? (
+                      <a
+                        key={entry.id}
+                        className="hover:text-primary text-[15px] transition"
+                        href={entry.href}
+                        rel="noopener noreferrer"
+                      >
+                        {entry.title}
+                      </a>
+                    ) : (
+                      <Link
+                        key={entry.id}
+                        className="hover:text-primary text-[15px] transition"
+                        href={entry.href}
+                      >
+                        {entry.title}
+                      </Link>
+                    )
+                  )}
                 </nav>
               )}
             </div>

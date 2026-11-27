@@ -14,10 +14,12 @@ import {Skeleton} from '@/components/ui/skeleton'
 
 import {
   addMenuItemAction,
+  addMenuLinkAction,
   removeMenuItemAction,
   reorderMenuItemsAction,
   saveSiteFooterAction,
   setMenuItemVisibilityAction,
+  updateMenuLinkAction,
 } from './actions'
 
 export async function generateMetadata({
@@ -77,6 +79,8 @@ async function SiteNavigationSection() {
       reorderAction={reorderMenuItemsAction}
       setVisibilityAction={setMenuItemVisibilityAction}
       saveFooterAction={saveSiteFooterAction}
+      addLinkAction={addMenuLinkAction}
+      updateLinkAction={updateMenuLinkAction}
     />
   )
 }

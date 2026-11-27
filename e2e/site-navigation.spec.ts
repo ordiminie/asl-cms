@@ -1,7 +1,8 @@
 import {expect, Page, test} from '@playwright/test'
 
 /**
- * Navigation du site public — s04b, critères 1 à 7.
+ * Navigation du site public — s04b, critères 1 à 7 ; s50 (entrées libres
+ * « libellé + adresse »), critères 1 à 7.
  *
  * Ce que seuls un navigateur, deux domaines et un serveur qui tourne
  * prouvent : le menu composé par le bureau rendu au visiteur, son isolation
@@ -111,7 +112,7 @@ const addMenuEntry = async (page: Page, title: string) => {
   // Le sélecteur ne s'ouvre qu'une fois l'écran hydraté : on réessaye jusqu'à
   // ce que l'entrée soit dans la liste, seule preuve que l'ajout a porté.
   await expect(async () => {
-    await page.getByRole('button', {name: 'Ajouter une entrée'}).click()
+    await page.getByRole('button', {name: 'Ajouter une page'}).click()
     await page.getByPlaceholder('Rechercher une page').fill(title)
     await page.getByRole('option', {name: title}).click({timeout: 5000})
     await expect(page.locator('li', {hasText: title})).toBeVisible({
@@ -132,6 +133,50 @@ const publishPage = async (page: Page, editorUrl: string) => {
     await expect(editorStatus(page)).toHaveAttribute('data-status', 'live', {
       timeout: 5000,
     })
+  }).toPass({timeout: 30_000})
+}
+
+/** La ligne d'une entrée dans la liste du bureau. */
+const menuRow = (page: Page, label: string) =>
+  page.locator('li', {hasText: label})
+
+/**
+ * Ouvre le `dialog` d'une entrée libre (s50). Le clic peut précéder
+ * l'hydratation : on réessaye jusqu'à ce que le `dialog` soit ouvert.
+ */
+const openLinkDialog = async (page: Page, opener: () => Promise<void>) => {
+  await expect(async () => {
+    if (!(await page.getByRole('dialog').isVisible())) await opener()
+    await expect(page.getByRole('dialog')).toBeVisible({timeout: 2000})
+  }).toPass({timeout: 30_000})
+  return page.getByRole('dialog')
+}
+
+/** Ajoute une entrée libre au menu, effet immédiat (s50). */
+const addMenuLink = async (page: Page, label: string, address: string) => {
+  const dialog = await openLinkDialog(page, () =>
+    page.getByRole('button', {name: 'Ajouter une adresse'}).click()
+  )
+  await dialog.getByLabel('Libellé', {exact: true}).fill(label)
+  await dialog.getByLabel('Adresse', {exact: true}).fill(address)
+  await dialog.getByRole('button', {name: 'Ajouter au menu'}).click()
+  await expect(page.getByRole('dialog')).toBeHidden({timeout: 20_000})
+  await expect(menuRow(page, label)).toBeVisible()
+}
+
+/**
+ * Retire une entrée et attend que l'écran **rejoué par le serveur** ne la
+ * montre plus : seule preuve que l'écriture et l'invalidation ont eu lieu.
+ */
+const removeMenuEntry = async (page: Page, base: string, label: string) => {
+  await expect(async () => {
+    if (await menuRow(page, label).isVisible()) {
+      await menuRow(page, label)
+        .getByRole('button', {name: 'Retirer du menu'})
+        .click()
+    }
+    await openNavigation(page, base)
+    await expect(menuRow(page, label)).toBeHidden({timeout: 5000})
   }).toPass({timeout: 30_000})
 }
 
@@ -263,9 +308,136 @@ test.describe('Navigation du site — autorisation', () => {
     ).toBeVisible({timeout: 20_000})
     await expect(page.getByText(DENIED_TEXT)).toBeVisible()
     await expect(
-      page.getByRole('button', {name: 'Ajouter une entrée'})
+      page.getByRole('button', {name: 'Ajouter une page'})
     ).toBeHidden()
+    await expect(
+      page.getByRole('button', {name: 'Ajouter une adresse'})
+    ).toBeHidden()
+    await expect(page.getByRole('button', {name: 'Modifier'})).toBeHidden()
     await expect(page.getByLabel('Contenu du pied de page')).toBeHidden()
     await expect(page.getByRole('switch')).toBeHidden()
+  })
+})
+
+/**
+ * s50 — une entrée « libellé + adresse », chemin du site ou autre site en
+ * `https://`, sans fabriquer de page. Entrées nommées par `unique()`, retirées
+ * en fin de bloc.
+ */
+test.describe('Navigation du site — entrées libres (s50)', () => {
+  test('le bureau ajoute, modifie et retire une adresse ; le menu public suit, sur ce domaine seulement', async ({
+    page,
+    browser,
+  }) => {
+    const pageTitle = unique('Qualité de l’eau s50')
+    const pageSlug = unique('qualite-eau-s50')
+    const internalLabel = unique('Contact')
+    const renamedLabel = unique('Écrire')
+    const externalLabel = unique('Mairie')
+    const externalAddress = 'https://www.example.org/s50'
+
+    await login(page, TENANT_A, OWNER_A)
+
+    // Critère 4 : une entrée de page posée avant reste au menu.
+    const editorUrl = await createDraftPage(page, TENANT_A, pageTitle, pageSlug)
+    await publishPage(page, editorUrl)
+    await openNavigation(page, TENANT_A)
+    await addMenuEntry(page, pageTitle)
+
+    // Critère 1 : un chemin du site et un autre site.
+    await addMenuLink(page, internalLabel, '/contact')
+    await addMenuLink(page, externalLabel, externalAddress)
+
+    // Critère 2 : rendues à leur place, l'externe sans nouvel onglet.
+    const visitor = await browser.newContext()
+    const visitorPage = await visitor.newPage()
+    await visitorPage.goto(`${TENANT_A}${PUBLIC_ROUTE}`, {waitUntil: 'load'})
+    const menu = publicMenu(visitorPage)
+    await expect(menu.getByRole('link', {name: pageTitle})).toBeVisible({
+      timeout: 20_000,
+    })
+    await expect(menu.getByRole('link', {name: internalLabel})).toHaveAttribute(
+      'href',
+      '/contact'
+    )
+    const external = menu.getByRole('link', {name: externalLabel})
+    await expect(external).toHaveAttribute('href', externalAddress)
+    await expect(external).toHaveAttribute('rel', 'noopener noreferrer')
+    await expect(external).not.toHaveAttribute('target', /.*/)
+
+    // Critère 5 : rien sur le domaine de l'autre association.
+    await visitorPage.goto(`${TENANT_B}${PUBLIC_ROUTE}`, {waitUntil: 'load'})
+    await expect(visitorPage.getByText(internalLabel)).toBeHidden({
+      timeout: 20_000,
+    })
+    await expect(visitorPage.getByText(externalLabel)).toBeHidden()
+
+    // Critère 6 : modifier met le menu à jour, sans redémarrage.
+    const dialog = await openLinkDialog(page, () =>
+      menuRow(page, internalLabel)
+        .getByRole('button', {name: 'Modifier'})
+        .click()
+    )
+    await dialog.getByLabel('Libellé', {exact: true}).fill(renamedLabel)
+    await dialog.getByRole('button', {name: "Enregistrer l'entrée"}).click()
+    await expect(page.getByRole('dialog')).toBeHidden({timeout: 20_000})
+    await openNavigation(page, TENANT_A)
+    await expect(menuRow(page, renamedLabel)).toBeVisible({timeout: 20_000})
+
+    await visitorPage.goto(`${TENANT_A}${PUBLIC_ROUTE}`, {waitUntil: 'load'})
+    await expect(
+      publicMenu(visitorPage).getByRole('link', {name: renamedLabel})
+    ).toHaveAttribute('href', '/contact', {timeout: 20_000})
+    await expect(visitorPage.getByText(internalLabel)).toBeHidden()
+
+    // Critère 6 : retirer la fait disparaître du menu public.
+    await removeMenuEntry(page, TENANT_A, renamedLabel)
+    await visitorPage.goto(`${TENANT_A}${PUBLIC_ROUTE}`, {waitUntil: 'load'})
+    await expect(visitorPage.getByText(renamedLabel)).toBeHidden({
+      timeout: 20_000,
+    })
+    await expect(
+      publicMenu(visitorPage).getByRole('link', {name: pageTitle})
+    ).toBeVisible()
+
+    await visitor.close()
+
+    await removeMenuEntry(page, TENANT_A, externalLabel)
+    await removeMenuEntry(page, TENANT_A, pageTitle)
+  })
+
+  test('une adresse dangereuse est refusée sur le champ, et rien n’est enregistré', async ({
+    page,
+    browser,
+  }) => {
+    const label = unique('Piège')
+
+    await login(page, TENANT_A, OWNER_A)
+    await openNavigation(page, TENANT_A)
+
+    const dialog = await openLinkDialog(page, () =>
+      page.getByRole('button', {name: 'Ajouter une adresse'}).click()
+    )
+    const address = dialog.getByLabel('Adresse', {exact: true})
+    await dialog.getByLabel('Libellé', {exact: true}).fill(label)
+
+    // Critère 3 : schéma autre que https, puis adresse relative au protocole.
+    for (const refused of ['javascript:alert(1)', '//exemple.fr']) {
+      await address.fill(refused)
+      await dialog.getByRole('button', {name: 'Ajouter au menu'}).click()
+      await expect(address).toHaveAttribute('aria-invalid', 'true')
+      await expect(address).toHaveAccessibleDescription(/Adresse refusée/)
+      await expect(dialog).toBeVisible()
+    }
+
+    await dialog.getByRole('button', {name: 'Annuler'}).click()
+    await openNavigation(page, TENANT_A)
+    await expect(menuRow(page, label)).toBeHidden()
+
+    const visitor = await browser.newContext()
+    const visitorPage = await visitor.newPage()
+    await visitorPage.goto(`${TENANT_A}${PUBLIC_ROUTE}`, {waitUntil: 'load'})
+    await expect(visitorPage.getByText(label)).toBeHidden({timeout: 20_000})
+    await visitor.close()
   })
 })
