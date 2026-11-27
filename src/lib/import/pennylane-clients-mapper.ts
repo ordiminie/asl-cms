@@ -56,6 +56,15 @@ const FOUR_DIGITS = /^\d{4}$/
 /** Valeur de `Type de Client` qui designe une entreprise (recherche s55). */
 const COMPANY_CLIENT_TYPE = 'entreprise'
 
+/**
+ * `initial` (s13, defaut) : creation des fiches et de leurs parcelles.
+ * `annual` (s56) : mise a jour des coordonnees seulement ; la `Reference
+ * Client` n'est ni requise ni lue, aucune parcelle n'est calculee.
+ */
+export type PennylaneMappingMode = 'initial' | 'annual'
+
+export type PennylaneMappingOptions = {mode?: PennylaneMappingMode}
+
 export type PennylaneMappingResult =
   | {ok: true; plan: ImportPlan}
   | {ok: false; reason: 'missing_columns'; missingColumns: string[]}
@@ -67,7 +76,7 @@ type ParsedLine = {
     ImportMemberCandidate,
     'pennylaneCustomerId' | 'lines' | 'parcels'
   >
-  parcel: ImportParcelCandidate
+  parcel: ImportParcelCandidate | undefined
   remarks: ImportRemarkDTO[]
 }
 
@@ -84,11 +93,15 @@ const indexColumns = (headers: string[]): ColumnIndexes =>
     })
   )
 
-const missingColumnsOf = (indexes: ColumnIndexes): string[] =>
+const isRequired = (key: ColumnKey, mode: PennylaneMappingMode): boolean =>
+  PENNYLANE_COLUMNS[key].required && !(mode === 'annual' && key === 'reference')
+
+const missingColumnsOf = (
+  indexes: ColumnIndexes,
+  mode: PennylaneMappingMode
+): string[] =>
   (Object.keys(PENNYLANE_COLUMNS) as ColumnKey[])
-    .filter(
-      (key) => PENNYLANE_COLUMNS[key].required && indexes[key] === undefined
-    )
+    .filter((key) => isRequired(key, mode) && indexes[key] === undefined)
     .map((key) => PENNYLANE_COLUMNS[key].title)
 
 const cellOf =
@@ -204,7 +217,8 @@ const isCompany = (cell: (key: ColumnKey) => string): boolean =>
 
 const rejectionOf = (
   cell: (key: ColumnKey) => string,
-  record: CsvRecord
+  record: CsvRecord,
+  mode: PennylaneMappingMode
 ): ImportRejection | undefined => {
   if (!record.wellFormed) return ImportRejectionConst.MALFORMED_LINE
   if (!cell('customerId')) return ImportRejectionConst.MISSING_CUSTOMER_ID
@@ -212,14 +226,20 @@ const rejectionOf = (
   if (!homeAndLandOf(cell).home.addressLine && !cell('emails')) {
     return ImportRejectionConst.NO_CONTACT
   }
-  if (!cell('reference')) return ImportRejectionConst.MISSING_REFERENCE
+  if (mode === 'initial' && !cell('reference')) {
+    return ImportRejectionConst.MISSING_REFERENCE
+  }
   return undefined
 }
 
-const parseLine = (record: CsvRecord, indexes: ColumnIndexes): LineOutcome => {
+const parseLine = (
+  record: CsvRecord,
+  indexes: ColumnIndexes,
+  mode: PennylaneMappingMode
+): LineOutcome => {
   const cell = cellOf(record, indexes)
   const client = record.wellFormed ? cell('name') : ''
-  const reason = rejectionOf(cell, record)
+  const reason = rejectionOf(cell, record, mode)
   if (reason) {
     return {ok: false, rejection: {line: record.line, client, reason}}
   }
@@ -227,7 +247,10 @@ const parseLine = (record: CsvRecord, indexes: ColumnIndexes): LineOutcome => {
   const {email, others} = cellEmails(cell('emails'))
   const {home, land} = homeAndLandOf(cell)
   const padded = home.padded || (land?.padded ?? false)
-  const parcel = splitReference(record.line, cell('reference'))
+  const parcel =
+    mode === 'initial'
+      ? splitReference(record.line, cell('reference'))
+      : undefined
   const remark = (code: ImportRemarkDTO['remark']): ImportRemarkDTO => ({
     line: record.line,
     client,
@@ -255,11 +278,16 @@ const parseLine = (record: CsvRecord, indexes: ColumnIndexes): LineOutcome => {
       parcel,
       remarks: [
         ...(padded ? [remark(ImportRemarkConst.POSTAL_CODE_PADDED)] : []),
-        ...(parcel.meterNumber ? [] : [remark(ImportRemarkConst.NO_METER)]),
+        ...(!parcel || parcel.meterNumber
+          ? []
+          : [remark(ImportRemarkConst.NO_METER)]),
       ],
     },
   }
 }
+
+const parcelsOf = (line: ParsedLine): ImportParcelCandidate[] =>
+  line.parcel ? [line.parcel] : []
 
 /** Meme identifiant client → un seul membre, une parcelle par ligne. */
 const groupByCustomer = (lines: ParsedLine[]): ImportMemberCandidate[] => {
@@ -272,13 +300,13 @@ const groupByCustomer = (lines: ParsedLine[]): ImportMemberCandidate[] => {
         ? {
             ...group,
             lines: [...group.lines, line.line],
-            parcels: [...group.parcels, line.parcel],
+            parcels: [...group.parcels, ...parcelsOf(line)],
           }
         : {
             pennylaneCustomerId: line.customerId,
             lines: [line.line],
             ...line.member,
-            parcels: [line.parcel],
+            parcels: parcelsOf(line),
           }
     )
   }
@@ -321,15 +349,18 @@ const sameNameAndAddressRemarks = (lines: ParsedLine[]): ImportRemarkDTO[] => {
 
 /** Les membres a importer, les lignes rejetees et les remarques du fichier. */
 export const mapPennylaneClients = (
-  table: CsvTable
+  table: CsvTable,
+  {mode = 'initial'}: PennylaneMappingOptions = {}
 ): PennylaneMappingResult => {
   const indexes = indexColumns(table.headers)
-  const missingColumns = missingColumnsOf(indexes)
+  const missingColumns = missingColumnsOf(indexes, mode)
   if (missingColumns.length > 0) {
     return {ok: false, reason: 'missing_columns', missingColumns}
   }
 
-  const outcomes = table.records.map((record) => parseLine(record, indexes))
+  const outcomes = table.records.map((record) =>
+    parseLine(record, indexes, mode)
+  )
   const parsed = outcomes.flatMap((outcome) =>
     outcome.ok ? [outcome.parsed] : []
   )

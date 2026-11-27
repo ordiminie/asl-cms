@@ -2,6 +2,7 @@ import {Metadata} from 'next'
 import {getTranslations, setRequestLocale} from 'next-intl/server'
 import {Suspense} from 'react'
 
+import {canImportCurrentMemberContactsDal} from '@/app/dal/member-annual-import-dal'
 import {
   canManageCurrentMemberProfilesDal,
   getMemberProfilesPageForBureauDal,
@@ -82,10 +83,11 @@ async function MemberProfilesSection({
   search?: string
   groupId?: string
 }) {
-  const [tenant, allowed, managesGroups] = await Promise.all([
+  const [tenant, allowed, managesGroups, importsContacts] = await Promise.all([
     requireCurrentTenantDal(),
     canManageCurrentMemberProfilesDal(),
     canManageCurrentRecipientGroupsDal(),
+    canImportCurrentMemberContactsDal(),
   ])
 
   if (!allowed) {
@@ -102,6 +104,7 @@ async function MemberProfilesSection({
     <MemberProfileList
       list={list}
       search={search}
+      canImportContacts={importsContacts}
       groupSelection={
         groups && {
           groups,

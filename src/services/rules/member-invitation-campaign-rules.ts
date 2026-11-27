@@ -4,6 +4,7 @@ import {
   type CampaignNature,
   MEMBER_INVITATION_LAUNCH_SEND_KIND,
 } from '../types/domain/campaign-types'
+import type {MemberEmailStatus} from '../types/domain/member-email-types'
 import {
   MEMBER_INVITATION_ADDRESSES_PAGE_SIZE,
   type MemberInvitationAddressDTO,
@@ -37,10 +38,13 @@ export type InvitationAddressState = {
 /** Les traces par adresse, cle sans casse. */
 export type InvitationStates = ReadonlyMap<string, InvitationAddressState>
 
-/** Une adresse de fiche, active ou en attente, telle que le suivi la lit. */
+/**
+ * Une adresse de fiche telle que le suivi la lit. Une adresse desactivee par
+ * l'import (s56, ADR 076) en est ecartee.
+ */
 export type InvitationAddressRow = {
   email: string
-  status: 'active' | 'pending'
+  status: MemberEmailStatus
   createdAt: Date
   expiresAt: Date | null
   memberProfileId: string
@@ -105,8 +109,8 @@ export const invitationSkipOf = (
 
 const isVisible = (address: InvitationAddressRow, now: Date): boolean =>
   address.status === 'active' ||
-  address.expiresAt === null ||
-  address.expiresAt.getTime() > now.getTime()
+  (address.status === 'pending' &&
+    (address.expiresAt === null || address.expiresAt.getTime() > now.getTime()))
 
 type AddressGroup = {
   key: string

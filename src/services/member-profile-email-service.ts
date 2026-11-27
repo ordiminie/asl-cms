@@ -6,6 +6,7 @@ import {
   MemberProfileEmailRow,
   purgeExpiredPendingEmailsDao,
   setMemberProfileEmailRoleDao,
+  setMemberProfileEmailStatusDao,
   updateMemberProfileEmailDao,
 } from '@/db/repositories/member-profile-email-repository'
 import {
@@ -19,6 +20,7 @@ import {withTenant} from '@/db/tenant-scope'
 import {ValidationParsedZodError} from './errors/validation-error'
 import {
   applyMemberAccountDecision,
+  closeMemberAccount,
   getLinkedAccountRole,
 } from './member-account-service'
 import {
@@ -38,10 +40,14 @@ import {
   planHolderDesignation,
   roleForNewActiveEmail,
 } from './rules/member-email-rules'
-import {MemberAccountAuthor} from './types/domain/member-account-types'
+import {
+  MemberAccountAuthor,
+  MemberAccountRoleConst,
+} from './types/domain/member-account-types'
 import {
   MemberEmailOriginConst,
   MemberEmailReplacement,
+  MemberEmailRole,
   MemberEmailRoleConst,
   MemberEmailStatusConst,
 } from './types/domain/member-email-types'
@@ -57,6 +63,7 @@ import {User} from './types/domain/user-types'
 import {
   addMemberProfileEmailServiceSchema,
   designateMemberProfileHolderServiceSchema,
+  reactivateImportedEmailServiceSchema,
   removeMemberProfileEmailServiceSchema,
   updateMemberProfileEmailServiceSchema,
 } from './validation/member-profile-validation'
@@ -158,7 +165,8 @@ const openEmailAccount = async (
  * titulaire si la fiche n'en a aucune active ou si le bureau la choisit
  * (critere 8 : l'ancienne titulaire devient supplementaire). Une adresse
  * deja celle d'un compte de l'association n'est ecrite qu'apres
- * confirmation du bureau (s53, 4c).
+ * confirmation du bureau (s53, 4c). Une adresse desactivee par l'import est
+ * reactivee, origine site, sa desinscription gardee (s56, ADR 076 §4).
  */
 export const addMemberProfileEmailService = async (
   input: AddMemberProfileEmailInput
@@ -174,7 +182,8 @@ export const addMemberProfileEmailService = async (
   return withTenant(organizationId, async () => {
     const loaded = await loadProfileEmails(context, memberProfileId)
     if (!loaded) return {status: 'not_found'}
-    if (loaded.emails.some((known) => sameEmail(known.email, email))) {
+    const known = loaded.emails.find((row) => sameEmail(row.email, email))
+    if (known && known.status !== MemberEmailStatusConst.DISABLED_BY_IMPORT) {
       return {status: 'already_listed'}
     }
 
@@ -187,21 +196,32 @@ export const addMemberProfileEmailService = async (
       return {status: 'email_shared', holder}
     }
 
-    const plan = roleForNewActiveEmail(loaded.emails, role)
+    const plan = roleForNewActiveEmail(
+      loaded.emails.filter((row) => row.id !== known?.id),
+      role
+    )
     if (plan.demoteEmailId) {
       await setMemberProfileEmailRoleDao(
         plan.demoteEmailId,
         MemberEmailRoleConst.ADDITIONAL
       )
     }
-    await insertMemberProfileEmailDao({
-      organizationId,
-      memberProfileId,
-      email,
-      role: plan.role,
-      status: MemberEmailStatusConst.ACTIVE,
-      origin: origin ?? MemberEmailOriginConst.SITE,
-    })
+    if (known) {
+      await updateMemberProfileEmailDao(known.id, {
+        status: MemberEmailStatusConst.ACTIVE,
+        role: plan.role,
+        origin: origin ?? MemberEmailOriginConst.SITE,
+      })
+    } else {
+      await insertMemberProfileEmailDao({
+        organizationId,
+        memberProfileId,
+        email,
+        role: plan.role,
+        status: MemberEmailStatusConst.ACTIVE,
+        origin: origin ?? MemberEmailOriginConst.SITE,
+      })
+    }
     await openEmailAccount(
       context,
       loaded.profile,
@@ -217,6 +237,8 @@ export const addMemberProfileEmailService = async (
  * titulaire, critere 9) et son compte suit la nouvelle adresse. Une nouvelle
  * valeur n'herite pas du refus des envois de l'ancienne (ADR 057). Une
  * adresse en attente modifiee par le bureau est activee d'office (design 4).
+ * Une adresse desactivee par l'import ne se modifie pas : elle se retire ou
+ * se ressaisit (s56, ADR 076 §2).
  */
 export const updateMemberProfileEmailService = async (
   input: UpdateMemberProfileEmailInput
@@ -233,7 +255,12 @@ export const updateMemberProfileEmailService = async (
     const loaded = await loadProfileEmails(context, memberProfileId)
     if (!loaded) return {status: 'not_found'}
     const target = loaded.emails.find((row) => row.id === emailId)
-    if (!target) return {status: 'not_found'}
+    if (
+      !target ||
+      target.status === MemberEmailStatusConst.DISABLED_BY_IMPORT
+    ) {
+      return {status: 'not_found'}
+    }
     if (
       loaded.emails.some(
         (other) => other.id !== emailId && sameEmail(other.email, email)
@@ -457,5 +484,125 @@ export const designateMemberProfileHolderService = async (
       'designated',
       promoted?.email ?? ''
     )
+  })
+}
+
+export type DisableImportedEmailResult =
+  | {status: 'disabled'}
+  | {status: 'not_found'}
+  | {status: 'board_email_required'}
+
+/**
+ * Desactive une adresse active d'une fiche, parce que le fichier de l'annee
+ * ne la porte plus (s56, ADR 076) : la ligne est conservee, supplementaire,
+ * sa desinscription intacte ; son compte est delie de **cette** fiche
+ * seulement. L'adresse d'un compte a role n'est jamais desactivee (decision
+ * B) : refus rapporte, rien n'est ecrit. Appelee par l'import annuel, qui
+ * desactive une titulaire avant d'en promouvoir une autre. Non exposee par
+ * la facade.
+ */
+export const disableImportedEmail = async (input: {
+  organizationId: string
+  memberProfileId: string
+  emailId: string
+}): Promise<DisableImportedEmailResult> => {
+  const parsed = designateMemberProfileHolderServiceSchema.safeParse(input)
+  if (!parsed.success) {
+    throw new ValidationParsedZodError(parsed.error)
+  }
+
+  const {organizationId, memberProfileId, emailId} = parsed.data
+  const context = await writeContext(organizationId)
+
+  return withTenant(organizationId, async () => {
+    const loaded = await loadProfileEmails(context, memberProfileId)
+    const target = loaded?.emails.find((row) => row.id === emailId)
+    if (!loaded || target?.status !== MemberEmailStatusConst.ACTIVE) {
+      return {status: 'not_found'}
+    }
+    const account = accountOfEmail(loaded.accounts, target.email)
+    const role = await getLinkedAccountRole(
+      organizationId,
+      account?.userId ?? null
+    )
+    if (role !== null && role !== MemberAccountRoleConst.MEMBER) {
+      return {status: 'board_email_required'}
+    }
+
+    await setMemberProfileEmailStatusDao(target.id, {
+      status: MemberEmailStatusConst.DISABLED_BY_IMPORT,
+      role: MemberEmailRoleConst.ADDITIONAL,
+    })
+    if (account) {
+      await closeMemberAccount({
+        organizationId,
+        memberProfileId,
+        userId: account.userId,
+      })
+    }
+    return {status: 'disabled'}
+  })
+}
+
+export type ReactivateImportedEmailResult =
+  {status: 'reactivated'; role: MemberEmailRole} | {status: 'not_found'}
+
+/**
+ * Reactive une adresse desactivee par un import, parce qu'un fichier
+ * suivant la porte a nouveau (s56, ADR 076 §4) : active, titulaire seulement
+ * si la fiche n'a aucune adresse active ou si l'import la fait remplacer la
+ * titulaire ; sa desinscription est gardee. Son compte est ouvert, ou celui
+ * qui la porte deja par une autre fiche est relie (confirmation implicite de
+ * l'import, patron s13). Non exposee par la facade.
+ */
+export const reactivateImportedEmail = async (input: {
+  organizationId: string
+  memberProfileId: string
+  emailId: string
+  role?: MemberEmailRole
+}): Promise<ReactivateImportedEmailResult> => {
+  const parsed = reactivateImportedEmailServiceSchema.safeParse(input)
+  if (!parsed.success) {
+    throw new ValidationParsedZodError(parsed.error)
+  }
+
+  const {organizationId, memberProfileId, emailId, role} = parsed.data
+  const context = await writeContext(organizationId)
+
+  return withTenant(organizationId, async () => {
+    const loaded = await loadProfileEmails(context, memberProfileId)
+    const target = loaded?.emails.find((row) => row.id === emailId)
+    if (
+      !loaded ||
+      target?.status !== MemberEmailStatusConst.DISABLED_BY_IMPORT
+    ) {
+      return {status: 'not_found'}
+    }
+
+    const plan = roleForNewActiveEmail(
+      loaded.emails.filter((row) => row.id !== target.id),
+      role
+    )
+    if (plan.demoteEmailId) {
+      await setMemberProfileEmailRoleDao(
+        plan.demoteEmailId,
+        MemberEmailRoleConst.ADDITIONAL
+      )
+    }
+    await setMemberProfileEmailStatusDao(target.id, {
+      status: MemberEmailStatusConst.ACTIVE,
+      role: plan.role,
+    })
+    const holder = await findEmailHolder(organizationId, target.email, {
+      memberProfileId,
+      userIds: loaded.accounts.map((account) => account.userId),
+    })
+    await openEmailAccount(
+      context,
+      loaded.profile,
+      target.email,
+      holder?.userId ?? null
+    )
+    return {status: 'reactivated', role: plan.role}
   })
 }

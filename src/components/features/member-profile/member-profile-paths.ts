@@ -6,6 +6,8 @@ import {
 /** Chemins du back-office des proprietaires (s12). */
 export const MEMBER_PROFILES_PATH = '/bureau/proprietaires'
 export const NEW_MEMBER_PROFILE_PATH = `${MEMBER_PROFILES_PATH}/nouveau`
+/** La mise a jour annuelle des coordonnees (s56), presidence seule. */
+export const MEMBER_CONTACT_IMPORT_PATH = `${MEMBER_PROFILES_PATH}/mise-a-jour`
 
 export const memberProfilePathOf = (id: string) =>
   `${MEMBER_PROFILES_PATH}/${id}`

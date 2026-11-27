@@ -45,7 +45,11 @@ const NAV_GROUPS: {labelKey: string; items: NavItem[]}[] = [
   {
     labelKey: 'group',
     items: [
-      {href: '/bureau/proprietaires', labelKey: 'memberProfiles'},
+      {
+        href: '/bureau/proprietaires',
+        labelKey: 'memberProfiles',
+        matchesSubroutes: true,
+      },
       {
         href: '/bureau/questions',
         labelKey: 'memberQuestions',

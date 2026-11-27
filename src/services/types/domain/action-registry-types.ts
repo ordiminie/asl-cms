@@ -176,6 +176,14 @@ export const ActionIdConst = {
    * d'un lot. Tout depot reste sous `MEMBER_DOCUMENT_MANAGE`, verifie en plus.
    */
   DOCUMENT_TEMPLATE_MANAGE: 'document.template.manage',
+  /**
+   * Mettre a jour les coordonnees des fiches depuis le fichier clients de
+   * Pennylane de l'annee (s56, ADR 077). **Premiere action reservee a la
+   * presidence seule** : le Bureau corrige une fiche a la main, il ne depose
+   * pas le fichier. Les services appeles rejouent en plus
+   * `MEMBER_PROFILE_MANAGE`.
+   */
+  MEMBER_CONTACT_IMPORT: 'member.contact.import',
 } as const
 
 export const ACTION_REGISTRY: ActionRegistry = [
@@ -266,5 +274,9 @@ export const ACTION_REGISTRY: ActionRegistry = [
   {
     id: ActionIdConst.DOCUMENT_TEMPLATE_MANAGE,
     defaultRoles: ['owner', 'board'],
+  },
+  {
+    id: ActionIdConst.MEMBER_CONTACT_IMPORT,
+    defaultRoles: ['owner'],
   },
 ]

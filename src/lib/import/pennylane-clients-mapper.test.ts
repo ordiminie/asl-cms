@@ -458,3 +458,91 @@ describe('mapPennylaneClients — domicile, terrain et entreprise (s55, arbitrag
     ])
   })
 })
+
+describe('mapPennylaneClients — mise a jour annuelle (s56)', () => {
+  const WITHOUT_REFERENCE = HEADERS.filter(
+    (header) => header !== 'Référence Client'
+  )
+
+  it('accepte un fichier sans colonne « Référence Client » en annuel, le refuse en initial', () => {
+    const annual = mapPennylaneClients(table([LUCIE], WITHOUT_REFERENCE), {
+      mode: 'annual',
+    })
+    const initial = mapPennylaneClients(table([LUCIE], WITHOUT_REFERENCE))
+
+    expect(annual.ok).toBe(true)
+    expect(initial.ok).toBe(false)
+  })
+
+  it('ne calcule aucune parcelle ni compteur, et n’émet ni missing_reference ni no_meter', () => {
+    const result = mapPennylaneClients(
+      table([
+        {...LUCIE, reference: ''},
+        {
+          ...LUCIE,
+          id: 'client-fictif-002',
+          address: '2 rue du Test',
+          reference: 'ZZ 999',
+        },
+      ]),
+      {mode: 'annual'}
+    )
+    if (!result.ok) throw new Error('fichier refuse')
+
+    expect(result.plan.rejections).toEqual([])
+    expect(result.plan.remarks).toEqual([])
+    expect(result.plan.members.map((member) => member.parcels)).toEqual([
+      [],
+      [],
+    ])
+  })
+
+  it('deux lignes du même identifiant aux références divergentes donnent un seul candidat sans parcelle', () => {
+    const result = mapPennylaneClients(
+      table([
+        LUCIE,
+        {...LUCIE, reference: 'ZZ 555 - 00XX000555', phone: '07 00 00 00 99'},
+      ]),
+      {mode: 'annual'}
+    )
+    if (!result.ok) throw new Error('fichier refuse')
+
+    expect(result.plan.members).toHaveLength(1)
+    expect(result.plan.members[0]).toMatchObject({
+      pennylaneCustomerId: 'client-fictif-001',
+      lines: [2, 3],
+      phone: '06 00 00 00 01',
+      parcels: [],
+    })
+  })
+
+  it('garde la règle domicile / terrain et le code postal complété', () => {
+    const result = mapPennylaneClients(
+      table(
+        [
+          {
+            ...LUCIE,
+            postalCode: '1000',
+            deliveryAddress: '9 rue du Domicile',
+            deliveryPostalCode: '75001',
+            deliveryCity: 'Paris',
+          },
+          {...LUCIE, id: 'client-fictif-002'},
+        ],
+        S55_HEADERS
+      ),
+      {mode: 'annual'}
+    )
+    if (!result.ok) throw new Error('fichier refuse')
+
+    expect(result.plan.members[0]).toMatchObject({
+      homeAddressLine: '9 rue du Domicile',
+      landAddressLine: '1 allée des Essais',
+      landPostalCode: '01000',
+    })
+    expect(result.plan.members[1].landAddressLine).toBeUndefined()
+    expect(result.plan.remarks.map((remark) => remark.remark)).toEqual([
+      'postal_code_padded',
+    ])
+  })
+})

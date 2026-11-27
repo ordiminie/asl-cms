@@ -1,7 +1,32 @@
 import {sql} from 'drizzle-orm'
-import {pgTable, text, timestamp, uniqueIndex, uuid} from 'drizzle-orm/pg-core'
+import {
+  jsonb,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from 'drizzle-orm/pg-core'
 
 import {organization} from './auth-model'
+
+/** Une adresse postale telle que lue dans le fichier, sans complement. */
+export type PennylaneImportedAddressModel = {
+  line: string | null
+  postalCode: string | null
+  city: string | null
+}
+
+/**
+ * Les dernieres valeurs lues dans le fichier Pennylane pour une fiche, par
+ * groupe (s56, ADR 077) : la reference de la regle « le site l'emporte ».
+ */
+export type PennylaneImportSnapshotModel = {
+  home: PennylaneImportedAddressModel | null
+  land: PennylaneImportedAddressModel | null
+  phone: string | null
+  emails: string[]
+}
 
 /**
  * Fiche d'un proprietaire (s12, ADR 029). Table metier : RLS forcee, policy
@@ -29,6 +54,9 @@ import {organization} from './auth-model'
  * - `pennylane_customer_id` est la cle d'import d'un client Pennylane (s13,
  *   ADR 048) : unique par association quand elle est presente. Elle identifie
  *   un client Pennylane, **jamais** la fiche, dont l'identite reste `id`.
+ * - `pennylane_import_snapshot` et `pennylane_imported_at` : les valeurs lues
+ *   dans le dernier fichier importe et sa date (s56, ADR 077). Donnee
+ *   personnelle, supprimee avec la fiche.
  */
 export const memberProfile = pgTable(
   'member_profile',
@@ -51,6 +79,12 @@ export const memberProfile = pgTable(
     landCity: text('land_city'),
     companyName: text('company_name'),
     pennylaneCustomerId: text('pennylane_customer_id'),
+    pennylaneImportSnapshot: jsonb(
+      'pennylane_import_snapshot'
+    ).$type<PennylaneImportSnapshotModel>(),
+    pennylaneImportedAt: timestamp('pennylane_imported_at', {
+      withTimezone: true,
+    }),
     createdAt: timestamp('created_at', {withTimezone: true})
       .defaultNow()
       .notNull(),

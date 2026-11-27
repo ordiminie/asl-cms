@@ -280,3 +280,30 @@ describe('ACTION_REGISTRY — modèles de documents (s36, ADR 074)', () => {
     ).toBe(false)
   })
 })
+
+describe('ACTION_REGISTRY — mise a jour annuelle des coordonnees (s56)', () => {
+  it('member.contact.import autorise la Presidente seule', () => {
+    expect(ActionIdConst.MEMBER_CONTACT_IMPORT).toBe('member.contact.import')
+    expect(
+      isActionAllowedForRole(
+        ACTION_REGISTRY,
+        ActionIdConst.MEMBER_CONTACT_IMPORT,
+        'owner'
+      )
+    ).toBe(true)
+    expect(
+      isActionAllowedForRole(
+        ACTION_REGISTRY,
+        ActionIdConst.MEMBER_CONTACT_IMPORT,
+        'board'
+      )
+    ).toBe(false)
+    expect(
+      isActionAllowedForRole(
+        ACTION_REGISTRY,
+        ActionIdConst.MEMBER_CONTACT_IMPORT,
+        'member'
+      )
+    ).toBe(false)
+  })
+})

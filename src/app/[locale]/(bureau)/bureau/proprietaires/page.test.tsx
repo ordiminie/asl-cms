@@ -13,6 +13,9 @@ vi.mock('@/app/dal/member-profile-dal', () => ({
   canManageCurrentMemberProfilesDal: vi.fn(),
   getMemberProfilesPageForBureauDal: vi.fn(),
 }))
+vi.mock('@/app/dal/member-annual-import-dal', () => ({
+  canImportCurrentMemberContactsDal: vi.fn(),
+}))
 vi.mock('@/app/dal/recipient-group-dal', () => ({
   canManageCurrentRecipientGroupsDal: vi.fn(),
   getRecipientGroupsForBureauDal: vi.fn(),
@@ -24,6 +27,7 @@ vi.mock('./actions', () => ({
 vi.mock('next/navigation', () => ({useRouter: () => ({push: vi.fn()})}))
 
 import {render, screen} from '@/__tests__/customRender'
+import {canImportCurrentMemberContactsDal} from '@/app/dal/member-annual-import-dal'
 import {
   canManageCurrentMemberProfilesDal,
   getMemberProfilesPageForBureauDal,
@@ -65,6 +69,7 @@ beforeEach(() => {
     incompleteCount: 0,
   })
   vi.mocked(canManageCurrentRecipientGroupsDal).mockResolvedValue(false)
+  vi.mocked(canImportCurrentMemberContactsDal).mockResolvedValue(false)
   vi.mocked(getRecipientGroupsForBureauDal).mockResolvedValue([])
 })
 
@@ -213,5 +218,29 @@ describe('/bureau/proprietaires — groupes de destinataires (s27)', () => {
       undefined,
       undefined
     )
+  })
+})
+
+describe('/bureau/proprietaires — mise à jour annuelle (s56, écran 0)', () => {
+  it('la présidence voit « Mettre à jour les coordonnées », vers la sous-route', async () => {
+    vi.mocked(canManageCurrentMemberProfilesDal).mockResolvedValue(true)
+    vi.mocked(canImportCurrentMemberContactsDal).mockResolvedValue(true)
+
+    await renderPage()
+
+    expect(
+      screen.getByRole('link', {name: 'Mettre à jour les coordonnées'})
+    ).toHaveAttribute('href', '/bureau/proprietaires/mise-a-jour')
+  })
+
+  it('un membre du Bureau ne voit pas le bouton', async () => {
+    vi.mocked(canManageCurrentMemberProfilesDal).mockResolvedValue(true)
+    vi.mocked(canImportCurrentMemberContactsDal).mockResolvedValue(false)
+
+    await renderPage()
+
+    expect(
+      screen.queryByRole('link', {name: 'Mettre à jour les coordonnées'})
+    ).toBeNull()
   })
 })

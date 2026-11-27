@@ -183,6 +183,12 @@ export const designateMemberProfileHolderServiceSchema = z.object({
   emailId: z.string().uuid(),
 })
 
+/** L'import annuel reactive une adresse desactivee (s56, ADR 076 §4). */
+export const reactivateImportedEmailServiceSchema =
+  designateMemberProfileHolderServiceSchema.extend({
+    role: memberEmailRoleSchema.optional(),
+  })
+
 /** Le membre ajoute une adresse depuis son espace (s54, 1b). */
 export const addMyEmailServiceSchema = z.object({
   organizationId: memberProfileOrganizationIdSchema,

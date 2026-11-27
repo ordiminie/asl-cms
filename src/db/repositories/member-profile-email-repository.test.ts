@@ -29,6 +29,7 @@ import {
   insertMemberProfileEmailDao,
   purgeExpiredPendingEmailsDao,
   setMemberProfileEmailRoleDao,
+  setMemberProfileEmailStatusDao,
   updateMemberProfileEmailDao,
 } from './member-profile-email-repository'
 
@@ -191,7 +192,8 @@ describe('getInvitationAddressesDao (s42b, suivi des invitations)', () => {
     expect(sent[0].sql).toMatch(/from "member_profile_email"/)
     expect(sent[0].sql).toMatch(/inner join "member_profile"/)
     expect(sent[0].sql).not.toMatch(/"status" = /)
-    expect(sent[0].params).toEqual([ORG_ID])
+    expect(sent[0].sql).toContain('"member_profile_email"."status" <> $2')
+    expect(sent[0].params).toEqual([ORG_ID, 'disabled_by_import'])
     expect(sent[1].sql).toMatch(/from "parcel_ownership"/)
     expect(rows).toEqual([
       {
@@ -213,5 +215,22 @@ describe('getInvitationAddressesDao (s42b, suivi des invitations)', () => {
         parcelNumbers: [],
       },
     ])
+  })
+})
+
+describe('setMemberProfileEmailStatusDao (s56, ADR 076)', () => {
+  it('change le statut et le rôle d’une adresse et horodate la modification', async () => {
+    await setMemberProfileEmailStatusDao(EMAIL_ID, {
+      status: 'disabled_by_import',
+      role: 'additional',
+    })
+
+    const [{sql, params}] = sent
+    expect(sql).toMatch(
+      /^update "member_profile_email" set "role" = \$1, "status" = \$2/
+    )
+    expect(sql).toContain('"updated_at" = now()')
+    expect(sql).toContain('"member_profile_email"."id" = $3')
+    expect(params).toEqual(['additional', 'disabled_by_import', EMAIL_ID])
   })
 })

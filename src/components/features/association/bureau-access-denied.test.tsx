@@ -31,3 +31,29 @@ describe('BureauAccessDenied — ecran B', () => {
     expect(screen.queryByText('Identité')).not.toBeInTheDocument()
   })
 })
+
+describe('BureauAccessDenied — refus d’une page du back-office (s56, 1f)', () => {
+  it('rend le texte et le lien de retour passés, sans quitter la barre latérale', () => {
+    render(
+      <BureauAccessDenied
+        namespace="BureauMemberAnnualImport.denied"
+        backHref="/bureau/proprietaires"
+      />
+    )
+
+    expect(
+      screen.getByRole('heading', {
+        level: 1,
+        name: 'Cette page ne vous est pas accessible',
+      })
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'La mise à jour des coordonnées depuis le fichier de l’année est réservée à la présidence de l’association. Pour corriger une fiche, ouvrez-la depuis la liste des propriétaires.'
+      )
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', {name: 'Revenir aux propriétaires'})
+    ).toHaveAttribute('href', '/bureau/proprietaires')
+  })
+})

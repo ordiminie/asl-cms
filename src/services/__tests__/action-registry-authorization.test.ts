@@ -634,3 +634,42 @@ describe('CAMPAIGN_GROUP_MANAGE — groupes de destinataires (s27)', () => {
     expect(canManageRecipientGroups(undefined, ORG_ID)).toBe(false)
   })
 })
+
+/**
+ * Mettre a jour les coordonnees depuis le fichier de l'annee (s56) : la
+ * premiere action reservee a la presidence.
+ */
+describe('MEMBER_CONTACT_IMPORT — mise a jour annuelle (s56)', () => {
+  const IMPORT = ActionIdConst.MEMBER_CONTACT_IMPORT
+
+  it('[SUPER_ADMIN] autorise le SuperAdmin', () => {
+    expect(canPerformAction(userTestSuperAdmin, ORG_ID, IMPORT)).toBe(true)
+  })
+
+  it('[ORGANIZATION OWNER] autorise la presidente', () => {
+    const user = withMembership(
+      userTest,
+      ORG_ID,
+      UserOrganizationRoleConst.OWNER
+    )
+    expect(canPerformAction(user, ORG_ID, IMPORT)).toBe(true)
+  })
+
+  it('[ORGANIZATION BOARD] refuse le bureau', () => {
+    const user = withMembership(
+      userTest,
+      ORG_ID,
+      UserOrganizationRoleConst.ADMIN
+    )
+    expect(canPerformAction(user, ORG_ID, IMPORT)).toBe(false)
+  })
+
+  it('[OTHER ORGANIZATION OWNER] refuse la presidente d une autre association', () => {
+    const user = withMembership(
+      userTest,
+      OTHER_ORG_ID,
+      UserOrganizationRoleConst.OWNER
+    )
+    expect(canPerformAction(user, ORG_ID, IMPORT)).toBe(false)
+  })
+})

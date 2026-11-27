@@ -24,6 +24,7 @@ vi.mock('@/db/repositories/member-profile-email-repository', () => ({
   insertMemberProfileEmailDao: vi.fn(),
   purgeExpiredPendingEmailsDao: vi.fn(),
   setMemberProfileEmailRoleDao: vi.fn(),
+  setMemberProfileEmailStatusDao: vi.fn(),
   updateMemberProfileEmailDao: vi.fn(),
 }))
 vi.mock('@/db/repositories/member-profile-repository', () => ({
@@ -65,6 +66,7 @@ import {
   insertMemberProfileEmailDao,
   purgeExpiredPendingEmailsDao,
   setMemberProfileEmailRoleDao,
+  setMemberProfileEmailStatusDao,
   updateMemberProfileEmailDao,
 } from '@/db/repositories/member-profile-email-repository'
 import {
@@ -93,6 +95,8 @@ import {AuthorizationError} from '../errors/authorization-error'
 import {
   addMemberProfileEmailService,
   designateMemberProfileHolderService,
+  disableImportedEmail,
+  reactivateImportedEmail,
   removeMemberProfileEmailService,
   updateMemberProfileEmailService,
 } from '../member-profile-email-service'
@@ -817,5 +821,173 @@ describe('[BUREAU] une attente modifiée et activée par le bureau n’hérite p
         unsubscribedAt: null,
       })
     )
+  })
+})
+
+describe('[BUREAU] adresse désactivée par l’import (s56, ADR 076)', () => {
+  const DISABLED_ID = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc'
+  const disabledEmail = emailRow({
+    id: DISABLED_ID,
+    email: 'ancienne@exemple.fr',
+    status: 'disabled_by_import',
+    origin: 'file',
+    unsubscribedAt: new Date('2026-10-01T08:00:00Z'),
+  })
+
+  it('désactiver : statut conservé, rôle supplémentaire, connexion coupée sur cette fiche seulement', async () => {
+    vi.mocked(countLinkedProfilesDao).mockResolvedValue(1)
+
+    const result = await disableImportedEmail({
+      organizationId: ORG_ID,
+      memberProfileId: PROFILE_ID,
+      emailId: CLAIRE_EMAIL_ID,
+    })
+
+    expect(result).toEqual({status: 'disabled'})
+    expect(setMemberProfileEmailStatusDao).toHaveBeenCalledWith(
+      CLAIRE_EMAIL_ID,
+      {status: 'disabled_by_import', role: 'additional'}
+    )
+    expect(deleteMemberProfileEmailDao).not.toHaveBeenCalled()
+    expect(unlinkMemberProfileAccountDao).toHaveBeenCalledTimes(1)
+    expect(unlinkMemberProfileAccountDao).toHaveBeenCalledWith(
+      PROFILE_ID,
+      CLAIRE_ID
+    )
+    expect(deleteMemberWithRoleDao).not.toHaveBeenCalled()
+  })
+
+  it('désactiver l’adresse d’un compte à rôle : refusé, rien n’est écrit (décision B)', async () => {
+    givenAccounts([
+      {userId: JEAN_ID, email: 'jean@exemple.fr'},
+      {userId: CLAIRE_ID, email: 'claire@exemple.fr', role: 'board'},
+    ])
+
+    const result = await disableImportedEmail({
+      organizationId: ORG_ID,
+      memberProfileId: PROFILE_ID,
+      emailId: CLAIRE_EMAIL_ID,
+    })
+
+    expect(result).toEqual({status: 'board_email_required'})
+    expect(setMemberProfileEmailStatusDao).not.toHaveBeenCalled()
+    expect(unlinkMemberProfileAccountDao).not.toHaveBeenCalled()
+  })
+
+  it('réactiver : supplémentaire, compte relié, désinscription conservée', async () => {
+    givenEmails(jeanEmail, disabledEmail)
+
+    const result = await reactivateImportedEmail({
+      organizationId: ORG_ID,
+      memberProfileId: PROFILE_ID,
+      emailId: DISABLED_ID,
+    })
+
+    expect(result).toEqual({status: 'reactivated', role: 'additional'})
+    expect(setMemberProfileEmailStatusDao).toHaveBeenCalledWith(DISABLED_ID, {
+      status: 'active',
+      role: 'additional',
+    })
+    expect(updateMemberProfileEmailDao).not.toHaveBeenCalled()
+    expect(linkMemberProfileAccountDao).toHaveBeenCalledWith({
+      organizationId: ORG_ID,
+      memberProfileId: PROFILE_ID,
+      userId: NEW_USER_ID,
+    })
+  })
+
+  it('réactiver sur une fiche sans adresse active : elle devient titulaire', async () => {
+    givenEmails(disabledEmail)
+    givenAccounts([])
+
+    const result = await reactivateImportedEmail({
+      organizationId: ORG_ID,
+      memberProfileId: PROFILE_ID,
+      emailId: DISABLED_ID,
+    })
+
+    expect(result).toEqual({status: 'reactivated', role: 'holder'})
+  })
+
+  it('le bureau saisit une adresse désactivée de la fiche : elle est réactivée, origine site, sans nouvelle ligne', async () => {
+    givenEmails(jeanEmail, disabledEmail)
+
+    const result = await addMemberProfileEmailService({
+      organizationId: ORG_ID,
+      memberProfileId: PROFILE_ID,
+      email: 'Ancienne@exemple.fr',
+    })
+
+    expect(result.status).toBe('saved')
+    expect(insertMemberProfileEmailDao).not.toHaveBeenCalled()
+    expect(updateMemberProfileEmailDao).toHaveBeenCalledWith(DISABLED_ID, {
+      status: 'active',
+      role: 'additional',
+      origin: 'site',
+    })
+    expect(linkMemberProfileAccountDao).toHaveBeenCalled()
+  })
+
+  it('retirer une adresse désactivée : sans remplaçante, aucun compte touché', async () => {
+    givenEmails(jeanEmail, disabledEmail)
+
+    const result = await removeMemberProfileEmailService({
+      organizationId: ORG_ID,
+      memberProfileId: PROFILE_ID,
+      emailId: DISABLED_ID,
+    })
+
+    expect(result.status).toBe('saved')
+    expect(deleteMemberProfileEmailDao).toHaveBeenCalledWith(DISABLED_ID)
+    expect(unlinkMemberProfileAccountDao).not.toHaveBeenCalled()
+  })
+
+  it('modifier une adresse désactivée : refusé, ni écriture ni compte (revue M1)', async () => {
+    givenEmails(jeanEmail, disabledEmail)
+
+    const result = await updateMemberProfileEmailService({
+      organizationId: ORG_ID,
+      memberProfileId: PROFILE_ID,
+      emailId: DISABLED_ID,
+      email: 'nouvelle@exemple.fr',
+    })
+
+    expect(result).toEqual({status: 'not_found'})
+    expect(updateMemberProfileEmailDao).not.toHaveBeenCalled()
+    expect(createUserIfAbsentTxnDao).not.toHaveBeenCalled()
+    expect(linkMemberProfileAccountDao).not.toHaveBeenCalled()
+  })
+
+  it('désigner une adresse désactivée titulaire : refusé, aucun rôle ne bouge (revue M1)', async () => {
+    givenEmails(jeanEmail, disabledEmail)
+
+    const result = await designateMemberProfileHolderService({
+      organizationId: ORG_ID,
+      memberProfileId: PROFILE_ID,
+      emailId: DISABLED_ID,
+    })
+
+    expect(result).toEqual({status: 'invalid_replacement'})
+    expect(setMemberProfileEmailRoleDao).not.toHaveBeenCalled()
+  })
+
+  it('désactiver et réactiver exigent la gestion des fiches', async () => {
+    setupAuthUserMocked(withRole('member'))
+
+    await expect(
+      disableImportedEmail({
+        organizationId: ORG_ID,
+        memberProfileId: PROFILE_ID,
+        emailId: CLAIRE_EMAIL_ID,
+      })
+    ).rejects.toThrow(AuthorizationError)
+    await expect(
+      reactivateImportedEmail({
+        organizationId: ORG_ID,
+        memberProfileId: PROFILE_ID,
+        emailId: DISABLED_ID,
+      })
+    ).rejects.toThrow(AuthorizationError)
+    expect(setMemberProfileEmailStatusDao).not.toHaveBeenCalled()
   })
 })

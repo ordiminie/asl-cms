@@ -1720,7 +1720,8 @@
         "invalid_email": "L’adresse email n’est pas valide.",
         "invalid_postal_code": "Le code postal n’est pas valide.",
         "invalid_phone": "Le téléphone n’est pas valide.",
-        "invalid_field": "Une valeur de la ligne n’est pas valide."
+        "invalid_field": "Une valeur de la ligne n’est pas valide.",
+        "ambiguous_customer_id": "Plusieurs fiches portent cet identifiant client, à la casse près : corrigez l’identifiant sur la fiche."
       },
       "remarks": {
         "postal_code_padded": "Code postal complété d’un zéro au début.",
@@ -3801,13 +3802,17 @@
         },
         "statuses": {
           "active": "Active",
-          "pending": "En attente de confirmation"
+          "pending": "En attente de confirmation",
+          "disabled_by_import": "Désactivée par l’import"
         },
         "pendingBy": "ajoutée par {name} · jusqu’au {date}",
         "pendingUntil": "jusqu’au {date}",
+        "disabledByImport": "Absente du dernier fichier Pennylane : elle ne se connecte plus.",
         "alsoConnects": "Se connecte aussi à :",
         "manage": "Gérer",
         "manageLabel": "Gérer {email}",
+        "remove": "Retirer",
+        "removeLabel": "Retirer {email}",
         "add": "Ajouter une adresse",
         "empty": "Aucune adresse email : cette fiche reçoit tout par courrier.",
         "saved": {
@@ -4212,7 +4217,8 @@
         "addFailed": "Les fiches n’ont pas été ajoutées au groupe. Rien n’a changé. Réessayez.",
         "removeFailed": "Les fiches n’ont pas été retirées du groupe. Rien n’a changé. Réessayez."
       }
-    }
+    },
+    "importContacts": "Mettre à jour les coordonnées"
   },
   "MemberSpaceLayout": {
     "skipToContent": "Aller au contenu"
@@ -5875,6 +5881,148 @@
       "noParcel": "Aucune parcelle actuelle",
       "backToTemplates": "Revenir aux modèles",
       "memberDocuments": "Voir les documents nominatifs"
+    }
+  },
+  "BureauMemberAnnualImport": {
+    "metadata": {
+      "title": "Mettre à jour les coordonnées"
+    },
+    "breadcrumb": {
+      "label": "Fil d’Ariane",
+      "parent": "Propriétaires",
+      "current": "Mettre à jour les coordonnées"
+    },
+    "title": "Mettre à jour les coordonnées",
+    "intro": "Déposez le fichier clients exporté de Pennylane. Les fiches existantes sont mises à jour ; aucune fiche n’est créée.",
+    "file": {
+      "cardTitle": "Fichier",
+      "help": "Fichier CSV (.csv) exporté de Pennylane, 16 Mo au plus. Une ligne par client.",
+      "choose": "Choisir un fichier",
+      "chooseAnother": "Choisir un autre fichier",
+      "inputLabel": "Fichier clients de Pennylane"
+    },
+    "explain": {
+      "title": "Ce qui va se passer",
+      "match": "Chaque ligne est rapprochée d’une fiche par son identifiant client Pennylane. Une ligne inconnue ne crée rien : elle est listée « à créer à la main ».",
+      "contact": "Domicile, terrain, téléphone et adresses email sont mis à jour. Une valeur modifiée sur le site depuis le dernier import est gardée, et signalée.",
+      "holder": "Si le fichier remplace l’adresse titulaire, le propriétaire se connecte avec la nouvelle. Les adresses ajoutées sur le site sont conservées.",
+      "parcels": "La propriété des parcelles ne change pas.",
+      "noEmail": "Aucun email n’est envoyé. Relancer le même fichier ne change rien."
+    },
+    "submit": "Mettre à jour les fiches",
+    "submitting": "Mise à jour en cours…",
+    "progress": "Mise à jour depuis {file} en cours…",
+    "cancel": "Annuler",
+    "missingInput": "Choisissez un fichier pour continuer.",
+    "retry": "Réessayer",
+    "denied": {
+      "title": "Cette page ne vous est pas accessible",
+      "description": "La mise à jour des coordonnées depuis le fichier de l’année est réservée à la présidence de l’association. Pour corriger une fiche, ouvrez-la depuis la liste des propriétaires.",
+      "back": "Revenir aux propriétaires"
+    },
+    "errors": {
+      "forbidden": "La mise à jour des coordonnées depuis le fichier est réservée à la présidence de l’association.",
+      "invalidData": "Choisissez un fichier pour continuer.",
+      "fileType": "Le fichier doit être un fichier CSV (.csv).",
+      "fileTooLarge": "Le fichier dépasse 16 Mo.",
+      "unreadableTitle": "Le fichier n’a pas pu être lu.",
+      "nothingUpdated": "Aucune fiche n’a été modifiée.",
+      "chooseAnotherFile": "Choisissez un autre fichier.",
+      "failedTitle": "La mise à jour s’est arrêtée.",
+      "failed": "Les fiches déjà traitées sont à jour. Relancez le même fichier pour terminer : ce qui est déjà fait ne changera pas."
+    },
+    "report": {
+      "title": "Rapport de mise à jour",
+      "done": "Mise à jour terminée : {count, plural, one {# fiche mise à jour} other {# fiches mises à jour}}.",
+      "toReview": "{points, plural, =0 {Aucun point à vérifier} one {# point à vérifier} other {# points à vérifier}} et {toCreate, plural, =0 {aucun membre à créer à la main} one {# membre à créer à la main} other {# membres à créer à la main}}, détaillés ci-dessous.",
+      "nothingChanged": "Rien n’a changé : les fiches ont déjà les coordonnées de ce fichier.",
+      "noneUpdatedTitle": "Aucune fiche n’a été mise à jour.",
+      "noneUpdatedBody": "Aucune ligne ne correspond à une fiche existante : voyez ci-dessous les membres à créer à la main et les lignes rejetées.",
+      "summaryTitle": "Bilan",
+      "summary": {
+        "linesRead": "Lignes lues",
+        "profilesUpdated": "Fiches mises à jour",
+        "profilesUnchanged": "Fiches inchangées",
+        "membersToCreate": "Membres à créer à la main",
+        "linesRejected": "Lignes rejetées",
+        "toCheck": "À vérifier",
+        "kept": "Valeurs conservées",
+        "replaced": "Titulaires remplacées",
+        "designated": "Titulaires désignées par le site",
+        "disabled": "Adresses plus actives",
+        "manual": "Adresses à corriger à la main"
+      },
+      "sections": {
+        "updated": {
+          "title": "Fiches mises à jour",
+          "intro": "Les coordonnées de ces fiches viennent maintenant du fichier.",
+          "empty": "Aucune fiche mise à jour."
+        },
+        "kept": {
+          "title": "Valeurs conservées, modifiées sur le site",
+          "intro": "Ces valeurs ont été modifiées sur le site depuis le dernier import : le fichier ne les a pas remplacées. Si le fichier a raison, corrigez la fiche.",
+          "empty": "Aucune valeur conservée."
+        },
+        "replaced": {
+          "title": "Adresses titulaires remplacées",
+          "intro": "Le propriétaire se connecte désormais avec la nouvelle adresse. L’ancienne n’est plus active.",
+          "empty": "Aucune adresse titulaire remplacée."
+        },
+        "designated": {
+          "title": "Titulaires désignées par le site",
+          "intro": "L’adresse titulaire n’est plus dans le fichier : le site en a désigné une autre parmi les adresses actives. Vérifiez ce choix avec les personnes concernées ; vous pouvez désigner une autre titulaire depuis la fiche.",
+          "empty": "Aucune titulaire désignée."
+        },
+        "disabled": {
+          "title": "Adresses qui ne sont plus actives",
+          "intro": "Ces adresses venaient d’un fichier précédent et n’y sont plus. Les adresses ajoutées sur le site restent actives.",
+          "empty": "Aucune adresse désactivée."
+        },
+        "manual": {
+          "title": "Adresses à corriger à la main",
+          "intro": "L’adresse titulaire de ces fiches est celle d’un membre du bureau ou de la présidence : l’import n’a touché à aucune de leurs adresses email. Comparez avec le fichier et corrigez la fiche si besoin.",
+          "empty": "Aucune adresse à corriger à la main."
+        },
+        "toCreate": {
+          "title": "Membres à créer à la main",
+          "intro": "Ces identifiants ne correspondent à aucune fiche. Ajoutez le propriétaire, puis saisissez son identifiant Pennylane sur sa fiche : le prochain fichier le mettra à jour.",
+          "empty": "Aucun membre à créer à la main."
+        },
+        "rejections": {
+          "title": "Lignes rejetées",
+          "intro": "Ces lignes n’ont pas été traitées. Les autres l’ont été.",
+          "empty": "Aucune ligne rejetée."
+        }
+      },
+      "columns": {
+        "profile": "Fiche",
+        "updatedGroups": "Mis à jour",
+        "group": "Donnée",
+        "kept": "Gardée (site)",
+        "file": "Dans le fichier",
+        "oldHolder": "Ancienne titulaire",
+        "newHolder": "Nouvelle titulaire",
+        "address": "Adresse",
+        "holder": "Adresse titulaire",
+        "line": "Ligne",
+        "customerId": "Identifiant client",
+        "client": "Client",
+        "reason": "Motif"
+      },
+      "groups": {
+        "home": "Domicile",
+        "land": "Terrain",
+        "phone": "Téléphone",
+        "emails": "Adresses email"
+      },
+      "noActiveEmail": "Aucune adresse active",
+      "mailOnly": "Courrier uniquement",
+      "noValue": "(vide)",
+      "addMember": "Ajouter un propriétaire",
+      "backToList": "Retour aux propriétaires",
+      "importAnother": "Importer un autre fichier",
+      "pageError": "Le rapport n’a pas pu s’afficher. La mise à jour, elle, est terminée.",
+      "pageErrorNext": "Relancez le même fichier pour retrouver le rapport : ce qui est déjà fait ne changera pas."
     }
   }
 }

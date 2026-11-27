@@ -1,5 +1,6 @@
 import 'server-only'
 
+import {setMemberProfileImportSnapshotDao} from '@/db/repositories/member-profile-repository'
 import {withTenant} from '@/db/tenant-scope'
 import {readCsv} from '@/lib/import/csv-reader'
 import {mapPennylaneClients} from '@/lib/import/pennylane-clients-mapper'
@@ -12,6 +13,7 @@ import {
   isValidationParsedZodError,
   ValidationParsedZodError,
 } from './errors/validation-error'
+import {rejectionOfValidation} from './member-import-rejection'
 import {addMemberProfileEmailService} from './member-profile-email-service'
 import {
   createMemberProfileService,
@@ -21,6 +23,7 @@ import {getOrganizationByIdService} from './organization-service'
 import {attachParcelService} from './parcel-ownership-service'
 import {importedEmailsPlan} from './rules/member-email-rules'
 import {getDefaultLandAddress} from './types/domain/association-settings-types'
+import {PennylaneImportSnapshot} from './types/domain/member-annual-import-types'
 import {MemberEmailOriginConst} from './types/domain/member-email-types'
 import {
   ImportFileRefusalConst,
@@ -76,13 +79,6 @@ type MemberOutcome =
   | {kind: 'already_present'; parcels: number}
   | {kind: 'rejected'; reason: ImportRejection}
 
-const FIELD_REJECTIONS: Record<string, ImportRejection> = {
-  email: ImportRejectionConst.INVALID_EMAIL,
-  homePostalCode: ImportRejectionConst.INVALID_POSTAL_CODE,
-  landPostalCode: ImportRejectionConst.INVALID_POSTAL_CODE,
-  phone: ImportRejectionConst.INVALID_PHONE,
-}
-
 /**
  * Code postal et commune du terrain par defaut de l'association (s55, ADR
  * 058), lus une fois par import ; `null` quand le bureau ne les a pas
@@ -97,7 +93,7 @@ type DefaultLandAddress = {postalCode: string | null; city: string | null}
 const landOf = (
   member: ImportMemberCandidate,
   defaultLand: DefaultLandAddress
-) => {
+): {landAddressLine?: string; landPostalCode?: string; landCity?: string} => {
   if (member.landAddressLine || member.landPostalCode || member.landCity) {
     return {
       landAddressLine: member.landAddressLine,
@@ -111,15 +107,45 @@ const landOf = (
   }
 }
 
-/** Le premier champ refuse par la validation des services, en motif. */
-const rejectionOfValidation = (
-  error: ValidationParsedZodError
-): ImportRejection => {
-  const field = error.zodErrorFields?.issues[0]?.path[0]
-  return (
-    (typeof field === 'string' ? FIELD_REJECTIONS[field] : undefined) ??
-    ImportRejectionConst.INVALID_FIELD
-  )
+const addressOrNull = (address: {
+  line?: string
+  postalCode?: string
+  city?: string
+}): PennylaneImportSnapshot['home'] =>
+  address.line || address.postalCode || address.city
+    ? {
+        line: address.line ?? null,
+        postalCode: address.postalCode ?? null,
+        city: address.city ?? null,
+      }
+    : null
+
+/**
+ * L'instantane d'une fiche creee (s56, ADR 077 §1) : les valeurs que l'import
+ * a ecrites, terrain par defaut compris — la mise a jour annuelle les
+ * reconnaitra comme venues de l'import, pas du site.
+ */
+const snapshotOf = (
+  member: ImportMemberCandidate,
+  defaultLand: DefaultLandAddress
+): PennylaneImportSnapshot => {
+  const land = landOf(member, defaultLand)
+  return {
+    home: addressOrNull({
+      line: member.homeAddressLine,
+      postalCode: member.homePostalCode,
+      city: member.homeCity,
+    }),
+    land: addressOrNull({
+      line: land.landAddressLine,
+      postalCode: land.landPostalCode,
+      city: land.landCity,
+    }),
+    phone: member.phone ?? null,
+    emails: [member.email, ...(member.additionalEmails ?? [])]
+      .filter((email): email is string => Boolean(email))
+      .map((email) => email.toLowerCase()),
+  }
 }
 
 type CreatedProfile = {
@@ -254,6 +280,10 @@ const writeMember = async (
   }
   const profile = await createProfile(organizationId, member, defaultLand)
   await addCellEmails(organizationId, profile.id, member)
+  await setMemberProfileImportSnapshotDao(profile.id, {
+    snapshot: snapshotOf(member, defaultLand),
+    importedAt: new Date(),
+  })
   return {
     kind: 'created',
     accountOpened: profile.accountOpened,

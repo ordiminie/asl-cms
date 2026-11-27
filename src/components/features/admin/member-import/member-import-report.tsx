@@ -340,10 +340,11 @@ function PagedRows({
   )
 }
 
-const pageOf = <T,>(rows: T[], page: number, size: number): T[] =>
+export const pageOf = <T,>(rows: T[], page: number, size: number): T[] =>
   rows.slice((page - 1) * size, page * size)
 
-function Pager({
+/** La pagination ecrite « Precedent / Suivant » (s13), reprise par s56. */
+export function Pager({
   page,
   pageSize,
   total,

@@ -1,0 +1,6 @@
+import memberAnnualImportServiceInterceptor from './interceptors/member-annual-import-service-logger-interceptor'
+
+export const canImportMemberContactsService =
+  memberAnnualImportServiceInterceptor.canImportMemberContactsService
+export const importAnnualMemberContactsService =
+  memberAnnualImportServiceInterceptor.importAnnualMemberContactsService

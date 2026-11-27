@@ -58,6 +58,8 @@ const profile = (id: string, currentParcelNumbers: string[] = []) => ({
   landCity: null,
   companyName: null,
   pennylaneCustomerId: null,
+  pennylaneImportSnapshot: null,
+  pennylaneImportedAt: null,
   mailOnly: false,
   createdAt: new Date(),
   updatedAt: new Date(),
