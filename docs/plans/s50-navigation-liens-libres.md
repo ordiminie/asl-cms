@@ -292,3 +292,13 @@ page.
   textes dans `messages/fr.json`.
 - Aucun composant ni token hors du design system ; manques du design tranchés et versés au design system.
 - `/ks-review` passée sans critique ; e2e verts en CI.
+
+## Correctifs de revue — tour 1 (arbitrage du 2026-11-27)
+
+L'utilisatrice a choisi de corriger le majeur avant le ship. Les mineurs restent dans
+`docs/reviews/s50-navigation-liens-libres.md` pour le tour final de fin de projet.
+
+10. [x] **Constat 1 (major)** — `src/lib/helper/link-address.ts`, `isExternalHttpsAddress` : remplacer
+    `URL.canParse` (absent de Safari 16.4, dans la cible de Next 16) par `new URL(address)` dans un
+    `try`/`catch` qui rend `false`. Test d'abord : un cas qui échoue quand `URL.canParse` est absent
+    (le retirer le temps du test), puis le correctif.

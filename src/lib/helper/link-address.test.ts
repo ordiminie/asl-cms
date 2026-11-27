@@ -1,4 +1,4 @@
-import {describe, expect, it} from 'vitest'
+import {afterEach, beforeEach, describe, expect, it} from 'vitest'
 
 import {classifyLinkAddress} from './link-address'
 
@@ -65,4 +65,36 @@ describe('classifyLinkAddress', () => {
   it.each(['', '   '])('refuse %j comme vide', (raw) => {
     expect(classifyLinkAddress(raw)).toEqual({ok: false, reason: 'empty'})
   })
+})
+
+describe('classifyLinkAddress sans URL.canParse (Safari 16.4, cible de Next 16)', () => {
+  beforeEach(() => {
+    Object.defineProperty(URL, 'canParse', {
+      value: undefined,
+      configurable: true,
+    })
+  })
+
+  afterEach(() => {
+    Reflect.deleteProperty(URL, 'canParse')
+  })
+
+  it('simule bien un navigateur sans URL.canParse', () => {
+    expect(URL.canParse).toBeUndefined()
+  })
+
+  it('accepte une adresse externe en https://', () => {
+    expect(classifyLinkAddress('https://www.saint-etang.fr')).toEqual({
+      ok: true,
+      kind: 'external',
+      address: 'https://www.saint-etang.fr',
+    })
+  })
+
+  it.each(['https://', 'https://a@b.fr'])(
+    'refuse %j sans lever d erreur',
+    (raw) => {
+      expect(classifyLinkAddress(raw)).toEqual({ok: false, reason: 'refused'})
+    }
+  )
 })

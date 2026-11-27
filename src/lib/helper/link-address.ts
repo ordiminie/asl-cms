@@ -33,6 +33,19 @@ const isInternalPath = (address: string): boolean =>
   address.startsWith('/') && address[1] !== '/'
 
 /**
+ * `new URL` dans un `try` plutot que `URL.canParse` : le predicat tourne aussi
+ * cote client, et `URL.canParse` manque a une partie de la cible de Next 16
+ * (Safari 16.4, Chrome 111, Firefox 111).
+ */
+const parseUrl = (address: string): URL | undefined => {
+  try {
+    return new URL(address)
+  } catch {
+    return undefined
+  }
+}
+
+/**
  * `https://` litteral exige en tete : `https:/hote` serait complete par le
  * navigateur, et la valeur stockee ne serait plus celle qu'il suit. Les
  * identifiants sont refuses parce que l'hote reel de
@@ -40,9 +53,9 @@ const isInternalPath = (address: string): boolean =>
  */
 const isExternalHttpsAddress = (address: string): boolean => {
   if (!address.toLowerCase().startsWith('https://')) return false
-  if (!URL.canParse(address)) return false
 
-  const url = new URL(address)
+  const url = parseUrl(address)
+  if (!url) return false
   return (
     url.protocol === 'https:' &&
     url.hostname !== '' &&
